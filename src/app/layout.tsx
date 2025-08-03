@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'MPU-Focus | Training Platform',
   description: 'Comprehensive training platform for MPU preparation',
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
