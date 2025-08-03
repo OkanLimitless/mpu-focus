@@ -21,29 +21,32 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null }
 }
 
+// TypeScript assertion to ensure cached is never undefined after initialization
+const mongooseCache = cached as MongooseCache
+
 async function connectDB(): Promise<typeof mongoose> {
-  if (cached.conn) {
-    return cached.conn
+  if (mongooseCache.conn) {
+    return mongooseCache.conn
   }
 
-  if (!cached.promise) {
+  if (!mongooseCache.promise) {
     const opts = {
       bufferCommands: false,
     }
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    mongooseCache.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       return mongoose
     })
   }
 
   try {
-    cached.conn = await cached.promise
+    mongooseCache.conn = await mongooseCache.promise
   } catch (e) {
-    cached.promise = null
+    mongooseCache.promise = null
     throw e
   }
 
-  return cached.conn
+  return mongooseCache.conn
 }
 
 export default connectDB

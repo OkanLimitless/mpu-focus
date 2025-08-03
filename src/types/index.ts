@@ -1,4 +1,4 @@
-import { Document } from 'mongoose'
+import { Document, Types } from 'mongoose'
 
 export interface User extends Document {
   _id: string
@@ -26,7 +26,7 @@ export interface Course extends Document {
 
 export interface Chapter extends Document {
   _id: string
-  courseId: string
+  courseId: Types.ObjectId | string
   title: string
   description: string
   order: number
@@ -38,7 +38,7 @@ export interface Chapter extends Document {
 
 export interface Video extends Document {
   _id: string
-  chapterId: string
+  chapterId: Types.ObjectId | string
   title: string
   description: string
   muxAssetId?: string
@@ -52,10 +52,10 @@ export interface Video extends Document {
 
 export interface CourseProgress extends Document {
   _id: string
-  userId: string
-  courseId: string
-  chapterId: string
-  videoId: string
+  userId: Types.ObjectId | string
+  courseId: Types.ObjectId | string
+  chapterId: Types.ObjectId | string
+  videoId: Types.ObjectId | string
   watchedDuration: number
   totalDuration: number
   isCompleted: boolean
@@ -66,14 +66,14 @@ export interface CourseProgress extends Document {
 
 export interface UserDocument extends Document {
   _id: string
-  userId: string
+  userId: Types.ObjectId | string
   fileName: string
   originalName: string
   fileSize: number
   mimeType: string
   uploadUrl: string
   status: 'pending' | 'reviewed' | 'approved' | 'rejected'
-  reviewedBy?: string
+  reviewedBy?: Types.ObjectId | string
   reviewedAt?: Date
   notes?: string
   createdAt: Date
