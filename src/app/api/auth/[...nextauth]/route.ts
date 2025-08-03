@@ -13,52 +13,28 @@ const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        console.log('🔐 Authorization attempt started')
-        console.log('📧 Email:', credentials?.email)
-        console.log('🔑 Password provided:', !!credentials?.password)
-        
         if (!credentials?.email || !credentials?.password) {
-          console.log('❌ Missing email or password')
-          throw new Error('Email und Passwort sind erforderlich')
+          throw new Error('Email and password are required')
         }
 
         try {
-          console.log('🔌 Connecting to database...')
           await connectDB()
-          console.log('✅ Database connected')
           
-          console.log('🔍 Looking for user with email:', credentials.email)
           const user = await User.findOne({ 
             email: credentials.email,
             isActive: true 
           }).select('+password')
 
-          console.log('👤 User found:', !!user)
-          if (user) {
-            console.log('📋 User details:', {
-              id: user._id,
-              email: user.email,
-              role: user.role,
-              isActive: user.isActive,
-              hasPassword: !!user.password
-            })
-          }
-
           if (!user) {
-            console.log('❌ No user found with email:', credentials.email)
-            throw new Error('Ungültige Anmeldedaten')
+            throw new Error('Invalid credentials')
           }
 
-          console.log('🔐 Comparing passwords...')
           const isPasswordValid = await user.comparePassword(credentials.password)
-          console.log('🔑 Password valid:', isPasswordValid)
           
           if (!isPasswordValid) {
-            console.log('❌ Invalid password for user:', credentials.email)
-            throw new Error('Ungültige Anmeldedaten')
+            throw new Error('Invalid credentials')
           }
 
-          console.log('✅ Authentication successful for:', credentials.email)
           return {
             id: user._id.toString(),
             email: user.email,
@@ -67,11 +43,11 @@ const authOptions: NextAuthOptions = {
             role: user.role,
           }
         } catch (error) {
-          console.error('💥 Auth error:', error)
-          if (error instanceof Error && error.message.includes('Ungültige Anmeldedaten')) {
+          console.error('Auth error:', error)
+          if (error instanceof Error && error.message.includes('Invalid credentials')) {
             throw error
           }
-          throw new Error('Anmeldung fehlgeschlagen')
+          throw new Error('Authentication failed')
         }
       }
     })

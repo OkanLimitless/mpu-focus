@@ -60,16 +60,9 @@ UserSchema.pre('save', async function(next) {
 // Compare password method
 UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   try {
-    console.log('🔐 Comparing password for user:', this.email)
-    console.log('🔑 Candidate password length:', candidatePassword?.length)
-    console.log('🔒 Stored password hash length:', this.password?.length)
-    console.log('🔒 Stored password starts with $2:', this.password?.startsWith('$2'))
-    
-    const result = await bcrypt.compare(candidatePassword, this.password)
-    console.log('✅ Password comparison result:', result)
-    return result
+    return await bcrypt.compare(candidatePassword, this.password)
   } catch (error) {
-    console.error('💥 Password comparison error:', error)
+    console.error('Password comparison error:', error)
     return false
   }
 }

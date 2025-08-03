@@ -13,11 +13,11 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [userProgress, setUserProgress] = useState({
-    totalChapters: 8,
-    completedChapters: 3,
-    totalVideos: 24,
-    completedVideos: 9,
-    overallProgress: 37.5
+    totalChapters: 0,
+    completedChapters: 0,
+    totalVideos: 0,
+    completedVideos: 0,
+    overallProgress: 0
   })
 
   useEffect(() => {
@@ -61,11 +61,11 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                Willkommen, {session.user.firstName} {session.user.lastName}
+                Welcome, {session.user.firstName} {session.user.lastName}
               </span>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
+                Sign Out
               </Button>
             </div>
           </div>
@@ -78,10 +78,10 @@ export default function DashboardPage() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Ihr MPU-Training Dashboard
+              Your MPU Training Dashboard
             </h2>
             <p className="text-gray-600">
-              Verfolgen Sie Ihren Fortschritt und laden Sie Ihre Dokumente hoch.
+              Track your progress and manage your training materials.
             </p>
           </div>
 
@@ -89,21 +89,21 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gesamtfortschritt</CardTitle>
+                <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{userProgress.overallProgress}%</div>
                 <Progress value={userProgress.overallProgress} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {userProgress.completedVideos} von {userProgress.totalVideos} Videos abgeschlossen
+                  {userProgress.completedVideos} of {userProgress.totalVideos} videos completed
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kapitel</CardTitle>
+                <CardTitle className="text-sm font-medium">Chapters</CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                   {userProgress.completedChapters}/{userProgress.totalChapters}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Kapitel abgeschlossen
+                  Chapters completed
                 </p>
               </CardContent>
             </Card>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
                   {userProgress.completedVideos}/{userProgress.totalVideos}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Videos angesehen
+                  Videos watched
                 </p>
               </CardContent>
             </Card>
@@ -137,24 +137,19 @@ export default function DashboardPage() {
             {/* Course Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Ihr Kurs</CardTitle>
+                <CardTitle>Your Courses</CardTitle>
                 <CardDescription>
-                  Setzen Sie Ihr MPU-Training fort
+                  Continue your MPU training
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">MPU Vorbereitung - Grundlagen</h4>
-                      <p className="text-sm text-gray-600">Kapitel 4: Verkehrspsychologie</p>
-                    </div>
-                    <Button>Fortsetzen</Button>
-                  </div>
-                  
-                  <div className="text-sm text-gray-600">
-                    <p>Nächstes Video: "Selbstreflexion und Verhalten"</p>
-                    <p>Geschätzte Zeit: 15 Minuten</p>
+                  <div className="text-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
+                    <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-2">No courses available yet</p>
+                    <p className="text-sm text-gray-500">
+                      Courses will be available once they are created by administrators
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -163,9 +158,9 @@ export default function DashboardPage() {
             {/* Documents Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Dokumente</CardTitle>
+                <CardTitle>Documents</CardTitle>
                 <CardDescription>
-                  Laden Sie Ihre MPU-relevanten Dokumente hoch
+                  Upload your MPU-relevant documents
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -173,16 +168,16 @@ export default function DashboardPage() {
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-sm text-gray-600 mb-2">
-                      Ziehen Sie PDF-Dateien hierher oder klicken Sie zum Auswählen
+                      Document upload feature coming soon
                     </p>
-                    <Button variant="outline">
-                      Dateien auswählen
+                    <Button variant="outline" disabled>
+                      Select Files
                     </Button>
                   </div>
                   
                   <div className="text-sm text-gray-600">
-                    <p>Hochgeladene Dokumente: 2</p>
-                    <p>Status: Warten auf Überprüfung</p>
+                    <p>Uploaded documents: 0</p>
+                    <p>Status: Feature in development</p>
                   </div>
                 </div>
               </CardContent>
