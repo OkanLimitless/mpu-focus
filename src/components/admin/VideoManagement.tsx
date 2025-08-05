@@ -350,7 +350,6 @@ export default function VideoManagement() {
                     <Select
                       value={formData.chapterId}
                       onValueChange={(value) => setFormData(prev => ({ ...prev, chapterId: value }))}
-                      required
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a chapter" />
