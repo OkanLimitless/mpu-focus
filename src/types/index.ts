@@ -112,3 +112,20 @@ export interface UserRequest extends Document {
   createdAt: Date
   updatedAt: Date
 }
+
+export interface VideoProgress extends Document {
+  _id: string
+  userId: Types.ObjectId | string
+  videoId: Types.ObjectId | string
+  chapterId: Types.ObjectId | string
+  courseId: Types.ObjectId | string
+  watchedDuration: number
+  totalDuration: number
+  currentTime: number
+  isCompleted: boolean
+  completedAt?: Date
+  lastWatchedAt: Date
+  completionPercentage: number
+  createdAt: Date
+  updatedAt: Date
+}

@@ -28,21 +28,21 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast({
-          title: 'Anmeldung fehlgeschlagen',
-          description: 'Bitte überprüfen Sie Ihre Anmeldedaten.',
+          title: 'Login Failed',
+          description: 'Please check your credentials.',
           variant: 'destructive',
         })
       } else {
         toast({
-          title: 'Erfolgreich angemeldet',
-          description: 'Sie werden weitergeleitet...',
+          title: 'Login Successful',
+          description: 'Redirecting...',
         })
         router.push('/dashboard')
       }
     } catch (error) {
       toast({
-        title: 'Fehler',
-        description: 'Ein unerwarteter Fehler ist aufgetreten.',
+        title: 'Error',
+        description: 'An unexpected error occurred.',
         variant: 'destructive',
       })
     } finally {
@@ -60,16 +60,16 @@ export default function LoginPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Anmelden</CardTitle>
+            <CardTitle>Login</CardTitle>
             <CardDescription>
-              Melden Sie sich mit Ihren Zugangsdaten an
+              Sign in with your credentials
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  E-Mail-Adresse
+                  Email Address
                 </label>
                 <Input
                   id="email"
@@ -77,13 +77,13 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="ihre.email@beispiel.de"
+                  placeholder="your.email@example.com"
                 />
               </div>
               
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Passwort
+                  Password
                 </label>
                 <Input
                   id="password"
@@ -91,7 +91,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Ihr Passwort"
+                  placeholder="Your password"
                 />
               </div>
               
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 className="w-full"
                 disabled={isLoading}
               >
-                {isLoading ? 'Anmelden...' : 'Anmelden'}
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
             

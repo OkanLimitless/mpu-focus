@@ -13,12 +13,13 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [userProgress, setUserProgress] = useState({
-    totalChapters: 8,
-    completedChapters: 3,
-    totalVideos: 24,
-    completedVideos: 9,
-    overallProgress: 37.5
+    totalChapters: 0,
+    completedChapters: 0,
+    totalVideos: 0,
+    completedVideos: 0,
+    overallProgress: 0
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (status === 'loading') return

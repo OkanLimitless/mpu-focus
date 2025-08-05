@@ -5,21 +5,23 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, BookOpen, FileText, LogOut, Plus, Eye } from 'lucide-react'
+import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
+import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [stats, setStats] = useState({
-    totalUsers: 45,
-    activeUsers: 38,
-    totalCourses: 3,
-    totalDocuments: 127,
-    pendingDocuments: 23,
-    completionRate: 68
+    totalUsers: 0,
+    activeUsers: 0,
+    totalCourses: 0,
+    pendingRequests: 0,
+    completedVideos: 0,
+    averageProgress: 0
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -33,7 +35,24 @@ export default function AdminDashboardPage() {
       router.push('/dashboard')
       return
     }
+
+    // Load dashboard stats
+    fetchDashboardStats()
   }, [session, status, router])
+
+  const fetchDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/admin/dashboard-stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data.stats)
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleLogout = () => {
     signOut({ callbackUrl: '/login' })
@@ -66,7 +85,7 @@ export default function AdminDashboardPage() {
               </span>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
+                Logout
               </Button>
             </div>
           </div>
@@ -82,7 +101,7 @@ export default function AdminDashboardPage() {
               Admin Dashboard
             </h2>
             <p className="text-gray-600">
-              Verwalten Sie Benutzer, Kurse und überprüfen Sie Dokumente.
+              Manage users, courses, and review progress and requests.
             </p>
           </div>
 
@@ -90,147 +109,61 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gesamt Benutzer</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <div className="text-2xl font-bold">{loading ? '...' : stats.totalUsers}</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Aktive Benutzer</CardTitle>
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.activeUsers}</div>
+                <div className="text-2xl font-bold">{loading ? '...' : stats.activeUsers}</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kurse</CardTitle>
+                <CardTitle className="text-sm font-medium">Courses</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalCourses}</div>
+                <div className="text-2xl font-bold">{loading ? '...' : stats.totalCourses}</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Dokumente</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalDocuments}</div>
+                <div className="text-2xl font-bold text-orange-600">{loading ? '...' : stats.pendingRequests}</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ausstehend</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Videos Completed</CardTitle>
+                <Play className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{stats.pendingDocuments}</div>
+                <div className="text-2xl font-bold">{loading ? '...' : stats.completedVideos}</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Abschlussrate</CardTitle>
+                <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.completionRate}%</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Management Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* User Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Benutzerverwaltung</CardTitle>
-                <CardDescription>
-                  Erstellen und verwalten Sie Benutzerkonten
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Neuen Benutzer erstellen
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    <Users className="h-4 w-4 mr-2" />
-                    Alle Benutzer anzeigen
-                  </Button>
-                  
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>Kürzlich erstellt: 3</p>
-                    <p>Inaktive Benutzer: 7</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Course Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Kursverwaltung</CardTitle>
-                <CardDescription>
-                  Verwalten Sie Kurse, Kapitel und Videos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Neuen Kurs erstellen
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Kurse verwalten
-                  </Button>
-                  
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>Aktive Kurse: {stats.totalCourses}</p>
-                    <p>Gesamt Kapitel: 24</p>
-                    <p>Gesamt Videos: 156</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Document Review */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dokumentenprüfung</CardTitle>
-                <CardDescription>
-                  Überprüfen Sie hochgeladene Benutzerdokumente
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button variant="outline" className="w-full">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ausstehende Dokumente ({stats.pendingDocuments})
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    <FileText className="h-4 w-4 mr-2" />
-                    Alle Dokumente
-                  </Button>
-                  
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p>Heute eingegangen: 5</p>
-                    <p>Diese Woche: 18</p>
-                    <p>Durchschnittliche Bearbeitungszeit: 2.3 Tage</p>
-                  </div>
-                </div>
+                <div className="text-2xl font-bold">{loading ? '...' : stats.averageProgress}%</div>
               </CardContent>
             </Card>
           </div>
@@ -240,44 +173,12 @@ export default function AdminDashboardPage() {
             <UserRequestsManagement />
           </div>
 
-          {/* Recent Activity */}
+          {/* User Progress Dashboard */}
           <div className="mt-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Kürzliche Aktivitäten</CardTitle>
-                <CardDescription>
-                  Überblick über die neuesten Systemaktivitäten
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Neuer Benutzer registriert</p>
-                      <p className="text-sm text-gray-600">Max Mustermann - vor 2 Stunden</p>
-                    </div>
-                    <Button variant="outline" size="sm">Details</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Dokument hochgeladen</p>
-                      <p className="text-sm text-gray-600">Anna Schmidt - Führerscheinentzug.pdf - vor 4 Stunden</p>
-                    </div>
-                    <Button variant="outline" size="sm">Überprüfen</Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Kurs abgeschlossen</p>
-                      <p className="text-sm text-gray-600">Peter Weber - MPU Grundlagen - vor 1 Tag</p>
-                    </div>
-                    <Button variant="outline" size="sm">Details</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <UserProgressDashboard />
           </div>
+
+
         </div>
       </main>
     </div>
