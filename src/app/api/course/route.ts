@@ -48,19 +48,19 @@ export async function GET() {
 
     // Get all videos for these chapters
     const videos = await Video.find({ 
-      chapterId: { $in: chapters.map(c => c._id) }, 
+      chapterId: { $in: chapters.map((c: any) => c._id) }, 
       isActive: true 
     }).sort({ order: 1 }).lean()
 
     // Get user's video progress
     const progressRecords = await VideoProgress.find({ 
       userId: user._id,
-      videoId: { $in: videos.map(v => v._id) }
+      videoId: { $in: videos.map((v: any) => v._id) }
     }).lean()
 
     // Create progress lookup
     const progressLookup = progressRecords.reduce((acc, progress) => {
-      acc[progress.videoId.toString()] = progress
+      acc[(progress.videoId as any).toString()] = progress
       return acc
     }, {} as any)
 
@@ -77,7 +77,7 @@ export async function GET() {
         description: chapter.description,
         order: chapter.order,
         videos: videos
-          .filter(video => video.chapterId.toString() === chapter._id.toString())
+          .filter(video => video.chapterId.toString() === (chapter._id as any).toString())
           .map(video => ({
             _id: video._id,
             title: video.title,
@@ -86,7 +86,7 @@ export async function GET() {
             order: video.order,
             muxPlaybackId: video.muxPlaybackId,
             status: video.status,
-            progress: progressLookup[video._id.toString()] || null
+            progress: progressLookup[(video._id as any).toString()] || null
           }))
       }))
     }
