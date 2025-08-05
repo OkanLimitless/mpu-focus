@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 // Using custom collapsible logic instead of external component
 import { BookOpen, ChevronDown, ChevronRight, Play, CheckCircle, Clock, Lock } from 'lucide-react'
-import MuxVideoPlayer from '@/components/video/MuxVideoPlayer'
+import RestrictedMuxVideoPlayer from '@/components/video/RestrictedMuxVideoPlayer'
+import { useToast } from '@/hooks/use-toast'
 
 interface VideoData {
   _id: string
@@ -18,6 +19,7 @@ interface VideoData {
   order: number
   muxPlaybackId?: string
   status: string
+  isAccessible: boolean
   progress: {
     currentTime: number
     watchedDuration: number
@@ -31,6 +33,9 @@ interface ChapterData {
   title: string
   description: string
   order: number
+  isUnlocked: boolean
+  isCompleted: boolean
+  isCurrent: boolean
   videos: VideoData[]
 }
 
@@ -41,13 +46,22 @@ interface CourseData {
     description: string
   } | null
   chapters: ChapterData[]
+  userProgress: {
+    currentChapterOrder: number
+    completedChapters: number[]
+  }
   message?: string
 }
 
 export default function CoursePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [courseData, setCourseData] = useState<CourseData>({ course: null, chapters: [] })
+  const { toast } = useToast()
+  const [courseData, setCourseData] = useState<CourseData>({ 
+    course: null, 
+    chapters: [], 
+    userProgress: { currentChapterOrder: 1, completedChapters: [] }
+  })
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set())
@@ -79,12 +93,16 @@ export default function CoursePage() {
         if (data.chapters.length > 0) {
           setOpenChapters(new Set([data.chapters[0]._id]))
           
-          // Find first incomplete video
+          // Find first accessible incomplete video
           for (const chapter of data.chapters) {
-            const incompleteVideo = chapter.videos.find((v: VideoData) => !v.progress?.isCompleted)
-            if (incompleteVideo) {
-              setSelectedVideo(incompleteVideo)
-              break
+            if (chapter.isUnlocked) {
+              const incompleteVideo = chapter.videos.find((v: VideoData) => 
+                v.isAccessible && !v.progress?.isCompleted
+              )
+              if (incompleteVideo) {
+                setSelectedVideo(incompleteVideo)
+                break
+              }
             }
           }
         }
@@ -107,6 +125,14 @@ export default function CoursePage() {
   }
 
   const handleVideoSelect = (video: VideoData) => {
+    if (!video.isAccessible) {
+      toast({
+        title: 'Chapter Locked',
+        description: 'Complete previous chapters to unlock this content.',
+        variant: 'destructive',
+      })
+      return
+    }
     setSelectedVideo(video)
   }
 
@@ -115,16 +141,54 @@ export default function CoursePage() {
     await fetchCourse()
   }
 
-  const getChapterProgress = (chapter: ChapterData) => {
-    const completedVideos = chapter.videos.filter((v: VideoData) => v.progress?.isCompleted).length
-    const totalVideos = chapter.videos.length
-    return totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
+  const handleVideoComplete = async () => {
+    if (!selectedVideo || !courseData.course) return
+
+    // Find which chapter this video belongs to
+    const chapter = courseData.chapters.find((c: ChapterData) => 
+      c.videos.some((v: VideoData) => v._id === selectedVideo._id)
+    )
+
+    if (!chapter) return
+
+    // Check if all videos in this chapter are completed
+    const allVideosCompleted = chapter.videos.every((v: VideoData) => 
+      v._id === selectedVideo._id || v.progress?.isCompleted
+    )
+
+    if (allVideosCompleted) {
+      try {
+        await fetch('/api/course/complete-chapter', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chapterOrder: chapter.order,
+            courseId: courseData.course._id
+          }),
+        })
+
+        toast({
+          title: 'Chapter Completed!',
+          description: `You've completed "${chapter.title}". Next chapter unlocked!`,
+        })
+
+        // Refresh course data to show newly unlocked content
+        await fetchCourse()
+      } catch (error) {
+        console.error('Error completing chapter:', error)
+      }
+    }
+
+    // Refresh progress anyway
+    await handleProgressUpdate()
   }
 
   const getOverallProgress = () => {
-    const allVideos = courseData.chapters.flatMap((c: ChapterData) => c.videos)
-    const completedVideos = allVideos.filter((v: VideoData) => v.progress?.isCompleted).length
-    return allVideos.length > 0 ? Math.round((completedVideos / allVideos.length) * 100) : 0
+    const totalChapters = courseData.chapters.length
+    const completedChapters = courseData.userProgress.completedChapters.length
+    return totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
   }
 
   if (loading) {
@@ -196,48 +260,67 @@ export default function CoursePage() {
                       className="w-full justify-between p-3 h-auto rounded-none"
                       onClick={() => toggleChapter(chapter._id)}
                     >
-                      <div className="flex items-start gap-3">
-                        {openChapters.has(chapter._id) ? (
-                          <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0" />
-                        )}
-                        <div className="text-left">
-                          <div className="font-medium">{chapter.title}</div>
-                          <div className="text-xs text-gray-500">
-                            {chapter.videos.length} videos • {getChapterProgress(chapter)}% complete
+                                              <div className="flex items-start gap-3">
+                          {openChapters.has(chapter._id) ? (
+                            <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0" />
+                          )}
+                          <div className="text-left flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{chapter.title}</span>
+                              {chapter.isCompleted && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {!chapter.isUnlocked && (
+                                <Lock className="h-4 w-4 text-gray-400" />
+                              )}
+                              {chapter.isCurrent && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {chapter.videos.length} videos
+                              {!chapter.isUnlocked && ' • Locked'}
+                              {chapter.isCompleted && ' • Completed'}
+                            </div>
                           </div>
                         </div>
-                      </div>
                     </Button>
                     
                     {openChapters.has(chapter._id) && (
                       <div className="ml-4 space-y-1 pb-2">
                         {chapter.videos.map((video) => (
-                          <Button
-                            key={video._id}
-                            variant={selectedVideo?._id === video._id ? "default" : "ghost"}
-                            size="sm"
-                            className="w-full justify-start p-2 h-auto"
-                            onClick={() => handleVideoSelect(video)}
-                          >
-                            <div className="flex items-center gap-2 w-full">
-                              {video.progress?.isCompleted ? (
-                                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                              ) : video.status === 'ready' ? (
-                                <Play className="h-4 w-4 flex-shrink-0" />
-                              ) : (
-                                <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                              )}
-                              <div className="text-left flex-1">
-                                <div className="text-sm font-medium truncate">{video.title}</div>
-                                <div className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
-                                </div>
-                              </div>
-                            </div>
-                          </Button>
+                                                     <Button
+                             key={video._id}
+                             variant={selectedVideo?._id === video._id ? "default" : "ghost"}
+                             size="sm"
+                             className={`w-full justify-start p-2 h-auto ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : ''}`}
+                             onClick={() => handleVideoSelect(video)}
+                             disabled={!video.isAccessible}
+                           >
+                             <div className="flex items-center gap-2 w-full">
+                               {!video.isAccessible ? (
+                                 <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                               ) : video.progress?.isCompleted ? (
+                                 <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                               ) : video.status === 'ready' ? (
+                                 <Play className="h-4 w-4 flex-shrink-0" />
+                               ) : (
+                                 <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                               )}
+                               <div className="text-left flex-1">
+                                 <div className="text-sm font-medium truncate">{video.title}</div>
+                                 <div className="text-xs text-gray-500 flex items-center gap-1">
+                                   <Clock className="h-3 w-3" />
+                                   {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                   {!video.isAccessible && ' • Locked'}
+                                 </div>
+                               </div>
+                             </div>
+                           </Button>
                         ))}
                       </div>
                     )}
@@ -250,7 +333,7 @@ export default function CoursePage() {
           {/* Video Player */}
           <div className="lg:col-span-2">
             {selectedVideo ? (
-              <MuxVideoPlayer
+              <RestrictedMuxVideoPlayer
                 video={{
                   _id: selectedVideo._id,
                   title: selectedVideo.title,
@@ -268,6 +351,7 @@ export default function CoursePage() {
                   isCompleted: selectedVideo.progress.isCompleted,
                   completionPercentage: selectedVideo.progress.completionPercentage
                 } : undefined}
+                onVideoComplete={handleVideoComplete}
                 onProgressUpdate={handleProgressUpdate}
               />
             ) : (
