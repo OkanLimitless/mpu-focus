@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Clock, CheckCircle, Play, Pause } from 'lucide-react'
+import { Clock, CheckCircle, Play } from 'lucide-react'
 
 interface RestrictedMuxVideoPlayerProps {
   video: {
@@ -200,53 +200,13 @@ export default function RestrictedMuxVideoPlayer({
             onEnded={handleEnded}
             onSeeked={handleSeeked}
             startTime={0} // Always start from beginning to prevent seeking on load
-            // Disable controls and use custom ones
-            controls={false}
           />
           
-          {/* Custom Controls Overlay */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="bg-black/70 rounded-lg p-3">
-              <div className="flex items-center gap-3">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => {
-                    if (playerRef.current) {
-                      if (isPlaying) {
-                        playerRef.current.pause()
-                      } else {
-                        playerRef.current.play()
-                      }
-                    }
-                  }}
-                >
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </Button>
-                
-                <div className="flex-1">
-                  <div className="flex items-center justify-between text-white text-sm mb-1">
-                    <span>
-                      {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / 
-                      {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
-                    </span>
-                    <span>{progressPercentage}%</span>
-                  </div>
-                  
-                  {/* Progress Bar (visual only, not interactive) */}
-                  <div className="w-full bg-white/30 rounded-full h-1">
-                    <div 
-                      className="bg-white h-1 rounded-full transition-all duration-300"
-                      style={{ width: `${progressPercentage}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
+          {/* Progress indicator */}
+          <div className="absolute top-4 right-4">
+            <div className="bg-black/70 text-white px-3 py-1 rounded-lg text-sm">
+              {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / 
+              {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')} ({progressPercentage}%)
             </div>
           </div>
         </div>
