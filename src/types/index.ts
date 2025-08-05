@@ -46,6 +46,7 @@ export interface Video extends Document {
   duration: number
   order: number
   isActive: boolean
+  status: 'preparing' | 'ready' | 'errored' | 'deleted'
   createdAt: Date
   updatedAt: Date
 }
