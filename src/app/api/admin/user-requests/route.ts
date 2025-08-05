@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { connectToDatabase } from '@/lib/mongodb'
-import UserRequest from '@/models/UserRequest'
-import User from '@/models/User'
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -15,7 +12,11 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    await connectToDatabase()
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: UserRequest } = await import('@/models/UserRequest')
+    const { default: User } = await import('@/models/User')
+    
+    await connectDB()
     
     // Check if user is admin
     const adminUser = await User.findOne({ email: session.user.email })

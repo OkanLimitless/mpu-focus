@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
-import UserRequest from '@/models/UserRequest'
-import User from '@/models/User'
 
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase()
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: UserRequest } = await import('@/models/UserRequest')
+    const { default: User } = await import('@/models/User')
+    
+    await connectDB()
     
     const { firstName, lastName, email, reason } = await request.json()
 
@@ -76,7 +77,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    await connectToDatabase()
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: UserRequest } = await import('@/models/UserRequest')
+    
+    await connectDB()
     
     const requests = await UserRequest.find()
       .populate('reviewedBy', 'firstName lastName email')
