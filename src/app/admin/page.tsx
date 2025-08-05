@@ -10,6 +10,7 @@ import { signOut } from 'next-auth/react'
 import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
 import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
 import VideoManagement from '@/components/admin/VideoManagement'
+import ChapterManagement from '@/components/admin/ChapterManagement'
 import MuxSetupGuide from '@/components/admin/MuxSetupGuide'
 
 export default function AdminDashboardPage() {
@@ -178,6 +179,11 @@ export default function AdminDashboardPage() {
           {/* Mux Setup Guide */}
           <div className="mt-8">
             <MuxSetupGuide />
+          </div>
+
+          {/* Chapter Management */}
+          <div className="mt-8">
+            <ChapterManagement />
           </div>
 
           {/* Video Management */}

@@ -47,7 +47,7 @@ export default function VideoManagement() {
     description: '',
     muxAssetId: '',
     order: 1,
-    chapterName: ''
+    chapterId: ''
   })
 
   useEffect(() => {
@@ -108,10 +108,10 @@ export default function VideoManagement() {
       return
     }
 
-    if (!formData.chapterName.trim()) {
+    if (!formData.chapterId) {
       toast({
         title: 'Error',
-        description: 'Chapter name is required',
+        description: 'Please select a chapter',
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -164,7 +164,7 @@ export default function VideoManagement() {
       description: '',
       muxAssetId: '',
       order: 1,
-      chapterName: ''
+      chapterId: ''
     })
     setEditingVideo(null)
   }
@@ -176,7 +176,7 @@ export default function VideoManagement() {
       description: video.description,
       muxAssetId: video.muxAssetId || '',
       order: video.order,
-      chapterName: video.chapterTitle || ''
+      chapterId: video.chapterId
     })
     setDialogOpen(true)
   }
@@ -346,14 +346,27 @@ export default function VideoManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="chapterName">Chapter Name</Label>
-                    <Input
-                      id="chapterName"
-                      value={formData.chapterName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, chapterName: e.target.value }))}
-                      placeholder="Enter chapter name"
-                      required
-                    />
+                    <Label htmlFor="chapterId">Chapter</Label>
+                    <Select
+                      value={formData.chapterId}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, chapterId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chapters.map((chapter) => (
+                          <SelectItem key={chapter._id} value={chapter._id}>
+                            Chapter {chapter.order}: {chapter.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {chapters.length === 0 && (
+                      <p className="text-xs text-red-500">
+                        No chapters available. Please create chapters first.
+                      </p>
+                    )}
                   </div>
                 </div>
 

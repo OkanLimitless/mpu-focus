@@ -31,11 +31,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    const { title, description, muxAssetId, order, chapterName } = await request.json()
+    const { title, description, muxAssetId, order, chapterId } = await request.json()
 
-    if (!title || !chapterName) {
+    if (!title || !chapterId) {
       return NextResponse.json(
-        { error: 'Title and Chapter Name are required' },
+        { error: 'Title and Chapter are required' },
         { status: 400 }
       )
     }
@@ -47,10 +47,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       )
     }
 
-    // Validate that chapterName is a valid string
-    if (typeof chapterName !== 'string' || chapterName.trim() === '') {
+    // Validate that chapterId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
       return NextResponse.json(
-        { error: 'Invalid Chapter Name format' },
+        { error: 'Invalid Chapter ID format' },
         { status: 400 }
       )
     }
@@ -92,30 +92,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // Find or create default course
-    let course = await Course.findOne({})
-    if (!course) {
-      course = new Course({
-        title: 'Default Course',
-        description: 'Default course for videos'
-      })
-      await course.save()
-    }
-
-    // Find or create chapter by name
-    let chapter = await Chapter.findOne({ title: chapterName.trim() })
+    // Verify chapter exists
+    const chapter = await Chapter.findById(chapterId)
     if (!chapter) {
-      // Get the next order number for this course
-      const lastChapter = await Chapter.findOne({ courseId: course._id }).sort({ order: -1 })
-      const nextOrder = lastChapter ? lastChapter.order + 1 : 1
-      
-      chapter = new Chapter({
-        courseId: course._id,
-        title: chapterName.trim(),
-        description: `Chapter: ${chapterName.trim()}`,
-        order: nextOrder
-      })
-      await chapter.save()
+      return NextResponse.json(
+        { error: 'Chapter not found' },
+        { status: 404 }
+      )
     }
 
     // Update video
@@ -128,7 +111,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         muxPlaybackId: muxPlaybackId || undefined,
         duration,
         order: order || 1,
-        chapterId: chapter._id
+        chapterId: new mongoose.Types.ObjectId(chapterId)
       },
       { new: true }
     )
