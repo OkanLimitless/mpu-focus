@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -102,6 +103,13 @@ export default function LoginPage() {
                 {isLoading ? 'Anmelden...' : 'Anmelden'}
               </Button>
             </form>
+            
+            <div className="mt-4 text-center text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link href="/signup" className="text-blue-600 hover:text-blue-800 underline">
+                Request Access
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -98,3 +98,17 @@ export interface UserProgress {
   currentChapter?: Chapter
   nextVideo?: Video
 }
+
+export interface UserRequest extends Document {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  reason?: string
+  status: 'pending' | 'approved' | 'rejected'
+  reviewedBy?: Types.ObjectId | string
+  reviewedAt?: Date
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}

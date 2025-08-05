@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, BookOpen, FileText, LogOut, Plus, Eye } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession()
@@ -232,6 +233,11 @@ export default function AdminDashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* User Access Requests */}
+          <div className="mt-8">
+            <UserRequestsManagement />
           </div>
 
           {/* Recent Activity */}
