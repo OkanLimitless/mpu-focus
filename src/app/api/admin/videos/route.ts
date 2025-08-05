@@ -16,6 +16,7 @@ export async function GET() {
     const { default: connectDB } = await import('@/lib/mongodb')
     const { default: User } = await import('@/models/User')
     const { default: Video } = await import('@/models/Video')
+    const { default: Chapter } = await import('@/models/Chapter')
     
     await connectDB()
 
@@ -106,14 +107,14 @@ export async function POST(request: NextRequest) {
     // If Mux Asset ID is provided, fetch details from Mux
     let muxPlaybackId = ''
     let duration = 0
-    let status = 'unknown'
+    let status = 'ready' // Default to ready for videos without Mux
 
     if (muxAssetId) {
       try {
         const muxAsset = await getMuxAsset(muxAssetId)
         muxPlaybackId = muxAsset.playbackId || ''
         duration = muxAsset.duration || 0
-        status = muxAsset.status || 'unknown'
+        status = muxAsset.status || 'preparing'
       } catch (error) {
         console.error('Error fetching Mux asset:', error)
         return NextResponse.json(
@@ -158,6 +159,7 @@ export async function POST(request: NextRequest) {
       duration,
       order: order || 1,
       chapterId: chapter._id, // Use the found/created chapter's ID
+      status: status,
       isActive: true
     })
 

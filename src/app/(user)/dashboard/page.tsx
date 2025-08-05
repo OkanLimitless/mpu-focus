@@ -170,16 +170,15 @@ export default function DashboardPage() {
                     <>
                       <div className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
-                          <h4 className="font-medium">Training Course - Fundamentals</h4>
-                          <p className="text-sm text-gray-600">Chapter 4: Traffic Psychology</p>
+                          <h4 className="font-medium">Training Course</h4>
+                          <p className="text-sm text-gray-600">Continue your learning journey</p>
                         </div>
-                        <Button>Continue</Button>
+                        <Button onClick={() => router.push('/course')}>Continue</Button>
                       </div>
                       
-                      <div className="text-sm text-gray-600">
-                        <p>Next Video: "Self-reflection and Behavior"</p>
-                        <p>Estimated Time: 15 minutes</p>
-                      </div>
+                                              <div className="text-sm text-gray-600">
+                          <p>Watch videos, track your progress, and complete your training</p>
+                        </div>
                     </>
                   )}
                 </div>
