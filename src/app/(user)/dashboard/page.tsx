@@ -33,7 +33,24 @@ export default function DashboardPage() {
       router.push('/admin')
       return
     }
+
+    // Load user progress
+    fetchUserProgress()
   }, [session, status, router])
+
+  const fetchUserProgress = async () => {
+    try {
+      const response = await fetch('/api/user-progress')
+      if (response.ok) {
+        const data = await response.json()
+        setUserProgress(data.progress)
+      }
+    } catch (error) {
+      console.error('Failed to fetch user progress:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleLogout = () => {
     signOut({ callbackUrl: '/login' })
@@ -62,11 +79,11 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                Willkommen, {session.user.firstName} {session.user.lastName}
+                Welcome, {session.user.firstName} {session.user.lastName}
               </span>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
+                Logout
               </Button>
             </div>
           </div>
@@ -79,10 +96,10 @@ export default function DashboardPage() {
           {/* Welcome Section */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Ihr MPU-Training Dashboard
+              Your Training Dashboard
             </h2>
             <p className="text-gray-600">
-              Verfolgen Sie Ihren Fortschritt und laden Sie Ihre Dokumente hoch.
+              Track your progress and access your course materials.
             </p>
           </div>
 
@@ -90,29 +107,29 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Gesamtfortschritt</CardTitle>
+                <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{userProgress.overallProgress}%</div>
+                <div className="text-2xl font-bold">{loading ? '...' : userProgress.overallProgress}%</div>
                 <Progress value={userProgress.overallProgress} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {userProgress.completedVideos} von {userProgress.totalVideos} Videos abgeschlossen
+                  {loading ? '...' : `${userProgress.completedVideos} of ${userProgress.totalVideos} videos completed`}
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Kapitel</CardTitle>
+                <CardTitle className="text-sm font-medium">Chapters</CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {userProgress.completedChapters}/{userProgress.totalChapters}
+                  {loading ? '...' : `${userProgress.completedChapters}/${userProgress.totalChapters}`}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Kapitel abgeschlossen
+                  Chapters completed
                 </p>
               </CardContent>
             </Card>
@@ -124,10 +141,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {userProgress.completedVideos}/{userProgress.totalVideos}
+                  {loading ? '...' : `${userProgress.completedVideos}/${userProgress.totalVideos}`}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Videos angesehen
+                  Videos watched
                 </p>
               </CardContent>
             </Card>
@@ -138,25 +155,33 @@ export default function DashboardPage() {
             {/* Course Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Ihr Kurs</CardTitle>
+                <CardTitle>Your Course</CardTitle>
                 <CardDescription>
-                  Setzen Sie Ihr MPU-Training fort
+                  Continue your training progress
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">MPU Vorbereitung - Grundlagen</h4>
-                      <p className="text-sm text-gray-600">Kapitel 4: Verkehrspsychologie</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
-                    <Button>Fortsetzen</Button>
-                  </div>
-                  
-                  <div className="text-sm text-gray-600">
-                    <p>Nächstes Video: "Selbstreflexion und Verhalten"</p>
-                    <p>Geschätzte Zeit: 15 Minuten</p>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <h4 className="font-medium">Training Course - Fundamentals</h4>
+                          <p className="text-sm text-gray-600">Chapter 4: Traffic Psychology</p>
+                        </div>
+                        <Button>Continue</Button>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600">
+                        <p>Next Video: "Self-reflection and Behavior"</p>
+                        <p>Estimated Time: 15 minutes</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -164,9 +189,9 @@ export default function DashboardPage() {
             {/* Documents Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Dokumente</CardTitle>
+                <CardTitle>Documents</CardTitle>
                 <CardDescription>
-                  Laden Sie Ihre MPU-relevanten Dokumente hoch
+                  Upload your training-relevant documents
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -174,16 +199,16 @@ export default function DashboardPage() {
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-sm text-gray-600 mb-2">
-                      Ziehen Sie PDF-Dateien hierher oder klicken Sie zum Auswählen
+                      Drag PDF files here or click to select
                     </p>
                     <Button variant="outline">
-                      Dateien auswählen
+                      Select Files
                     </Button>
                   </div>
                   
                   <div className="text-sm text-gray-600">
-                    <p>Hochgeladene Dokumente: 2</p>
-                    <p>Status: Warten auf Überprüfung</p>
+                    <p>Uploaded Documents: {loading ? '...' : '2'}</p>
+                    <p>Status: {loading ? '...' : 'Awaiting Review'}</p>
                   </div>
                 </div>
               </CardContent>
