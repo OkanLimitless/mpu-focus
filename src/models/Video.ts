@@ -35,6 +35,11 @@ const VideoSchema = new Schema<Video>({
     type: Boolean,
     default: true,
   },
+  status: {
+    type: String,
+    enum: ['preparing', 'ready', 'errored', 'deleted'],
+    default: 'preparing',
+  },
 }, {
   timestamps: true,
 })

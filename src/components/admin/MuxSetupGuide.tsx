@@ -101,6 +101,36 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
         <div className="border rounded-lg p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Badge variant="outline">Step 4</Badge>
+            <h3 className="font-medium">Setup Mux Webhooks (Optional)</h3>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p>1. Go to your <a href="https://dashboard.mux.com/settings/webhooks" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
+              Mux Dashboard → Settings → Webhooks <ExternalLink className="h-3 w-3" />
+            </a></p>
+            <p>2. Click "Create new webhook"</p>
+            <p>3. Use this URL for your webhook endpoint:</p>
+            <div className="relative">
+              <code className="bg-gray-50 p-2 rounded text-xs block overflow-x-auto">
+                https://your-domain.com/api/webhooks/mux
+              </code>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="absolute top-1 right-1"
+                onClick={() => copyToClipboard('https://your-domain.com/api/webhooks/mux', 4)}
+              >
+                {copiedStep === 4 ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+            <p>4. Select these events: <code className="bg-gray-100 px-1 rounded">video.asset.ready</code>, <code className="bg-gray-100 px-1 rounded">video.asset.errored</code></p>
+            <p>5. Copy the webhook secret and add it to your environment variables</p>
+          </div>
+        </div>
+
+        {/* Step 5 */}
+        <div className="border rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">Step 5</Badge>
             <h3 className="font-medium">Create Video in System</h3>
           </div>
           <div className="space-y-2 text-sm">
