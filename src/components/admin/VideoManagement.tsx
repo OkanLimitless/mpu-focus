@@ -47,7 +47,7 @@ export default function VideoManagement() {
     description: '',
     muxAssetId: '',
     order: 1,
-    chapterId: ''
+    chapterName: ''
   })
 
   useEffect(() => {
@@ -108,10 +108,10 @@ export default function VideoManagement() {
       return
     }
 
-    if (!formData.chapterId) {
+    if (!formData.chapterName.trim()) {
       toast({
         title: 'Error',
-        description: 'Please select a chapter',
+        description: 'Chapter name is required',
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -164,7 +164,7 @@ export default function VideoManagement() {
       description: '',
       muxAssetId: '',
       order: 1,
-      chapterId: ''
+      chapterName: ''
     })
     setEditingVideo(null)
   }
@@ -176,7 +176,7 @@ export default function VideoManagement() {
       description: video.description,
       muxAssetId: video.muxAssetId || '',
       order: video.order,
-      chapterId: video.chapterId
+      chapterName: video.chapterTitle || ''
     })
     setDialogOpen(true)
   }
@@ -346,22 +346,14 @@ export default function VideoManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="chapterId">Chapter</Label>
-                    <Select
-                      value={formData.chapterId}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, chapterId: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a chapter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {chapters.map((chapter) => (
-                          <SelectItem key={chapter._id} value={chapter._id}>
-                            {chapter.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="chapterName">Chapter Name</Label>
+                    <Input
+                      id="chapterName"
+                      value={formData.chapterName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, chapterName: e.target.value }))}
+                      placeholder="Enter chapter name"
+                      required
+                    />
                   </div>
                 </div>
 

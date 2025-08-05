@@ -2,55 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import mongoose from 'mongoose'
 
-export async function GET() {
-  try {
-    const session = await getServerSession()
-    
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const { default: connectDB } = await import('@/lib/mongodb')
-    const { default: User } = await import('@/models/User')
-    const { default: Video } = await import('@/models/Video')
-    
-    await connectDB()
-
-    // Check if user is admin
-    const adminUser = await User.findOne({ email: session.user.email })
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      )
-    }
-
-    // Get all videos with chapter information
-    const videos = await Video.find()
-      .populate('chapterId', 'title')
-      .sort({ order: 1, createdAt: -1 })
-      .lean()
-
-    return NextResponse.json({
-      videos: videos.map(video => ({
-        ...video,
-        chapterTitle: video.chapterId?.title || 'No Chapter'
-      }))
-    })
-
-  } catch (error: any) {
-    console.error('Error fetching videos:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request: NextRequest) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession()
     
@@ -103,12 +55,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate video ID
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return NextResponse.json(
+        { error: 'Invalid video ID' },
+        { status: 400 }
+      )
+    }
+
+    // Find the video to update
+    const existingVideo = await Video.findById(params.id)
+    if (!existingVideo) {
+      return NextResponse.json(
+        { error: 'Video not found' },
+        { status: 404 }
+      )
+    }
+
     // If Mux Asset ID is provided, fetch details from Mux
-    let muxPlaybackId = ''
-    let duration = 0
+    let muxPlaybackId = existingVideo.muxPlaybackId
+    let duration = existingVideo.duration
     let status = 'unknown'
 
-    if (muxAssetId) {
+    if (muxAssetId && muxAssetId !== existingVideo.muxAssetId) {
       try {
         const muxAsset = await getMuxAsset(muxAssetId)
         muxPlaybackId = muxAsset.playbackId || ''
@@ -149,30 +118,87 @@ export async function POST(request: NextRequest) {
       await chapter.save()
     }
 
-    // Create new video
-    const video = new Video({
-      title,
-      description: description.trim(),
-      muxAssetId: muxAssetId || undefined,
-      muxPlaybackId: muxPlaybackId || undefined,
-      duration,
-      order: order || 1,
-      chapterId: chapter._id, // Use the found/created chapter's ID
-      isActive: true
-    })
-
-    await video.save()
+    // Update video
+    const updatedVideo = await Video.findByIdAndUpdate(
+      params.id,
+      {
+        title,
+        description: description.trim(),
+        muxAssetId: muxAssetId || undefined,
+        muxPlaybackId: muxPlaybackId || undefined,
+        duration,
+        order: order || 1,
+        chapterId: chapter._id
+      },
+      { new: true }
+    )
 
     return NextResponse.json({
-      message: 'Video created successfully',
+      message: 'Video updated successfully',
       video: {
-        ...video.toObject(),
+        ...updatedVideo.toObject(),
         status
       }
     })
 
   } catch (error: any) {
-    console.error('Error creating video:', error)
+    console.error('Error updating video:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession()
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: User } = await import('@/models/User')
+    const { default: Video } = await import('@/models/Video')
+    
+    await connectDB()
+
+    // Check if user is admin
+    const adminUser = await User.findOne({ email: session.user.email })
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Validate video ID
+    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+      return NextResponse.json(
+        { error: 'Invalid video ID' },
+        { status: 400 }
+      )
+    }
+
+    // Find and delete the video
+    const deletedVideo = await Video.findByIdAndDelete(params.id)
+    if (!deletedVideo) {
+      return NextResponse.json(
+        { error: 'Video not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      message: 'Video deleted successfully'
+    })
+
+  } catch (error: any) {
+    console.error('Error deleting video:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
