@@ -191,7 +191,7 @@ export default function UserRequestsManagement() {
                 )}
 
                 <div className="text-xs text-muted-foreground">
-                  Submitted: {formatDate(new Date(request.createdAt))}
+                  Submitted: {request.createdAt ? formatDate(new Date(request.createdAt)) : 'Unknown'}
                   {request.reviewedAt && (
                     <span className="ml-4">
                       Reviewed: {formatDate(new Date(request.reviewedAt))}

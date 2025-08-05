@@ -18,11 +18,9 @@ const VideoSchema = new Schema<Video>({
   },
   muxAssetId: {
     type: String,
-    sparse: true,
   },
   muxPlaybackId: {
     type: String,
-    sparse: true,
   },
   duration: {
     type: Number,

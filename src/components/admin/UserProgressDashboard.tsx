@@ -177,11 +177,11 @@ export default function UserProgressDashboard() {
                     </h3>
                     <p className="text-sm text-muted-foreground">{userProgress.user.email}</p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground">
-                      Last Activity: {formatDate(new Date(userProgress.lastActivity))}
-                    </div>
-                  </div>
+                                     <div className="text-right">
+                     <div className="text-sm text-muted-foreground">
+                       Last Activity: {userProgress.lastActivity ? formatDate(new Date(userProgress.lastActivity)) : 'No activity'}
+                     </div>
+                   </div>
                 </div>
 
                 {/* Overall Progress */}
@@ -226,13 +226,13 @@ export default function UserProgressDashboard() {
                             )}
                             <span className="font-medium">{progress.video.title}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span>{progress.completionPercentage}%</span>
-                            <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-gray-500">
-                              {formatDate(new Date(progress.lastWatchedAt))}
-                            </span>
-                          </div>
+                                                     <div className="flex items-center gap-2">
+                             <span>{progress.completionPercentage}%</span>
+                             <Clock className="h-3 w-3 text-gray-400" />
+                             <span className="text-gray-500">
+                               {progress.lastWatchedAt ? formatDate(new Date(progress.lastWatchedAt)) : 'Unknown'}
+                             </span>
+                           </div>
                         </div>
                       ))}
                     </div>
