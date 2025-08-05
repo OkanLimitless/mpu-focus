@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import mongoose from 'mongoose'
 
 export async function GET() {
   try {
@@ -85,6 +86,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!description || description.trim() === '') {
+      return NextResponse.json(
+        { error: 'Description is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that chapterId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
+      return NextResponse.json(
+        { error: 'Invalid Chapter ID format' },
+        { status: 400 }
+      )
+    }
+
     // If Mux Asset ID is provided, fetch details from Mux
     let muxPlaybackId = ''
     let duration = 0
@@ -108,12 +124,12 @@ export async function POST(request: NextRequest) {
     // Create new video
     const video = new Video({
       title,
-      description: description || '',
+      description: description.trim(),
       muxAssetId: muxAssetId || undefined,
       muxPlaybackId: muxPlaybackId || undefined,
       duration,
       order: order || 1,
-      chapterId,
+      chapterId: new mongoose.Types.ObjectId(chapterId),
       isActive: true
     })
 

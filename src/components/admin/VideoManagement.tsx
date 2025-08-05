@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Video, Upload, Play, Edit, Trash2, Plus, Eye, ExternalLink } from 'lucide-react'
@@ -25,8 +26,16 @@ interface VideoData {
   createdAt: Date
 }
 
+interface ChapterData {
+  _id: string
+  title: string
+  description: string
+  order: number
+}
+
 export default function VideoManagement() {
   const [videos, setVideos] = useState<VideoData[]>([])
+  const [chapters, setChapters] = useState<ChapterData[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingVideo, setEditingVideo] = useState<VideoData | null>(null)
@@ -43,6 +52,7 @@ export default function VideoManagement() {
 
   useEffect(() => {
     fetchVideos()
+    fetchChapters()
   }, [])
 
   const fetchVideos = async () => {
@@ -69,9 +79,44 @@ export default function VideoManagement() {
     }
   }
 
+  const fetchChapters = async () => {
+    try {
+      const response = await fetch('/api/admin/chapters')
+      const data = await response.json()
+      if (response.ok) {
+        setChapters(data.chapters)
+      } else {
+        console.error('Failed to fetch chapters:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching chapters:', error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormLoading(true)
+
+    // Additional validation
+    if (!formData.description.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Description is required',
+        variant: 'destructive',
+      })
+      setFormLoading(false)
+      return
+    }
+
+    if (!formData.chapterId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a chapter',
+        variant: 'destructive',
+      })
+      setFormLoading(false)
+      return
+    }
 
     try {
       const url = editingVideo ? `/api/admin/videos/${editingVideo._id}` : '/api/admin/videos'
@@ -271,6 +316,7 @@ export default function VideoManagement() {
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Enter video description"
                     rows={3}
+                    required
                   />
                 </div>
 
@@ -300,14 +346,23 @@ export default function VideoManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="chapterId">Chapter ID</Label>
-                    <Input
-                      id="chapterId"
+                    <Label htmlFor="chapterId">Chapter</Label>
+                    <Select
                       value={formData.chapterId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, chapterId: e.target.value }))}
-                      placeholder="Chapter ID"
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, chapterId: value }))}
                       required
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a chapter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chapters.map((chapter) => (
+                          <SelectItem key={chapter._id} value={chapter._id}>
+                            {chapter.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
