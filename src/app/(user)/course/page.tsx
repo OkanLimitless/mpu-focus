@@ -81,7 +81,7 @@ export default function CoursePage() {
           
           // Find first incomplete video
           for (const chapter of data.chapters) {
-            const incompleteVideo = chapter.videos.find(v => !v.progress?.isCompleted)
+            const incompleteVideo = chapter.videos.find((v: VideoData) => !v.progress?.isCompleted)
             if (incompleteVideo) {
               setSelectedVideo(incompleteVideo)
               break
@@ -116,14 +116,14 @@ export default function CoursePage() {
   }
 
   const getChapterProgress = (chapter: ChapterData) => {
-    const completedVideos = chapter.videos.filter(v => v.progress?.isCompleted).length
+    const completedVideos = chapter.videos.filter((v: VideoData) => v.progress?.isCompleted).length
     const totalVideos = chapter.videos.length
     return totalVideos > 0 ? Math.round((completedVideos / totalVideos) * 100) : 0
   }
 
   const getOverallProgress = () => {
-    const allVideos = courseData.chapters.flatMap(c => c.videos)
-    const completedVideos = allVideos.filter(v => v.progress?.isCompleted).length
+    const allVideos = courseData.chapters.flatMap((c: ChapterData) => c.videos)
+    const completedVideos = allVideos.filter((v: VideoData) => v.progress?.isCompleted).length
     return allVideos.length > 0 ? Math.round((completedVideos / allVideos.length) * 100) : 0
   }
 
@@ -257,8 +257,8 @@ export default function CoursePage() {
                   description: selectedVideo.description,
                   muxPlaybackId: selectedVideo.muxPlaybackId,
                   duration: selectedVideo.duration,
-                  chapterId: courseData.chapters.find(c => 
-                    c.videos.some(v => v._id === selectedVideo._id)
+                  chapterId: courseData.chapters.find((c: ChapterData) => 
+                    c.videos.some((v: VideoData) => v._id === selectedVideo._id)
                   )?._id || '',
                   courseId: courseData.course?._id
                 }}
