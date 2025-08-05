@@ -9,6 +9,8 @@ import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play } from 'lucid
 import { signOut } from 'next-auth/react'
 import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
 import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
+import VideoManagement from '@/components/admin/VideoManagement'
+import MuxSetupGuide from '@/components/admin/MuxSetupGuide'
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession()
@@ -171,6 +173,16 @@ export default function AdminDashboardPage() {
           {/* User Access Requests */}
           <div className="mt-8">
             <UserRequestsManagement />
+          </div>
+
+          {/* Mux Setup Guide */}
+          <div className="mt-8">
+            <MuxSetupGuide />
+          </div>
+
+          {/* Video Management */}
+          <div className="mt-8">
+            <VideoManagement />
           </div>
 
           {/* User Progress Dashboard */}
