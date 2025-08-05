@@ -6,8 +6,12 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-// Using custom collapsible logic instead of external component
-import { BookOpen, ChevronDown, ChevronRight, Play, CheckCircle, Clock, Lock } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { 
+  BookOpen, ChevronDown, ChevronRight, Play, CheckCircle, Clock, Lock, 
+  ArrowRight, ArrowLeft, Home, Award, PlayCircle, Pause, SkipForward,
+  ChevronLeft, Menu, X
+} from 'lucide-react'
 import RestrictedMuxVideoPlayer from '@/components/video/RestrictedMuxVideoPlayer'
 import { useToast } from '@/hooks/use-toast'
 
@@ -65,6 +69,7 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set())
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -89,9 +94,12 @@ export default function CoursePage() {
         const data = await response.json()
         setCourseData(data)
         
-        // Auto-open first chapter and select first incomplete video
+        // Auto-open current chapter
         if (data.chapters.length > 0) {
-          setOpenChapters(new Set([data.chapters[0]._id]))
+          const currentChapter = data.chapters.find((c: ChapterData) => c.isCurrent)
+          if (currentChapter) {
+            setOpenChapters(new Set([currentChapter._id]))
+          }
           
           // Find first accessible incomplete video
           for (const chapter of data.chapters) {
@@ -127,7 +135,7 @@ export default function CoursePage() {
   const handleVideoSelect = (video: VideoData) => {
     if (!video.isAccessible) {
       toast({
-        title: 'Chapter Locked',
+        title: 'Content Locked',
         description: 'Complete previous chapters to unlock this content.',
         variant: 'destructive',
       })
@@ -136,22 +144,75 @@ export default function CoursePage() {
     setSelectedVideo(video)
   }
 
+  const getNextVideo = () => {
+    if (!selectedVideo) return null
+    
+    const currentChapter = courseData.chapters.find((c: ChapterData) => 
+      c.videos.some((v: VideoData) => v._id === selectedVideo._id)
+    )
+    
+    if (!currentChapter) return null
+    
+    const currentVideoIndex = currentChapter.videos.findIndex(v => v._id === selectedVideo._id)
+    
+    // Next video in same chapter
+    if (currentVideoIndex < currentChapter.videos.length - 1) {
+      return currentChapter.videos[currentVideoIndex + 1]
+    }
+    
+    // First video of next unlocked chapter
+    const currentChapterIndex = courseData.chapters.findIndex(c => c._id === currentChapter._id)
+    for (let i = currentChapterIndex + 1; i < courseData.chapters.length; i++) {
+      const nextChapter = courseData.chapters[i]
+      if (nextChapter.isUnlocked && nextChapter.videos.length > 0) {
+        return nextChapter.videos[0]
+      }
+    }
+    
+    return null
+  }
+
+  const getPreviousVideo = () => {
+    if (!selectedVideo) return null
+    
+    const currentChapter = courseData.chapters.find((c: ChapterData) => 
+      c.videos.some((v: VideoData) => v._id === selectedVideo._id)
+    )
+    
+    if (!currentChapter) return null
+    
+    const currentVideoIndex = currentChapter.videos.findIndex(v => v._id === selectedVideo._id)
+    
+    // Previous video in same chapter
+    if (currentVideoIndex > 0) {
+      return currentChapter.videos[currentVideoIndex - 1]
+    }
+    
+    // Last video of previous chapter
+    const currentChapterIndex = courseData.chapters.findIndex(c => c._id === currentChapter._id)
+    for (let i = currentChapterIndex - 1; i >= 0; i--) {
+      const prevChapter = courseData.chapters[i]
+      if (prevChapter.videos.length > 0) {
+        return prevChapter.videos[prevChapter.videos.length - 1]
+      }
+    }
+    
+    return null
+  }
+
   const handleProgressUpdate = async () => {
-    // Refresh course data to update progress
     await fetchCourse()
   }
 
   const handleVideoComplete = async () => {
     if (!selectedVideo || !courseData.course) return
 
-    // Find which chapter this video belongs to
     const chapter = courseData.chapters.find((c: ChapterData) => 
       c.videos.some((v: VideoData) => v._id === selectedVideo._id)
     )
 
     if (!chapter) return
 
-    // Check if all videos in this chapter are completed
     const allVideosCompleted = chapter.videos.every((v: VideoData) => 
       v._id === selectedVideo._id || v.progress?.isCompleted
     )
@@ -170,18 +231,16 @@ export default function CoursePage() {
         })
 
         toast({
-          title: 'Chapter Completed!',
-          description: `You've completed "${chapter.title}". Next chapter unlocked!`,
+          title: '🎉 Chapter Completed!',
+          description: `You've mastered "${chapter.title}". Next chapter unlocked!`,
         })
 
-        // Refresh course data to show newly unlocked content
         await fetchCourse()
       } catch (error) {
         console.error('Error completing chapter:', error)
       }
     }
 
-    // Refresh progress anyway
     await handleProgressUpdate()
   }
 
@@ -191,13 +250,30 @@ export default function CoursePage() {
     return totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
   }
 
+  const getCurrentVideoPosition = () => {
+    if (!selectedVideo) return { current: 0, total: 0 }
+    
+    let current = 0
+    let total = 0
+    
+    for (const chapter of courseData.chapters) {
+      for (const video of chapter.videos) {
+        total++
+        if (video._id === selectedVideo._id) {
+          current = total
+        }
+      }
+    }
+    
+    return { current, total }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your course...</p>
         </div>
       </div>
     )
@@ -205,161 +281,282 @@ export default function CoursePage() {
 
   if (!courseData.course) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-7xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>No Course Available</CardTitle>
-              <CardDescription>
-                {courseData.message || 'There are no courses available at this time.'}
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-6 w-6" />
+              No Course Available
+            </CardTitle>
+            <CardDescription>
+              {courseData.message || 'There are no courses available at this time.'}
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Course Header */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-6 w-6" />
-              {courseData.course.title}
-            </CardTitle>
-            <CardDescription>
-              {courseData.course.description}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Overall Progress</span>
-                <span>{getOverallProgress()}%</span>
-              </div>
-              <Progress value={getOverallProgress()} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+  const nextVideo = getNextVideo()
+  const prevVideo = getPreviousVideo()
+  const { current, total } = getCurrentVideoPosition()
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Course Content Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Course Content</CardTitle>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden"
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+              
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="font-semibold text-gray-900">{courseData.course.title}</h1>
+                  <p className="text-sm text-gray-500">
+                    Video {current} of {total}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-sm text-gray-600">Progress:</span>
+                <div className="w-32">
+                  <Progress value={getOverallProgress()} className="h-2" />
+                </div>
+                <span className="text-sm font-medium text-gray-900">{getOverallProgress()}%</span>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-2"
+              >
+                <Home className="h-4 w-4" />
+                Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar */}
+          <div className={`lg:col-span-1 ${sidebarOpen ? 'block' : 'hidden lg:block'}`}>
+            <Card className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-hidden">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Course Content</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Progress value={getOverallProgress()} className="flex-1 h-2" />
+                  <span className="text-sm font-medium">{getOverallProgress()}%</span>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {courseData.chapters.map((chapter) => (
-                  <div key={chapter._id} className="border rounded-lg">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-between p-3 h-auto rounded-none"
-                      onClick={() => toggleChapter(chapter._id)}
-                    >
-                                              <div className="flex items-start gap-3">
+              
+              <CardContent className="p-0 overflow-y-auto max-h-[calc(100vh-16rem)]">
+                <div className="space-y-2 p-4 pt-0">
+                  {courseData.chapters.map((chapter, index) => (
+                    <div key={chapter._id} className="rounded-lg border border-gray-200 overflow-hidden">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start p-4 h-auto font-normal hover:bg-gray-50"
+                        onClick={() => toggleChapter(chapter._id)}
+                      >
+                        <div className="flex items-start gap-3 w-full">
                           {openChapters.has(chapter._id) ? (
-                            <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0" />
+                            <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0" />
+                            <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
                           )}
+                          
                           <div className="text-left flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{chapter.title}</span>
-                              {chapter.isCompleted && (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              )}
-                              {!chapter.isUnlocked && (
-                                <Lock className="h-4 w-4 text-gray-400" />
-                              )}
-                              {chapter.isCurrent && (
-                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                  Current
-                                </span>
-                              )}
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900">{chapter.title}</span>
+                              <div className="flex items-center gap-1">
+                                {chapter.isCompleted && (
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Complete
+                                  </Badge>
+                                )}
+                                {chapter.isCurrent && !chapter.isCompleted && (
+                                  <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
+                                    <PlayCircle className="h-3 w-3 mr-1" />
+                                    Current
+                                  </Badge>
+                                )}
+                                {!chapter.isUnlocked && (
+                                  <Badge variant="outline" className="text-gray-500">
+                                    <Lock className="h-3 w-3 mr-1" />
+                                    Locked
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             <div className="text-xs text-gray-500">
                               {chapter.videos.length} videos
-                              {!chapter.isUnlocked && ' • Locked'}
-                              {chapter.isCompleted && ' • Completed'}
                             </div>
                           </div>
                         </div>
-                    </Button>
-                    
-                    {openChapters.has(chapter._id) && (
-                      <div className="ml-4 space-y-1 pb-2">
-                        {chapter.videos.map((video) => (
-                                                     <Button
-                             key={video._id}
-                             variant={selectedVideo?._id === video._id ? "default" : "ghost"}
-                             size="sm"
-                             className={`w-full justify-start p-2 h-auto ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : ''}`}
-                             onClick={() => handleVideoSelect(video)}
-                             disabled={!video.isAccessible}
-                           >
-                             <div className="flex items-center gap-2 w-full">
-                               {!video.isAccessible ? (
-                                 <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                               ) : video.progress?.isCompleted ? (
-                                 <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                               ) : video.status === 'ready' ? (
-                                 <Play className="h-4 w-4 flex-shrink-0" />
-                               ) : (
-                                 <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                               )}
-                               <div className="text-left flex-1">
-                                 <div className="text-sm font-medium truncate">{video.title}</div>
-                                 <div className="text-xs text-gray-500 flex items-center gap-1">
-                                   <Clock className="h-3 w-3" />
-                                   {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
-                                   {!video.isAccessible && ' • Locked'}
-                                 </div>
-                               </div>
-                             </div>
-                           </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      </Button>
+                      
+                      {openChapters.has(chapter._id) && (
+                        <div className="border-t border-gray-100 bg-gray-50/50">
+                          {chapter.videos.map((video, videoIndex) => (
+                            <Button
+                              key={video._id}
+                              variant="ghost"
+                              size="sm"
+                              className={`w-full justify-start p-3 h-auto font-normal border-none rounded-none
+                                ${selectedVideo?._id === video._id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
+                                ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}
+                              `}
+                              onClick={() => handleVideoSelect(video)}
+                              disabled={!video.isAccessible}
+                            >
+                              <div className="flex items-center gap-3 w-full pl-7">
+                                <div className="flex-shrink-0">
+                                  {!video.isAccessible ? (
+                                    <Lock className="h-4 w-4 text-gray-400" />
+                                  ) : video.progress?.isCompleted ? (
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                  ) : selectedVideo?._id === video._id ? (
+                                    <PlayCircle className="h-4 w-4 text-blue-500" />
+                                  ) : (
+                                    <Play className="h-4 w-4 text-gray-400" />
+                                  )}
+                                </div>
+                                
+                                <div className="text-left flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 truncate">
+                                    {video.title}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                                    <Clock className="h-3 w-3" />
+                                    {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                  </div>
+                                </div>
+                              </div>
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Video Player */}
-          <div className="lg:col-span-2">
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
             {selectedVideo ? (
-              <RestrictedMuxVideoPlayer
-                video={{
-                  _id: selectedVideo._id,
-                  title: selectedVideo.title,
-                  description: selectedVideo.description,
-                  muxPlaybackId: selectedVideo.muxPlaybackId,
-                  duration: selectedVideo.duration,
-                  chapterId: courseData.chapters.find((c: ChapterData) => 
-                    c.videos.some((v: VideoData) => v._id === selectedVideo._id)
-                  )?._id || '',
-                  courseId: courseData.course?._id
-                }}
-                userProgress={selectedVideo.progress ? {
-                  currentTime: selectedVideo.progress.currentTime,
-                  watchedDuration: selectedVideo.progress.watchedDuration,
-                  isCompleted: selectedVideo.progress.isCompleted,
-                  completionPercentage: selectedVideo.progress.completionPercentage
-                } : undefined}
-                onVideoComplete={handleVideoComplete}
-                onProgressUpdate={handleProgressUpdate}
-              />
+              <>
+                {/* Video Player */}
+                <Card className="overflow-hidden shadow-lg">
+                  <RestrictedMuxVideoPlayer
+                    video={{
+                      _id: selectedVideo._id,
+                      title: selectedVideo.title,
+                      description: selectedVideo.description,
+                      muxPlaybackId: selectedVideo.muxPlaybackId,
+                      duration: selectedVideo.duration,
+                      chapterId: courseData.chapters.find((c: ChapterData) => 
+                        c.videos.some((v: VideoData) => v._id === selectedVideo._id)
+                      )?._id || '',
+                      courseId: courseData.course?._id
+                    }}
+                    userProgress={selectedVideo.progress ? {
+                      currentTime: selectedVideo.progress.currentTime,
+                      watchedDuration: selectedVideo.progress.watchedDuration,
+                      isCompleted: selectedVideo.progress.isCompleted,
+                      completionPercentage: selectedVideo.progress.completionPercentage
+                    } : undefined}
+                    onVideoComplete={handleVideoComplete}
+                    onProgressUpdate={handleProgressUpdate}
+                  />
+                </Card>
+
+                {/* Navigation Controls */}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={() => prevVideo && handleVideoSelect(prevVideo)}
+                        disabled={!prevVideo}
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      
+                      <div className="text-center">
+                        <div className="text-sm text-gray-600 mb-1">
+                          Video {current} of {total}
+                        </div>
+                        <Progress value={(current / total) * 100} className="w-48 h-2" />
+                      </div>
+                      
+                      <Button
+                        onClick={() => nextVideo && handleVideoSelect(nextVideo)}
+                        disabled={!nextVideo}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Next
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Video Info */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-xl">{selectedVideo.title}</CardTitle>
+                        <CardDescription className="mt-2">
+                          {selectedVideo.description}
+                        </CardDescription>
+                      </div>
+                      
+                      {selectedVideo.progress?.isCompleted && (
+                        <Badge className="bg-green-100 text-green-700 border-green-200">
+                          <Award className="h-4 w-4 mr-1" />
+                          Completed
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                </Card>
+              </>
             ) : (
-              <Card>
-                <CardContent className="flex items-center justify-center h-96">
+              <Card className="h-96">
+                <CardContent className="flex items-center justify-center h-full">
                   <div className="text-center">
-                    <Play className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Select a video to start learning</p>
+                    <div className="p-4 bg-blue-100 rounded-full inline-block mb-4">
+                      <PlayCircle className="h-12 w-12 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Select a video to begin learning
+                    </h3>
+                    <p className="text-gray-500">
+                      Choose a video from the course content to start your learning journey
+                    </p>
                   </div>
                 </CardContent>
               </Card>
