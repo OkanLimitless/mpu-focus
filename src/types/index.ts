@@ -130,3 +130,27 @@ export interface VideoProgress extends Document {
   createdAt: Date
   updatedAt: Date
 }
+
+export interface Lead extends Document {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  // Quiz responses
+  timeframe: string // "Innerhalb von 3 Monaten" | "3-6 Monate" | "6-12 Monate" | "Über 1 Jahr"
+  reason: string // "Alkohol" | "Drogen" | "Punkte" | "Straftat" | "Andere"
+  jobLoss: boolean
+  mpuChallenges: string[] // Multiple selection
+  concerns: string[] // Multiple selection  
+  availability: string[] // Multiple selection
+  // Status and tracking
+  status: 'new' | 'contacted' | 'converted' | 'closed'
+  contactedBy?: Types.ObjectId | string
+  contactedAt?: Date
+  convertedToUserId?: Types.ObjectId | string
+  convertedAt?: Date
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+}

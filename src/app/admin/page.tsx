@@ -12,6 +12,7 @@ import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
 import VideoManagement from '@/components/admin/VideoManagement'
 import ChapterManagement from '@/components/admin/ChapterManagement'
 import MuxSetupGuide from '@/components/admin/MuxSetupGuide'
+import LeadManagement from '@/components/admin/LeadManagement'
 
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession()
@@ -22,7 +23,11 @@ export default function AdminDashboardPage() {
     totalCourses: 0,
     pendingRequests: 0,
     completedVideos: 0,
-    averageProgress: 0
+    averageProgress: 0,
+    totalLeads: 0,
+    newLeads: 0,
+    contactedLeads: 0,
+    convertedLeads: 0
   })
   const [loading, setLoading] = useState(true)
 
@@ -109,7 +114,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -137,6 +142,16 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{loading ? '...' : stats.totalCourses}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">New Leads</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{loading ? '...' : stats.newLeads}</div>
               </CardContent>
             </Card>
 
@@ -174,6 +189,11 @@ export default function AdminDashboardPage() {
           {/* User Access Requests */}
           <div className="mt-8">
             <UserRequestsManagement />
+          </div>
+
+          {/* Lead Management */}
+          <div className="mt-8">
+            <LeadManagement />
           </div>
 
           {/* Mux Setup Guide */}

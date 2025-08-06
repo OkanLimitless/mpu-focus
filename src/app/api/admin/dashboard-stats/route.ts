@@ -17,6 +17,7 @@ export async function GET() {
     const { default: Course } = await import('@/models/Course')
     const { default: UserRequest } = await import('@/models/UserRequest')
     const { default: VideoProgress } = await import('@/models/VideoProgress')
+    const { default: Lead } = await import('@/models/Lead')
     
     await connectDB()
 
@@ -36,14 +37,22 @@ export async function GET() {
       totalCourses,
       pendingRequests,
       completedVideos,
-      totalVideoProgress
+      totalVideoProgress,
+      totalLeads,
+      newLeads,
+      contactedLeads,
+      convertedLeads
     ] = await Promise.all([
       User.countDocuments({ role: 'user' }),
       User.countDocuments({ role: 'user', isActive: true }),
       Course.countDocuments({ isActive: true }),
       UserRequest.countDocuments({ status: 'pending' }),
       VideoProgress.countDocuments({ isCompleted: true }),
-      VideoProgress.find({}).select('completionPercentage')
+      VideoProgress.find({}).select('completionPercentage'),
+      Lead.countDocuments({}),
+      Lead.countDocuments({ status: 'new' }),
+      Lead.countDocuments({ status: 'contacted' }),
+      Lead.countDocuments({ status: 'converted' })
     ])
 
     // Calculate average progress
@@ -60,7 +69,12 @@ export async function GET() {
       totalCourses,
       pendingRequests,
       completedVideos,
-      averageProgress
+      averageProgress,
+      // Lead statistics
+      totalLeads,
+      newLeads,
+      contactedLeads,
+      convertedLeads
     }
 
     return NextResponse.json({ stats })
