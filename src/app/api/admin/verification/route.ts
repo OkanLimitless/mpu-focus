@@ -87,7 +87,8 @@ export async function GET(request: NextRequest) {
       documentsUploaded: 0,
       contractSigned: 0,
       verified: 0,
-      rejected: 0
+      rejected: 0,
+      resubmission: 0
     }
 
     stats.forEach(stat => {
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
       if (stat._id === 'contract_signed') statsObj.contractSigned = stat.count
       if (stat._id === 'verified') statsObj.verified = stat.count
       if (stat._id === 'rejected') statsObj.rejected = stat.count
+      if (stat._id === 'resubmission_required') statsObj.resubmission = stat.count
     })
 
     return NextResponse.json({

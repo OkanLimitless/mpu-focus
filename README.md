@@ -1,159 +1,313 @@
-# MPU-Focus Training Platform
-
-A comprehensive training platform for MPU (Medizinisch-Psychologische Untersuchung) preparation, helping individuals regain their driving licenses through structured courses and document management.
+# MPU Focus - Enhanced Verification System
 
 ## Overview
+A comprehensive verification and learning platform with document preview, digital signatures, and email notifications.
 
-MPU-Focus is a dual-platform system consisting of:
-- **User Platform**: Course delivery, progress tracking, and document upload
-- **Admin Panel**: Client management, course administration, and document review
+## 📋 Table of Contents
+- [Features](#features)
+- [Document 404 Error Fix](#document-404-error-fix)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage Guide](#usage-guide)
+- [API Documentation](#api-documentation)
+- [Troubleshooting](#troubleshooting)
 
-## Features
+## ✨ Features
 
-### User Platform
-- **Course Management**: Structured chapters with video content
-- **Progress Tracking**: Real-time monitoring of course completion
-- **Document Upload**: PDF document submission for admin review
-- **Dashboard**: Personal progress overview and course navigation
+### Core Verification System
+- **Document Upload & Storage**: Secure document uploads via UploadThing
+- **Document Preview**: In-browser PDF and image viewing with zoom controls
+- **Digital Signatures**: Canvas-based signature capture for legal binding
+- **Email Notifications**: Automated approval/rejection notifications
+- **Resubmission Flow**: Allow document re-upload without contract re-signing
+- **Admin Dashboard**: Comprehensive verification management interface
 
-### Admin Panel
-- **Client Management**: Create and manage user accounts
-- **Course Administration**: Manage chapters, videos, and content
-- **Document Review**: Access and review uploaded client documents
-- **Analytics**: Track user progress and engagement
+### 🔧 Document 404 Error Fix
 
-## Technology Stack
+#### Problem Solved
+The system now automatically resolves "Document proxy error: Error: Failed to fetch file: 404" issues that occur when document URLs become inaccessible.
 
-- **Framework**: Next.js 14 with App Router
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: NextAuth.js
-- **Styling**: Tailwind CSS
-- **File Upload**: Uploadthing
-- **Video Streaming**: Mux (for video progress tracking)
-- **Deployment**: Vercel
+#### Root Causes Addressed
+1. **Filename Mismatch**: UploadThing sometimes modifies filenames during upload
+2. **Missing URL Storage**: Legacy documents uploaded before URL storage implementation  
+3. **File Deletion**: Documents removed from UploadThing storage
 
-## Project Structure
+#### Solution Features
+- **Automatic Detection**: Scans all documents and identifies broken URLs
+- **Auto-Fix Capability**: Updates database with working URLs when possible
+- **Comprehensive Reporting**: Shows which documents are missing vs. fixed
+- **Admin Tools**: One-click verification and repair system
 
+#### Document Verifier Tool
+The admin panel now includes a **Document Verifier** tool that:
+
+1. **Verifies All Documents**: Tests accessibility of every uploaded document
+2. **Auto-Fixes URLs**: Updates database with correct URLs when found
+3. **Reports Missing Files**: Lists documents that need user re-upload
+4. **Visual Dashboard**: Shows verification status with clear metrics
+
+**How to Use:**
+1. Go to Admin Panel → Verification Management
+2. Click on "Document Tools" tab
+3. Click "Verify All Documents"
+4. Review results and take action on missing documents
+
+#### API Endpoints for 404 Resolution
+
+**Document Verification API:**
+```bash
+# Verify all documents (Admin only)
+POST /api/admin/documents/verify
+
+# Check specific user's document
+GET /api/admin/documents/verify?userId=USER_ID
 ```
-mpu-focus/
-├── src/
-│   ├── app/
-│   │   ├── (auth)/
-│   │   ├── (user)/
-│   │   ├── admin/
-│   │   └── api/
-│   ├── components/
-│   │   ├── ui/
-│   │   ├── admin/
-│   │   └── user/
-│   ├── lib/
-│   ├── models/
-│   └── types/
-├── public/
-└── docs/
+
+**Document Proxy API:**
+```bash
+# Access document through CORS-friendly proxy  
+GET /api/documents/proxy?url=ENCODED_UPLOADTHING_URL
 ```
 
-## Environment Variables
+#### Prevention Measures
+- **Enhanced Upload Process**: Stores both filename and full URL
+- **Upload Validation**: Verifies file accessibility after upload
+- **Better Error Handling**: Graceful degradation when files are missing
+- **Comprehensive Logging**: Detailed error tracking for debugging
 
-Create a `.env.local` file with the following variables:
+### User Experience Enhancements
+- **Smart Status Management**: Clear indication of verification progress
+- **Helpful Error Messages**: Actionable guidance when documents fail to load
+- **Resubmission Notices**: Clear instructions for users who need to re-upload
+
+## 🚀 Installation
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd mpu-focus
+
+# Install dependencies
+npm install
+
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run development server
+npm run dev
+```
+
+## ⚙️ Configuration
+
+### Required Environment Variables
 
 ```env
 # Database
 MONGODB_URI=your_mongodb_connection_string
 
-# NextAuth
+# Authentication
+NEXTAUTH_SECRET=your_secret_key
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_nextauth_secret
 
-# Uploadthing (for file uploads)
+# File Upload (UploadThing)
 UPLOADTHING_SECRET=your_uploadthing_secret
 UPLOADTHING_APP_ID=your_uploadthing_app_id
 
-# Mux (for video streaming)
-MUX_TOKEN_ID=your_mux_token_id
-MUX_TOKEN_SECRET=your_mux_token_secret
-
-# Admin credentials (for initial setup)
-ADMIN_EMAIL=admin@mpu-focus.com
-ADMIN_PASSWORD=your_admin_password
+# Email Service (for notifications)
+SMTP_HOST=your_smtp_host
+SMTP_PORT=587
+SMTP_USER=your_smtp_username
+SMTP_PASS=your_smtp_password
+SMTP_FROM=your_from_email
 ```
 
-## Getting Started
+## 📖 Usage Guide
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd mpu-focus
-   ```
+### For Users
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+#### Document Upload Process
+1. Access verification link from email
+2. Upload passport/ID document (PDF or image)
+3. Preview document before submission
+4. Sign contract (digital signature or checkbox)
+5. Wait for admin approval
 
-3. **Set up environment variables**
-   - Copy `.env.example` to `.env.local`
-   - Fill in all required environment variables
+#### Resubmission Process
+1. Receive rejection email with resubmission link
+2. Upload new document (contract signature preserved)
+3. Wait for re-review
 
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
+### For Administrators
 
-5. **Access the application**
-   - User Platform: `http://localhost:3000`
-   - Admin Panel: `http://localhost:3000/admin`
+#### Verification Management
+1. Go to Admin Panel → Verification Management
+2. Use filters to find specific users or statuses
+3. Click "Review" to examine documents and contracts
+4. Approve or reject with optional resubmission allowance
 
-## Database Schema
+#### Document Troubleshooting
+1. Go to "Document Tools" tab in Verification Management
+2. Run "Verify All Documents" to check all files
+3. Review results:
+   - **Verified**: Documents are accessible
+   - **Fixed**: URLs were corrected automatically
+   - **Missing**: Documents need user re-upload
+4. Set affected users to resubmission status if needed
 
-### User Model
-- Personal information
-- Course progress
-- Document submissions
-- Authentication details
+#### Handling Missing Documents
+When documents are missing:
+1. Use Document Verifier to identify affected users
+2. Set users to `resubmission_required` status
+3. System sends automatic resubmission emails
+4. Users can upload new documents without re-signing contracts
 
-### Course Model
-- Course structure
-- Chapters and content
-- Video associations
+## 🔧 API Documentation
 
-### Document Model
-- File metadata
-- Upload tracking
-- Admin review status
+### Admin Document Verification
 
-## Development Roadmap
+#### Verify All Documents
+```http
+POST /api/admin/documents/verify
+Authorization: Bearer <admin-session>
 
-### Phase 1 (Current)
-- [x] Project setup and structure
-- [ ] User authentication system
-- [ ] Basic admin panel
-- [ ] Course structure implementation
-- [ ] Document upload functionality
+Response:
+{
+  "success": true,
+  "results": {
+    "total": 50,
+    "verified": 45,
+    "fixed": 3,
+    "missing": 2,
+    "errors": [...]
+  }
+}
+```
 
-### Phase 2 (Future)
-- [ ] Mux video integration
-- [ ] Advanced progress tracking
-- [ ] Document processing automation
-- [ ] Enhanced analytics
+#### Check Specific Document
+```http
+GET /api/admin/documents/verify?userId=USER_ID
+Authorization: Bearer <admin-session>
 
-### Phase 3 (Future)
-- [ ] Self-registration system
-- [ ] Advanced reporting
-- [ ] Mobile optimization
-- [ ] API for third-party integrations
+Response:
+{
+  "success": true,
+  "document": {
+    "filename": "passport.pdf",
+    "currentUrl": "https://utfs.io/f/abc123",
+    "uploadedAt": "2024-01-01T00:00:00Z"
+  },
+  "testResults": [...]
+}
+```
 
-## Contributing
+### Document Proxy
+
+#### Access Document via Proxy
+```http
+GET /api/documents/proxy?url=ENCODED_URL
+
+Response: Binary file data with CORS headers
+Headers:
+- Access-Control-Allow-Origin: *
+- Content-Type: application/pdf|image/*
+- Content-Disposition: inline
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### "Document proxy error: Failed to fetch file: 404"
+**Solution**: Use the Document Verifier tool in admin panel
+1. Go to Admin → Verification Management → Document Tools
+2. Click "Verify All Documents"
+3. System will auto-fix URLs where possible
+4. For missing files, set users to resubmission status
+
+#### Documents not displaying in admin panel
+**Check**: 
+1. Document URLs in database
+2. UploadThing file accessibility
+3. CORS proxy configuration
+4. Browser console for specific errors
+
+#### Users can't upload documents
+**Check**:
+1. UploadThing configuration
+2. File size limits
+3. Supported file types (PDF, JPG, PNG, WEBP)
+4. Network connectivity
+
+### Performance Optimization
+
+#### For Large Document Sets
+- Document Verifier processes in batches
+- Use pagination in admin panel
+- Monitor UploadThing bandwidth usage
+- Implement caching for frequently accessed documents
+
+### Browser Compatibility
+- **Chrome**: Full support ✅
+- **Firefox**: Full support ✅  
+- **Safari**: Full support ✅
+- **Edge**: Full support ✅
+- **Mobile**: Responsive design ✅
+
+## 🔒 Security Features
+
+- **Admin-only APIs**: Document verification requires admin authentication
+- **CORS Protection**: Proxy validates UploadThing domains only
+- **Secure File Access**: URLs are proxied through authenticated endpoints
+- **Audit Trail**: Comprehensive logging of document access and modifications
+
+## 📈 Monitoring
+
+### Key Metrics to Track
+- Document verification success rate
+- Missing document count
+- Resubmission frequency
+- Error rates in proxy endpoint
+- User completion rates
+
+### Health Checks
+The system provides:
+- Document accessibility monitoring
+- Automatic URL validation
+- Error rate tracking
+- Performance metrics
+
+## 🛠️ Future Enhancements
+
+### Planned Features
+- **Automated Health Monitoring**: Daily document accessibility checks
+- **Bulk Operations**: Mass user status updates
+- **Advanced Analytics**: Verification completion analytics
+- **Document Versioning**: Track document resubmission history
+- **Integration APIs**: Third-party verification services
+
+### Scalability Considerations
+- **CDN Integration**: Faster global document access
+- **Database Optimization**: Indexing for large user bases
+- **Background Processing**: Async document verification
+- **Microservices**: Separate document service
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create feature branch
+3. Implement changes with tests
+4. Update documentation
+5. Submit pull request
 
-## License
+## 📞 Support
 
-Private - All rights reserved
+For technical issues:
+1. Check troubleshooting guide
+2. Review error logs
+3. Use Document Verifier tool for 404 errors
+4. Contact support with specific error details
 
-## Support
+---
 
-For support and questions, contact the development team.
+**Latest Update**: Added comprehensive 404 document error resolution system with automatic detection, repair, and admin tools for managing document accessibility issues.

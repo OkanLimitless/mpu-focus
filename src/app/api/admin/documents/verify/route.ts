@@ -7,6 +7,22 @@ import User from '@/models/User'
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
+interface DocumentError {
+  userId: string
+  email: string
+  filename?: string
+  testedUrls?: string[]
+  error?: string
+}
+
+interface VerificationResults {
+  total: number
+  verified: number
+  missing: number
+  fixed: number
+  errors: DocumentError[]
+}
+
 export async function POST(request: NextRequest) {
   try {
     await connectDB()
@@ -33,7 +49,7 @@ export async function POST(request: NextRequest) {
       'passportDocument.filename': { $exists: true, $ne: null }
     }).select('_id email passportDocument')
 
-    const results = {
+    const results: VerificationResults = {
       total: usersWithDocuments.length,
       verified: 0,
       missing: 0,
@@ -84,23 +100,25 @@ export async function POST(request: NextRequest) {
 
         if (!isValid) {
           results.missing++
-          results.errors.push({
-            userId: user._id,
+          const errorInfo: DocumentError = {
+            userId: user._id.toString(),
             email: user.email,
             filename: user.passportDocument.filename,
             testedUrls: [
               user.passportDocument.url,
               `https://utfs.io/f/${user.passportDocument.filename}`
             ].filter(Boolean)
-          })
+          }
+          results.errors.push(errorInfo)
         }
 
       } catch (error: any) {
-        results.errors.push({
-          userId: user._id,
+        const errorInfo: DocumentError = {
+          userId: user._id.toString(),
           email: user.email,
           error: error.message
-        })
+        }
+        results.errors.push(errorInfo)
       }
     }
 

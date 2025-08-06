@@ -2,27 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Eye, PenTool, FileText, User, Calendar, Upload, Mail, Shield, Settings } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import DocumentPreview from '@/components/ui/document-preview'
 import { SignatureDisplay } from '@/components/ui/digital-signature'
-import { 
-  FileCheck, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  Search, 
-  Filter,
-  Eye,
-  Download,
-  PenTool
-} from 'lucide-react'
+import DocumentVerifier from '@/components/admin/DocumentVerifier'
 
 interface VerificationUser {
   _id: string
@@ -54,6 +47,7 @@ interface VerificationStats {
   contractSigned: number
   verified: number
   rejected: number
+  resubmission: number
 }
 
 export default function VerificationManagement() {
@@ -64,12 +58,13 @@ export default function VerificationManagement() {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [stats, setStats] = useState<VerificationStats>({ 
-    pending: 0, 
-    documentsUploaded: 0, 
-    contractSigned: 0, 
-    verified: 0, 
-    rejected: 0 
+    const [stats, setStats] = useState<VerificationStats>({
+    pending: 0,
+    documentsUploaded: 0,
+    contractSigned: 0,
+    verified: 0,
+    rejected: 0,
+    resubmission: 0
   })
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
@@ -119,8 +114,8 @@ export default function VerificationManagement() {
     
     const variants = {
       pending: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', icon: Clock },
-      documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileCheck },
-      contract_signed: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileText },
+      contract_signed: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', icon: User },
       resubmission_required: { variant: 'secondary' as const, className: 'bg-orange-100 text-orange-800', icon: AlertTriangle },
       verified: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800', icon: CheckCircle2 },
       rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800', icon: XCircle }
@@ -220,433 +215,377 @@ export default function VerificationManagement() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <PenTool className="h-5 w-5" />
-          <span>Verification Management</span>
-        </CardTitle>
-        <CardDescription>
-          Review and approve user document uploads and contract signatures.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-gray-600 text-sm font-medium">Pending</div>
-            <div className="text-2xl font-bold text-gray-700">{stats.pending}</div>
-          </div>
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <div className="text-blue-600 text-sm font-medium">Documents</div>
-            <div className="text-2xl font-bold text-blue-700">{stats.documentsUploaded}</div>
-          </div>
-          <div className="bg-yellow-50 p-3 rounded-lg">
-            <div className="text-yellow-600 text-sm font-medium">Under Review</div>
-            <div className="text-2xl font-bold text-yellow-700">{stats.contractSigned}</div>
-          </div>
-          <div className="bg-green-50 p-3 rounded-lg">
-            <div className="text-green-600 text-sm font-medium">Verified</div>
-            <div className="text-2xl font-bold text-green-700">{stats.verified}</div>
-          </div>
-          <div className="bg-red-50 p-3 rounded-lg">
-            <div className="text-red-600 text-sm font-medium">Rejected</div>
-            <div className="text-2xl font-bold text-red-700">{stats.rejected}</div>
-          </div>
-        </div>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Verification Management</h1>
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md bg-white"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="documents_uploaded">Documents Uploaded</option>
-            <option value="contract_signed">Contract Signed</option>
-            <option value="resubmission_required">Resubmission Required</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-
-        {/* Users Table */}
-        <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">User</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Documents</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Contract</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Submitted</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      Loading verification data...
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      No users found
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => (
-                    <tr key={user._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <div className="font-medium">{user.firstName || 'N/A'} {user.lastName || ''}</div>
-                          <div className="text-sm text-gray-500">{user.email || 'N/A'}</div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {getStatusBadge(user.verificationStatus || 'pending')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          {user.passportDocument ? (
-                            <div className="flex items-center space-x-2">
-                              <FileCheck className="h-4 w-4 text-green-600" />
-                              <span>Uploaded</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <XCircle className="h-4 w-4 text-gray-400" />
-                              <span>Not uploaded</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          {user.contractSigned ? (
-                            <div className="flex items-center space-x-2">
-                              <PenTool className="h-4 w-4 text-green-600" />
-                              <span>Signed</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <XCircle className="h-4 w-4 text-gray-400" />
-                              <span>Not signed</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-gray-500">
-                          {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleReviewUser(user)}
-                          disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        {pagination.pages > 1 && (
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Page {pagination.page} of {pagination.pages} 
-              ({pagination.total} total users)
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page - 1)}
-                disabled={page <= 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(page + 1)}
-                disabled={page >= pagination.pages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Review Dialog */}
-        <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Review User Verification</DialogTitle>
-              <DialogDescription>
-                Review submitted documents and contract for verification approval
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedUser && (
-              <div className="space-y-6">
-                {/* User Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Tabs defaultValue="management" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="management" className="flex items-center space-x-2">
+            <Shield className="h-4 w-4" />
+            <span>User Verification</span>
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="flex items-center space-x-2">
+            <Settings className="h-4 w-4" />
+            <span>Document Tools</span>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="management" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-8 w-8 text-blue-500" />
                   <div>
-                    <Label className="text-sm font-medium">Name</Label>
-                    <p className="text-sm text-gray-600">
-                      {selectedUser.firstName || 'N/A'} {selectedUser.lastName || ''}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Email</Label>
-                    <p className="text-sm text-gray-600">{selectedUser.email || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Current Status</Label>
-                    <div className="mt-1">
-                      {getStatusBadge(selectedUser.verificationStatus || 'pending')}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Registered</Label>
-                    <p className="text-sm text-gray-600">{selectedUser.createdAt ? formatDate(selectedUser.createdAt) : 'N/A'}</p>
+                    <p className="text-sm font-medium text-gray-600">Pending</p>
+                    <p className="text-2xl font-bold">{stats.pending}</p>
                   </div>
                 </div>
-
-                {/* Document Information */}
-                {selectedUser.passportDocument && (
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-medium">Identity Document</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium">Filename</Label>
-                        <p className="text-sm text-gray-600">{selectedUser.passportDocument.filename}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Uploaded</Label>
-                        <p className="text-sm text-gray-600">
-                          {formatDate(selectedUser.passportDocument.uploadedAt)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Current Status</Label>
-                        <div className="mt-1">
-                          {getStatusBadge(selectedUser.passportDocument.status)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Document Preview */}
-                    {selectedUser.passportDocument?.url || selectedUser.passportDocument?.filename ? (
-                      <DocumentPreview
-                        filename={selectedUser.passportDocument.filename}
-                        url={
-                          selectedUser.passportDocument.url 
-                            ? `/api/documents/proxy?url=${encodeURIComponent(selectedUser.passportDocument.url)}`
-                            : `/api/documents/proxy?url=${encodeURIComponent(
-                                `https://utfs.io/f/${selectedUser.passportDocument.filename}`
-                              )}`
-                        }
-                        className="w-full"
-                      />
-                    ) : (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <AlertTriangle className="h-5 w-5" />
-                          <p className="text-sm">
-                            Document not available for preview. Please contact support.
-                          </p>
-                        </div>
-                      </div>
-                    )}
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Verified</p>
+                    <p className="text-2xl font-bold">{stats.verified}</p>
                   </div>
-                )}
-
-                {/* Contract Information */}
-                {selectedUser.contractSigned && (
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-medium">Service Agreement</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-sm font-medium">Signed Date</Label>
-                        <p className="text-sm text-gray-600">
-                          {formatDate(selectedUser.contractSigned.signedAt)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">IP Address</Label>
-                        <p className="text-sm text-gray-600">{selectedUser.contractSigned.ipAddress}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium">Signature Method</Label>
-                        <p className="text-sm text-gray-600">
-                          {selectedUser.contractSigned.signatureMethod === 'digital_signature' 
-                            ? 'Digital Signature' 
-                            : 'Checkbox Agreement'}
-                        </p>
-                      </div>
-                      {selectedUser.contractSigned.userAgent && (
-                        <div>
-                          <Label className="text-sm font-medium">User Agent</Label>
-                          <p className="text-xs text-gray-600 truncate" title={selectedUser.contractSigned.userAgent}>
-                            {selectedUser.contractSigned.userAgent}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Digital Signature Display */}
-                    {selectedUser.contractSigned.signatureData && (
-                      <div className="mt-4">
-                        <SignatureDisplay
-                          signatureData={selectedUser.contractSigned.signatureData}
-                          title="Digital Signature"
-                          className="w-full max-w-md"
-                        />
-                      </div>
-                    )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <XCircle className="h-8 w-8 text-red-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Rejected</p>
+                    <p className="text-2xl font-bold">{stats.rejected}</p>
                   </div>
-                )}
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-8 w-8 text-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Resubmission</p>
+                    <p className="text-2xl font-bold">{stats.resubmission}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-                {/* Review Actions */}
-                {(selectedUser.verificationStatus === 'contract_signed' || selectedUser.verificationStatus === 'resubmission_required') && (
-                  <div className="space-y-4">
-                    <h4 className="text-lg font-medium">Review Decision</h4>
-                    
-                    {selectedUser.verificationStatus === 'resubmission_required' && (
-                      <div className="bg-orange-50 p-3 rounded-lg mb-4">
-                        <div className="flex items-center space-x-2">
-                          <AlertTriangle className="h-5 w-5 text-orange-600" />
-                          <p className="text-sm text-orange-800">
-                            <strong>Resubmission Status:</strong> This user was previously rejected and is allowed to resubmit documents.
-                          </p>
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="search">Search Users</Label>
+                  <Input
+                    id="search"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status">Filter by Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
+                      <SelectItem value="contract_signed">Contract Signed</SelectItem>
+                      <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
+                      <SelectItem value="verified">Verified</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={fetchUsers} variant="outline">
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Users List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Verification Requests</CardTitle>
+              <CardDescription>
+                Manage user verification documents and status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Loading verification data...
+                  </div>
+                ) : users.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No users found matching the current filters.
+                  </div>
+                ) : (
+                  users.map((user) => (
+                    <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex flex-col">
+                          <p className="font-medium">{user.firstName || 'N/A'} {user.lastName || ''}</p>
+                          <p className="text-sm text-gray-600">{user.email || 'N/A'}</p>
                         </div>
                       </div>
-                    )}
-                    
-                    <div className="flex space-x-4">
-                      <Button
-                        variant={reviewAction === 'approve' ? 'default' : 'outline'}
-                        onClick={() => setReviewAction('approve')}
-                        className={reviewAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        variant={reviewAction === 'reject' ? 'destructive' : 'outline'}
-                        onClick={() => setReviewAction('reject')}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
-
-                    {reviewAction === 'reject' && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="rejectionReason">Reason for Rejection</Label>
-                          <Textarea
-                            id="rejectionReason"
-                            value={rejectionReason}
-                            onChange={(e) => setRejectionReason(e.target.value)}
-                            placeholder="Please provide a detailed reason for rejection..."
-                            className="mt-1"
-                            rows={3}
-                          />
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 mb-1">Status</p>
+                          {getStatusBadge(user.verificationStatus || 'pending')}
                         </div>
                         
-                        <div className="space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id="allowResubmission"
-                              checked={allowResubmission}
-                              onChange={(e) => setAllowResubmission(e.target.checked)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <Label htmlFor="allowResubmission" className="text-sm font-medium">
-                              Allow document re-submission
-                            </Label>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 mb-1">Document</p>
+                          <div className="text-sm">
+                            {user.passportDocument ? (
+                              <div className="flex items-center space-x-2">
+                                <FileText className="h-4 w-4 text-green-600" />
+                                <span>Uploaded</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <XCircle className="h-4 w-4 text-red-600" />
+                                <span>Missing</span>
+                              </div>
+                            )}
                           </div>
-                          
-                          <div className="text-xs text-gray-600 space-y-1">
-                            <p><strong>If checked:</strong> User can upload new documents without re-signing the contract</p>
-                            <p><strong>If unchecked:</strong> User verification will be permanently rejected</p>
-                          </div>
-                          
-                          {allowResubmission && (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <p className="text-sm text-blue-800">
-                                📧 The user will receive an email with instructions to upload new documents. 
-                                Their contract signature will remain valid.
-                              </p>
-                            </div>
-                          )}
                         </div>
+                        
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 mb-1">Contract</p>
+                          <div className="text-sm">
+                            {user.contractSigned ? (
+                              <div className="flex items-center space-x-2">
+                                <User className="h-4 w-4 text-green-600" />
+                                <span>Signed</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <XCircle className="h-4 w-4 text-red-600" />
+                                <span>Pending</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReviewUser(user)}
+                              disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Review
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>User Verification Review</DialogTitle>
+                            </DialogHeader>
+                            
+                            {selectedUser && (
+                              <div className="space-y-6">
+                                {/* User Info */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>Name</Label>
+                                    <p className="font-medium">{selectedUser.firstName || 'N/A'} {selectedUser.lastName || ''}</p>
+                                  </div>
+                                  <div>
+                                    <Label>Email</Label>
+                                    <p className="font-medium">{selectedUser.email || 'N/A'}</p>
+                                  </div>
+                                </div>
+
+                                {/* Current Status Alert */}
+                                {selectedUser.verificationStatus === 'resubmission_required' && (
+                                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                    <div className="flex items-center space-x-2">
+                                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                                      <p className="text-orange-800 font-medium">
+                                        This user is in resubmission status
+                                      </p>
+                                    </div>
+                                    <p className="text-orange-700 text-sm mt-1">
+                                      Previous documents were rejected. User can resubmit without re-signing the contract.
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Document Preview */}
+                                <div>
+                                  <Label className="text-lg font-semibold mb-4 block">Passport Document</Label>
+                                  {selectedUser.passportDocument?.url || selectedUser.passportDocument?.filename ? (
+                                    <DocumentPreview
+                                      filename={selectedUser.passportDocument.filename}
+                                      url={
+                                        selectedUser.passportDocument.url
+                                          ? `/api/documents/proxy?url=${encodeURIComponent(selectedUser.passportDocument.url)}`
+                                          : `/api/documents/proxy?url=${encodeURIComponent(
+                                              `https://utfs.io/f/${selectedUser.passportDocument.filename}`
+                                            )}`
+                                      }
+                                      className="w-full"
+                                    />
+                                  ) : (
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                      <div className="flex items-center space-x-2 text-gray-600">
+                                        <AlertTriangle className="h-5 w-5" />
+                                        <p className="text-sm">
+                                          Document not available for preview. Please contact support.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Contract Details */}
+                                {selectedUser.contractSigned && (
+                                  <div className="space-y-4">
+                                    <Label className="text-lg font-semibold">Contract Details</Label>
+                                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <Label className="text-sm text-gray-600">Signed At</Label>
+                                          <p className="text-sm font-medium">
+                                            {selectedUser.contractSigned.signedAt ? formatDate(selectedUser.contractSigned.signedAt) : 'N/A'}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm text-gray-600">Signature Method</Label>
+                                          <p className="text-sm font-medium capitalize">
+                                            {selectedUser.contractSigned.signatureMethod === 'digital_signature' 
+                                              ? 'Digital Signature' 
+                                              : 'Checkbox Agreement'}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm text-gray-600">IP Address</Label>
+                                          <p className="text-sm font-medium">{selectedUser.contractSigned.ipAddress}</p>
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm text-gray-600">User Agent</Label>
+                                          <p className="text-sm font-medium break-all">{selectedUser.contractSigned.userAgent}</p>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Digital Signature Display */}
+                                      {selectedUser.contractSigned.signatureData && (
+                                        <div>
+                                          <Label className="text-sm text-gray-600 mb-2 block">Digital Signature</Label>
+                                          <SignatureDisplay 
+                                            signatureData={selectedUser.contractSigned.signatureData}
+                                            className="border rounded-lg"
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Review Form */}
+                                <div className="space-y-4">
+                                  <Label className="text-lg font-semibold">Admin Review</Label>
+                                  <div className="space-y-4">
+                                                                         <div>
+                                       <Label htmlFor="review-status">Decision</Label>
+                                       <Select value={reviewAction || ''} onValueChange={(value) => setReviewAction(value as 'approve' | 'reject')}>
+                                         <SelectTrigger>
+                                           <SelectValue placeholder="Select decision" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                           <SelectItem value="approve">Approve</SelectItem>
+                                           <SelectItem value="reject">Reject</SelectItem>
+                                         </SelectContent>
+                                       </Select>
+                                     </div>
+
+                                    {reviewAction === 'reject' && (
+                                      <div className="space-y-4">
+                                        <div>
+                                          <Label htmlFor="rejection-reason">Reason for Rejection</Label>
+                                          <Textarea
+                                            id="rejection-reason"
+                                            placeholder="Please provide a reason for rejection..."
+                                            value={rejectionReason}
+                                            onChange={(e) => setRejectionReason(e.target.value)}
+                                            className="min-h-[100px]"
+                                          />
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <Checkbox
+                                            id="allow-resubmission"
+                                            checked={allowResubmission}
+                                            onCheckedChange={(checked) => setAllowResubmission(checked as boolean)}
+                                          />
+                                          <Label htmlFor="allow-resubmission" className="text-sm">
+                                            Allow document re-submission (user won't need to sign contract again)
+                                          </Label>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <Button
+                                      onClick={handleSubmitReview}
+                                      disabled={isSubmittingReview || !reviewAction}
+                                      className="w-full"
+                                    >
+                                      {isSubmittingReview ? 'Processing...' : 'Submit Review'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                    )}
-
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsReviewDialogOpen(false)}
-                        className="flex-1"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleSubmitReview}
-                        disabled={isSubmittingReview || !reviewAction}
-                        className="flex-1"
-                      >
-                        {isSubmittingReview ? 'Processing...' : 'Submit Review'}
-                      </Button>
                     </div>
-                  </div>
-                )}
-
-                {/* Already processed */}
-                {(selectedUser.verificationStatus === 'verified' || selectedUser.verificationStatus === 'rejected') && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="text-lg font-medium">Review Complete</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      This user has already been {selectedUser.verificationStatus}
-                      {selectedUser.verifiedAt && ` on ${formatDate(selectedUser.verifiedAt)}`}.
-                    </p>
-                  </div>
+                  ))
                 )}
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="tools" className="space-y-6">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Document Management Tools</h2>
+              <p className="text-gray-600">Tools to verify and fix document accessibility issues.</p>
+            </div>
+            
+            <DocumentVerifier />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
