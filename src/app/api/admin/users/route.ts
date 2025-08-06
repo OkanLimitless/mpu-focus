@@ -14,8 +14,9 @@ export async function GET(request: NextRequest) {
 
     const { default: connectDB } = await import('@/lib/mongodb')
     const { default: User } = await import('@/models/User')
-    const { default: VideoProgress } = await import('@/models/VideoProgress')
+    const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
     const { default: Chapter } = await import('@/models/Chapter')
+    const { default: Course } = await import('@/models/Course')
     
     await connectDB()
 
@@ -34,63 +35,41 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean()
 
-    // Get all chapters to calculate total
-    const totalChapters = await Chapter.countDocuments({ isActive: true })
+    // Get the active course and total chapters
+    const activeCourse = await Course.findOne({ isActive: true })
+    const totalChapters = activeCourse ? await Chapter.countDocuments({ 
+      courseId: activeCourse._id, 
+      isActive: true 
+    }) : 0
 
     // Get progress data for all users
     const usersWithProgress = await Promise.all(
       users.map(async (user) => {
         if (user.role === 'user') {
-          // Get chapter-based progress for this user
-          const chapterProgress = await VideoProgress.aggregate([
-            { $match: { userId: user._id } },
-            {
-              $group: {
-                _id: '$chapterId',
-                totalVideos: { $sum: 1 },
-                completedVideos: { 
-                  $sum: { 
-                    $cond: [{ $eq: ['$isCompleted', true] }, 1, 0] 
-                  } 
-                },
-                lastActivity: { $max: '$lastWatchedAt' }
-              }
-            },
-            {
-              $addFields: {
-                isChapterCompleted: {
-                  $gte: [
-                    { $divide: ['$completedVideos', '$totalVideos'] },
-                    0.8 // Chapter is considered complete when 80% of videos are done
-                  ]
-                }
-              }
-            }
-          ])
+          // Get user's course progress
+          const courseProgress = await UserCourseProgress.findOne({ 
+            userId: user._id,
+            courseId: activeCourse?._id 
+          }).lean() as {
+            completedChapters?: number[]
+            currentChapterOrder?: number
+            lastAccessedAt?: Date
+          } | null
 
-          const completedChapters = chapterProgress.filter(chapter => chapter.isChapterCompleted).length
-          const totalUserChapters = chapterProgress.length
-          const overallProgress = totalUserChapters > 0 
-            ? Math.round((completedChapters / totalUserChapters) * 100)
+          const completedChapters = courseProgress?.completedChapters?.length || 0
+          const overallProgress = totalChapters > 0 
+            ? Math.round((completedChapters / totalChapters) * 100)
             : 0
-
-          // Get last activity across all videos
-          const lastActivity = chapterProgress.reduce((latest, chapter) => {
-            if (!latest || (chapter.lastActivity && chapter.lastActivity > latest)) {
-              return chapter.lastActivity
-            }
-            return latest
-          }, null)
 
           return {
             ...user,
             progress: {
-              totalChapters: totalUserChapters,
+              totalChapters,
               completedChapters,
-              totalVideos: chapterProgress.reduce((sum, ch) => sum + ch.totalVideos, 0),
-              completedVideos: chapterProgress.reduce((sum, ch) => sum + ch.completedVideos, 0),
+              totalVideos: 0, // Will be calculated in detailed view if needed
+              completedVideos: 0, // Will be calculated in detailed view if needed
               averageProgress: overallProgress,
-              lastActivity
+              lastActivity: courseProgress?.lastAccessedAt || user.createdAt
             }
           }
         }

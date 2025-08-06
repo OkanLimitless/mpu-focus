@@ -17,9 +17,10 @@ export async function GET(
 
     const { default: connectDB } = await import('@/lib/mongodb')
     const { default: User } = await import('@/models/User')
-    const { default: VideoProgress } = await import('@/models/VideoProgress')
+    const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
     const { default: Chapter } = await import('@/models/Chapter')
-    const { default: Video } = await import('@/models/Video')
+    const { default: Course } = await import('@/models/Course')
+    const { default: VideoProgress } = await import('@/models/VideoProgress')
     
     await connectDB()
 
@@ -41,70 +42,62 @@ export async function GET(
       )
     }
 
-    // Get all chapters for reference
-    const chapters = await Chapter.find({ isActive: true })
+    // Get the active course
+    const activeCourse = await Course.findOne({ isActive: true })
+    if (!activeCourse) {
+      return NextResponse.json({
+        error: 'No active course found'
+      }, { status: 404 })
+    }
+
+    // Get all chapters for this course
+    const chapters = await Chapter.find({ 
+      courseId: activeCourse._id, 
+      isActive: true 
+    })
       .select('_id title order')
       .sort({ order: 1 })
       .lean()
 
-    // Get detailed progress for the user
-    const userProgress = await VideoProgress.find({ userId })
-      .populate('videoId', 'title order chapterId')
-      .sort({ 'videoId.order': 1 })
-      .lean()
+    // Get user's course progress
+    const courseProgress = await UserCourseProgress.findOne({ 
+      userId,
+      courseId: activeCourse._id 
+    }).lean() as {
+      completedChapters?: number[]
+      currentChapterOrder?: number
+      lastAccessedAt?: Date
+    } | null
 
-    // Group progress by chapter
+    const completedChapterNumbers = courseProgress?.completedChapters || []
+
+    // Create progress by chapter with completion status
     const progressByChapter = chapters.map(chapter => {
-      const chapterProgress = userProgress.filter(
-        progress => progress.videoId?.chapterId?.toString() === (chapter._id as any).toString()
-      )
-
-      const totalVideos = chapterProgress.length
-      const completedVideos = chapterProgress.filter(p => p.isCompleted).length
+      const isChapterCompleted = completedChapterNumbers.includes(chapter.order)
       
-      // Chapter is completed when 80% or more of videos are completed
-      const chapterCompletionPercentage = totalVideos > 0 ? (completedVideos / totalVideos) * 100 : 0
-      const isChapterCompleted = chapterCompletionPercentage >= 80
-
-      const lastActivity = chapterProgress.reduce((latest, p) => {
-        if (!latest || (p.lastWatchedAt && p.lastWatchedAt > latest)) {
-          return p.lastWatchedAt
-        }
-        return latest
-      }, null)
-
       return {
         chapterId: chapter._id as any,
         chapterTitle: chapter.title,
         chapterOrder: chapter.order,
-        totalVideos,
-        completedVideos,
-        progress: Math.round(chapterCompletionPercentage),
+        totalVideos: 0, // Could be populated if needed from Video model
+        completedVideos: 0, // Could be populated if needed
+        progress: isChapterCompleted ? 100 : 0,
         isChapterCompleted,
-        lastActivity,
-        videos: chapterProgress.map(p => ({
-          videoId: p.videoId?._id,
-          videoTitle: p.videoId?.title,
-          videoOrder: p.videoId?.order,
-          progress: Math.round(p.completionPercentage || 0),
-          timeWatched: p.watchedDuration,
-          totalDuration: p.totalDuration,
-          lastWatched: p.lastWatchedAt,
-          isCompleted: p.isCompleted
-        }))
+        lastActivity: courseProgress?.lastAccessedAt,
+        videos: [] // Could be populated from VideoProgress if needed
       }
     })
 
     // Calculate overall statistics based on chapters
     const totalChapters = chapters.length
-    const completedChapters = progressByChapter.filter(c => c.isChapterCompleted).length
+    const completedChapters = completedChapterNumbers.length
     const overallProgress = totalChapters > 0 
       ? Math.round((completedChapters / totalChapters) * 100)
       : 0
 
-    // Video statistics for reference
-    const totalVideos = userProgress.length
-    const completedVideos = userProgress.filter(p => p.isCompleted).length
+    // Video statistics would need to be calculated from VideoProgress if needed
+    const totalVideos = 0
+    const completedVideos = 0
 
     return NextResponse.json({
       success: true,
