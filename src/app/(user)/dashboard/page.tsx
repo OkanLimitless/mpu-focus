@@ -43,7 +43,10 @@ export default function DashboardPage() {
       const response = await fetch('/api/user-progress')
       if (response.ok) {
         const data = await response.json()
+        console.log('User progress data:', data.progress) // Debug log
         setUserProgress(data.progress)
+      } else {
+        console.error('Failed to fetch user progress:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Failed to fetch user progress:', error)

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 export async function GET() {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -17,6 +18,8 @@ export async function GET() {
     const { default: VideoProgress } = await import('@/models/VideoProgress')
     const { default: Video } = await import('@/models/Video')
     const { default: Chapter } = await import('@/models/Chapter')
+    const { default: Course } = await import('@/models/Course')
+    const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
     
     await connectDB()
 
@@ -29,29 +32,67 @@ export async function GET() {
       )
     }
 
+    // Get the active course
+    const course = await Course.findOne({ isActive: true })
+    if (!course) {
+      return NextResponse.json({ 
+        progress: {
+          totalChapters: 0,
+          completedChapters: 0,
+          totalVideos: 0,
+          completedVideos: 0,
+          overallProgress: 0
+        }
+      })
+    }
+
     // Get total counts
     const [totalVideos, totalChapters] = await Promise.all([
       Video.countDocuments({ isActive: true }),
       Chapter.countDocuments({ isActive: true })
     ])
 
-    // Get user's progress
+    // Get or create user course progress
+    let userCourseProgress = await UserCourseProgress.findOne({
+      userId: user._id,
+      courseId: course._id
+    })
+
+    if (!userCourseProgress) {
+      userCourseProgress = new UserCourseProgress({
+        userId: user._id,
+        courseId: course._id,
+        currentChapterOrder: 1,
+        completedChapters: [],
+        lastAccessedAt: new Date()
+      })
+      await userCourseProgress.save()
+    }
+
+    // Get user's video progress
     const progressRecords = await VideoProgress.find({ userId: user._id })
       .populate('videoId', 'title chapterId')
       .lean()
 
     const completedVideos = progressRecords.filter(p => p.isCompleted).length
-    const completedChapterIds = new Set(
-      progressRecords
-        .filter(p => p.isCompleted)
-        .map(p => p.chapterId?.toString())
-    )
-    const completedChapters = completedChapterIds.size
+    
+    // Use the chapter completion data from UserCourseProgress
+    const completedChapters = userCourseProgress.completedChapters.length
 
-    // Calculate overall progress
-    const overallProgress = totalVideos > 0 
-      ? Math.round((completedVideos / totalVideos) * 100)
+    // Calculate overall progress based on chapter completion (more accurate for course progression)
+    const overallProgress = totalChapters > 0 
+      ? Math.round((completedChapters / totalChapters) * 100)
       : 0
+
+    console.log('Progress calculation:', {
+      userId: user._id,
+      totalChapters,
+      completedChapters,
+      totalVideos,
+      completedVideos,
+      overallProgress,
+      userCourseProgressChapters: userCourseProgress.completedChapters
+    }) // Debug log
 
     const progress = {
       totalChapters,

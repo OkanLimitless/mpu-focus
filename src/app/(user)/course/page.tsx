@@ -217,9 +217,21 @@ export default function CoursePage() {
       v._id === selectedVideo._id || v.progress?.isCompleted
     )
 
+    console.log('Video completion check:', {
+      videoId: selectedVideo._id,
+      chapterTitle: chapter.title,
+      chapterOrder: chapter.order,
+      allVideosCompleted,
+      videosInChapter: chapter.videos.map(v => ({
+        id: v._id,
+        title: v.title,
+        isCompleted: v.progress?.isCompleted || v._id === selectedVideo._id
+      }))
+    }) // Debug log
+
     if (allVideosCompleted) {
       try {
-        await fetch('/api/course/complete-chapter', {
+        const response = await fetch('/api/course/complete-chapter', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -230,10 +242,14 @@ export default function CoursePage() {
           }),
         })
 
-        toast({
-          title: '🎉 Chapter Completed!',
-          description: `You've mastered "${chapter.title}". Next chapter unlocked!`,
-        })
+        if (response.ok) {
+          toast({
+            title: '🎉 Chapter Completed!',
+            description: `You've mastered "${chapter.title}". Next chapter unlocked!`,
+          })
+        } else {
+          console.error('Failed to complete chapter:', response.status, response.statusText)
+        }
 
         await fetchCourse()
       } catch (error) {

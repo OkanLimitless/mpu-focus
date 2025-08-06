@@ -28,12 +28,14 @@ interface MuxVideoPlayerProps {
     watchedDuration: number
     totalDuration: number
   }) => void
+  onVideoComplete?: () => void
 }
 
 export default function MuxVideoPlayer({ 
   video, 
   userProgress, 
-  onProgressUpdate 
+  onProgressUpdate,
+  onVideoComplete
 }: MuxVideoPlayerProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
@@ -61,7 +63,7 @@ export default function MuxVideoPlayer({
     if (!session?.user) return
 
     try {
-      await fetch('/api/video-progress', {
+      const response = await fetch('/api/video-progress', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,6 +75,19 @@ export default function MuxVideoPlayer({
           ...progressData,
         }),
       })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Check if video was just completed (reached 90% threshold)
+        const completionThreshold = progressData.totalDuration * 0.9
+        const wasCompleted = userProgress?.isCompleted
+        const isNowCompleted = progressData.watchedDuration >= completionThreshold
+        
+        if (!wasCompleted && isNowCompleted) {
+          onVideoComplete?.()
+        }
+      }
       
       onProgressUpdate?.(progressData)
     } catch (error) {
@@ -163,6 +178,7 @@ export default function MuxVideoPlayer({
         title: 'Video Completed!',
         description: 'Great job! You have completed this video.',
       })
+      onVideoComplete?.()
     }
   }
 
