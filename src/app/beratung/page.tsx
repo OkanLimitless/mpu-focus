@@ -157,7 +157,10 @@ export default function BeratungPage() {
       if (step.type === 'multiple') {
         return Array.isArray(value) && value.length > 0
       }
-      return value !== '' && value !== false && value !== undefined
+      if (step.type === 'boolean') {
+        return value !== undefined && value !== null
+      }
+      return value !== '' && value !== undefined
     } else {
       // Contact form validation
       return contactData.firstName && contactData.lastName && 
