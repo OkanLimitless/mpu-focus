@@ -107,7 +107,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Progress Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">{loading ? '...' : userProgress.overallProgress}%</div>
                 <Progress value={userProgress.overallProgress} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {loading ? '...' : `${userProgress.completedVideos} of ${userProgress.totalVideos} videos completed`}
+                  Course completion progress
                 </p>
               </CardContent>
             </Card>
@@ -133,21 +133,6 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Chapters completed
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Videos</CardTitle>
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {loading ? '...' : `${userProgress.completedVideos}/${userProgress.totalVideos}`}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Videos watched
                 </p>
               </CardContent>
             </Card>
