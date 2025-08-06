@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield } from 'lucide-react'
+import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import UserManagement from '@/components/admin/UserManagement'
 import VideoManagement from '@/components/admin/VideoManagement'
 import ChapterManagement from '@/components/admin/ChapterManagement'
 import LeadManagement from '@/components/admin/LeadManagement'
+import VerificationManagement from '@/components/admin/VerificationManagement'
 
-type AdminSection = 'dashboard' | 'users' | 'leads' | 'chapters' | 'videos'
+type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters' | 'videos'
 
 const navigationItems = [
   {
@@ -33,6 +34,12 @@ const navigationItems = [
     name: 'Lead Management',
     icon: UserCheck,
     description: 'Manage and convert leads'
+  },
+  {
+    id: 'verification' as AdminSection,
+    name: 'Verification',
+    icon: FileCheck,
+    description: 'Review user verification submissions'
   },
   {
     id: 'chapters' as AdminSection,
@@ -226,6 +233,8 @@ export default function AdminDashboardPage() {
         return <UserManagement />
       case 'leads':
         return <LeadManagement />
+      case 'verification':
+        return <VerificationManagement />
       case 'chapters':
         return <ChapterManagement />
       case 'videos':

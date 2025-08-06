@@ -8,8 +8,22 @@ export interface User extends Document {
   lastName: string
   role: 'user' | 'admin'
   isActive: boolean
-  courseProgress: CourseProgress[]
-  documents: UserDocument[]
+  // Document verification fields
+  verificationStatus: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected'
+  passportDocument?: {
+    filename: string
+    uploadedAt: Date
+    status: 'pending' | 'approved' | 'rejected'
+    rejectionReason?: string
+  }
+  contractSigned?: {
+    signedAt: Date
+    ipAddress: string
+    userAgent: string
+  }
+  verifiedAt?: Date
+  verifiedBy?: Types.ObjectId | string
+  verificationToken?: string // For email verification links
   createdAt: Date
   updatedAt: Date
 }

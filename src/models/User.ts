@@ -34,11 +34,36 @@ const UserSchema = new Schema<User>({
     type: Boolean,
     default: true,
   },
+  // Document verification fields
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'documents_uploaded', 'contract_signed', 'verified', 'rejected'],
+    default: 'pending',
+  },
+  passportDocument: {
+    filename: { type: String },
+    uploadedAt: { type: Date },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
+    },
+    rejectionReason: { type: String }
+  },
+  contractSigned: {
+    signedAt: { type: Date },
+    ipAddress: { type: String },
+    userAgent: { type: String }
+  },
+  verifiedAt: { type: Date },
+  verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  verificationToken: { type: String },
 }, {
   timestamps: true,
   toJSON: {
     transform: function(doc, ret) {
       delete (ret as any).password
+      delete (ret as any).verificationToken
       return ret
     }
   }

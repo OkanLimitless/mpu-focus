@@ -20,7 +20,9 @@ import {
   Edit,
   UserPlus,
   Search,
-  Filter
+  Filter,
+  Send,
+  FileCheck
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import type { Lead } from '@/types'
@@ -49,6 +51,7 @@ export default function LeadManagement() {
   const [notes, setNotes] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
 
   useEffect(() => {
     fetchLeads()
@@ -192,6 +195,38 @@ export default function LeadManagement() {
     }
   }
 
+  const handleSendVerificationEmail = async (leadId: string) => {
+    try {
+      setIsSendingEmail(true)
+      const response = await fetch(`/api/leads/${leadId}/send-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Verification email sent successfully",
+        })
+        fetchLeads() // Refresh to update any status changes
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to send verification email')
+      }
+    } catch (error: any) {
+      console.error('Error sending verification email:', error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send verification email",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('de-DE', {
       day: '2-digit',
@@ -314,13 +349,26 @@ export default function LeadManagement() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewDetails(lead)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(lead)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {lead.status === 'converted' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSendVerificationEmail(lead._id)}
+                              disabled={isSendingEmail}
+                              title="Send verification email"
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -492,6 +540,25 @@ export default function LeadManagement() {
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
                       Convert to User Account
+                    </Button>
+                  </div>
+                )}
+
+                {/* Send Verification Email */}
+                {selectedLead.status === 'converted' && (
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-medium">Document Verification</h4>
+                    <p className="text-sm text-gray-600">
+                      Send an email invitation for document upload and contract signing.
+                    </p>
+                    <Button
+                      onClick={() => handleSendVerificationEmail(selectedLead._id)}
+                      disabled={isSendingEmail}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {isSendingEmail ? 'Sending...' : 'Send Verification Email'}
                     </Button>
                   </div>
                 )}
