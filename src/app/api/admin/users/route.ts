@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { default: connectDB } = await import('@/lib/mongodb')
     const { default: User } = await import('@/models/User')
     const { default: VideoProgress } = await import('@/models/VideoProgress')
+    const { default: Chapter } = await import('@/models/Chapter')
     
     await connectDB()
 
@@ -33,54 +34,63 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean()
 
+    // Get all chapters to calculate total
+    const totalChapters = await Chapter.countDocuments({ isActive: true })
+
     // Get progress data for all users
     const usersWithProgress = await Promise.all(
       users.map(async (user) => {
         if (user.role === 'user') {
-          // Get user progress summary
-          const progressData = await VideoProgress.aggregate([
+          // Get chapter-based progress for this user
+          const chapterProgress = await VideoProgress.aggregate([
             { $match: { userId: user._id } },
             {
               $group: {
-                _id: '$userId',
+                _id: '$chapterId',
                 totalVideos: { $sum: 1 },
                 completedVideos: { 
                   $sum: { 
                     $cond: [{ $eq: ['$isCompleted', true] }, 1, 0] 
                   } 
                 },
-                averageProgress: { $avg: '$completionPercentage' },
-                lastActivity: { $max: '$lastWatched' }
+                lastActivity: { $max: '$lastWatchedAt' }
+              }
+            },
+            {
+              $addFields: {
+                isChapterCompleted: {
+                  $gte: [
+                    { $divide: ['$completedVideos', '$totalVideos'] },
+                    0.8 // Chapter is considered complete when 80% of videos are done
+                  ]
+                }
               }
             }
           ])
 
-          // Get unique videos and chapters for this user
-          const uniqueVideos = await VideoProgress.distinct('videoId', { userId: user._id })
-          const userChapters = await VideoProgress.aggregate([
-            { $match: { userId: user._id } },
-            { $lookup: { from: 'videos', localField: 'videoId', foreignField: '_id', as: 'video' } },
-            { $unwind: '$video' },
-            { $group: { _id: '$video.chapterId', avgProgress: { $avg: '$completionPercentage' } } },
-            { $match: { avgProgress: { $gte: 95 } } },
-            { $count: 'completed' }
-          ])
+          const completedChapters = chapterProgress.filter(chapter => chapter.isChapterCompleted).length
+          const totalUserChapters = chapterProgress.length
+          const overallProgress = totalUserChapters > 0 
+            ? Math.round((completedChapters / totalUserChapters) * 100)
+            : 0
 
-          const progress = progressData[0] || {
-            totalVideos: 0,
-            completedVideos: 0,
-            averageProgress: 0,
-            lastActivity: null
-          }
+          // Get last activity across all videos
+          const lastActivity = chapterProgress.reduce((latest, chapter) => {
+            if (!latest || (chapter.lastActivity && chapter.lastActivity > latest)) {
+              return chapter.lastActivity
+            }
+            return latest
+          }, null)
 
           return {
             ...user,
             progress: {
-              ...progress,
-              totalVideos: uniqueVideos.length,
-              totalChapters: 0, // Will be calculated properly in detailed view
-              completedChapters: userChapters[0]?.completed || 0,
-              averageProgress: Math.round(progress.averageProgress || 0)
+              totalChapters: totalUserChapters,
+              completedChapters,
+              totalVideos: chapterProgress.reduce((sum, ch) => sum + ch.totalVideos, 0),
+              completedVideos: chapterProgress.reduce((sum, ch) => sum + ch.completedVideos, 0),
+              averageProgress: overallProgress,
+              lastActivity
             }
           }
         }

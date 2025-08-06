@@ -61,13 +61,14 @@ export async function GET(
 
       const totalVideos = chapterProgress.length
       const completedVideos = chapterProgress.filter(p => p.isCompleted).length
-      const averageProgress = totalVideos > 0 
-        ? Math.round(chapterProgress.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / totalVideos)
-        : 0
+      
+      // Chapter is completed when 80% or more of videos are completed
+      const chapterCompletionPercentage = totalVideos > 0 ? (completedVideos / totalVideos) * 100 : 0
+      const isChapterCompleted = chapterCompletionPercentage >= 80
 
       const lastActivity = chapterProgress.reduce((latest, p) => {
-        if (!latest || (p.lastWatched && p.lastWatched > latest)) {
-          return p.lastWatched
+        if (!latest || (p.lastWatchedAt && p.lastWatchedAt > latest)) {
+          return p.lastWatchedAt
         }
         return latest
       }, null)
@@ -78,36 +79,42 @@ export async function GET(
         chapterOrder: chapter.order,
         totalVideos,
         completedVideos,
-        progress: averageProgress,
+        progress: Math.round(chapterCompletionPercentage),
+        isChapterCompleted,
         lastActivity,
         videos: chapterProgress.map(p => ({
           videoId: p.videoId?._id,
           videoTitle: p.videoId?.title,
           videoOrder: p.videoId?.order,
           progress: Math.round(p.completionPercentage || 0),
-          timeWatched: p.timeWatched,
-          lastWatched: p.lastWatched,
+          timeWatched: p.watchedDuration,
+          totalDuration: p.totalDuration,
+          lastWatched: p.lastWatchedAt,
           isCompleted: p.isCompleted
         }))
       }
     })
 
-    // Calculate overall statistics
+    // Calculate overall statistics based on chapters
+    const totalChapters = chapters.length
+    const completedChapters = progressByChapter.filter(c => c.isChapterCompleted).length
+    const overallProgress = totalChapters > 0 
+      ? Math.round((completedChapters / totalChapters) * 100)
+      : 0
+
+    // Video statistics for reference
     const totalVideos = userProgress.length
     const completedVideos = userProgress.filter(p => p.isCompleted).length
-    const overallProgress = totalVideos > 0 
-      ? Math.round(userProgress.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / totalVideos)
-      : 0
 
     return NextResponse.json({
       success: true,
       progress: progressByChapter,
       summary: {
-        totalVideos,
-        completedVideos,
+        totalChapters,
+        completedChapters,
         overallProgress,
-        totalChapters: chapters.length,
-        completedChapters: progressByChapter.filter(c => c.progress >= 95).length
+        totalVideos,
+        completedVideos
       }
     })
 

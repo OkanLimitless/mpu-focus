@@ -332,12 +332,15 @@ export default function UserManagement() {
                     {user.role === 'user' && user.progress && (
                       <div className="w-48 space-y-2">
                         <div className="flex justify-between text-xs">
-                          <span>Progress</span>
+                          <span>Chapter Progress</span>
                           <span>{user.progress.averageProgress}%</span>
                         </div>
                         <Progress value={user.progress.averageProgress} className="h-2" />
                         <div className="text-xs text-muted-foreground">
-                          {user.progress.completedVideos}/{user.progress.totalVideos} videos
+                          {user.progress.completedChapters}/{user.progress.totalChapters} chapters
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ({user.progress.completedVideos}/{user.progress.totalVideos} videos)
                         </div>
                       </div>
                     )}
@@ -416,7 +419,7 @@ export default function UserManagement() {
                       <div>
                         <p className="text-sm text-muted-foreground">Chapters Completed</p>
                         <p className="text-2xl font-bold">
-                          {selectedUser.progress?.completedChapters || 0}/{selectedUser.progress?.totalChapters || 0}
+                          {userProgress.filter((ch: any) => ch.isChapterCompleted).length}/{userProgress.length}
                         </p>
                       </div>
                       <BookOpen className="h-8 w-8 text-green-500" />
@@ -428,7 +431,11 @@ export default function UserManagement() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Overall Progress</p>
-                        <p className="text-2xl font-bold">{selectedUser.progress?.averageProgress || 0}%</p>
+                        <p className="text-2xl font-bold">
+                          {userProgress.length > 0 
+                            ? Math.round((userProgress.filter((ch: any) => ch.isChapterCompleted).length / userProgress.length) * 100)
+                            : 0}%
+                        </p>
                       </div>
                       <BarChart3 className="h-8 w-8 text-purple-500" />
                     </div>
@@ -443,14 +450,28 @@ export default function UserManagement() {
                   {userProgress.map((chapter: any) => (
                     <div key={chapter.chapterId} className="border rounded p-3">
                       <div className="flex justify-between items-center mb-2">
-                        <h5 className="font-medium">{chapter.chapterTitle}</h5>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-medium">{chapter.chapterTitle}</h5>
+                          {chapter.isChapterCompleted && (
+                            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                              Completed
+                            </span>
+                          )}
+                        </div>
                         <span className="text-sm text-muted-foreground">
                           {chapter.completedVideos}/{chapter.totalVideos} videos
                         </span>
                       </div>
-                      <Progress value={chapter.progress} className="h-2 mb-2" />
+                      <Progress 
+                        value={chapter.progress} 
+                        className={`h-2 mb-2 ${chapter.isChapterCompleted ? 'bg-green-100' : ''}`}
+                      />
                       <div className="text-xs text-muted-foreground">
-                        Progress: {chapter.progress}%
+                        Progress: {chapter.progress}% 
+                        {chapter.isChapterCompleted 
+                          ? ' (Chapter Completed)' 
+                          : ` (Need ${Math.ceil(chapter.totalVideos * 0.8) - chapter.completedVideos} more videos)`
+                        }
                         {chapter.lastActivity && (
                           <span className="ml-4">
                             Last activity: {formatDate(new Date(chapter.lastActivity))}
