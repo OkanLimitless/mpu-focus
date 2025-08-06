@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
-import { utapi } from 'uploadthing/server'
+import { UTApi } from 'uploadthing/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Upload to UploadThing
+      const utapi = new UTApi()
       const uploadResult = await utapi.uploadFiles([document])
       
       if (!uploadResult[0] || uploadResult[0].error) {
