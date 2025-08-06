@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Download, Eye, FileText, Image, Loader2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Download, Eye, FileText, Image, Loader2, ZoomIn, ZoomOut, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 // Dynamically import react-pdf components to avoid SSR issues
@@ -58,16 +58,23 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
 
   const onDocumentLoadError = (error: Error) => {
     console.error('Error loading document:', error)
-    setError('Failed to load document')
+    setError('Failed to load document. The file may no longer exist or be accessible.')
     setLoading(false)
   }
 
   const handleDownload = async () => {
     try {
+      setLoading(true)
       const response = await fetch(url)
       
       if (!response.ok) {
-        throw new Error('Download failed')
+        if (response.status === 404) {
+          throw new Error('Document not found. The file may have been moved or deleted.')
+        } else if (response.status === 403) {
+          throw new Error('Access denied. You do not have permission to download this document.')
+        } else {
+          throw new Error(`Download failed with status ${response.status}`)
+        }
       }
       
       const blob = await response.blob()
@@ -87,13 +94,15 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
         title: "Download Started",
         description: `${filename} is being downloaded.`,
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download error:', error)
       toast({
         title: "Download Failed",
-        description: "Failed to download the document. Please try again.",
+        description: error.message || "Failed to download the document. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -157,8 +166,20 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
           )}
           
           {error && (
-            <div className="flex items-center justify-center p-8 text-red-600">
-              <span>{error}</span>
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+              <h3 className="text-lg font-medium text-red-800 mb-2">Document Unavailable</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <div className="bg-red-50 p-4 rounded-lg max-w-md">
+                <p className="text-sm text-red-700">
+                  <strong>What you can do:</strong>
+                </p>
+                <ul className="text-sm text-red-700 mt-2 text-left list-disc list-inside">
+                  <li>Contact support for assistance</li>
+                  <li>Try uploading the document again</li>
+                  <li>Check that the file was uploaded successfully</li>
+                </ul>
+              </div>
             </div>
           )}
 

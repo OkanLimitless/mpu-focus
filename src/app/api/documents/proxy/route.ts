@@ -17,13 +17,27 @@ export async function GET(request: NextRequest) {
 
     // Validate that the URL is from UploadThing
     const allowedDomains = ['utfs.io', 'uploadthing.com']
-    const urlObj = new URL(fileUrl)
+    let urlObj: URL
+    
+    try {
+      urlObj = new URL(fileUrl)
+    } catch (error) {
+      console.error('Invalid URL provided:', fileUrl)
+      return NextResponse.json(
+        { error: 'Invalid URL format' },
+        { status: 400 }
+      )
+    }
+
     if (!allowedDomains.some(domain => urlObj.hostname.includes(domain))) {
+      console.error('Unauthorized domain:', urlObj.hostname)
       return NextResponse.json(
         { error: 'Invalid file source' },
         { status: 403 }
       )
     }
+
+    console.log('Attempting to fetch document from:', fileUrl)
 
     // Fetch the file from UploadThing
     const response = await fetch(fileUrl, {
@@ -32,14 +46,48 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    console.log('UploadThing response status:', response.status)
+
     if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`)
+      console.error(`Failed to fetch file from UploadThing. Status: ${response.status}, URL: ${fileUrl}`)
+      
+      // Provide more specific error messages based on status
+      if (response.status === 404) {
+        return NextResponse.json(
+          { 
+            error: 'Document not found', 
+            details: 'The requested document no longer exists or the URL is incorrect',
+            url: fileUrl 
+          },
+          { status: 404 }
+        )
+      } else if (response.status === 403) {
+        return NextResponse.json(
+          { 
+            error: 'Access denied', 
+            details: 'Permission denied to access this document',
+            url: fileUrl 
+          },
+          { status: 403 }
+        )
+      } else {
+        return NextResponse.json(
+          { 
+            error: 'Failed to fetch document', 
+            details: `UploadThing returned status ${response.status}`,
+            url: fileUrl 
+          },
+          { status: response.status }
+        )
+      }
     }
 
     // Get the file data
     const fileBuffer = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') || 'application/octet-stream'
     const contentLength = response.headers.get('content-length')
+
+    console.log(`Successfully fetched document. Size: ${fileBuffer.byteLength} bytes, Type: ${contentType}`)
 
     // Create response with proper headers
     const proxyResponse = new NextResponse(fileBuffer, {
@@ -50,17 +98,26 @@ export async function GET(request: NextRequest) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
-        'Content-Disposition': 'inline', // Display in browser instead of forcing download
+        'Cache-Control': 'public, max-age=3600', // Reduced cache time for debugging
+        'Content-Disposition': 'inline',
       }
     })
 
     return proxyResponse
 
-  } catch (error) {
-    console.error('Document proxy error:', error)
+  } catch (error: any) {
+    console.error('Document proxy error:', {
+      message: error.message,
+      stack: error.stack,
+      url: new URL(request.url).searchParams.get('url')
+    })
+    
     return NextResponse.json(
-      { error: 'Failed to fetch document' },
+      { 
+        error: 'Internal server error', 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }
