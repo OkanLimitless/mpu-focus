@@ -74,10 +74,11 @@ export default function VerificationManagement() {
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
   
-  // Review form states
+  // Review state
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [allowResubmission, setAllowResubmission] = useState(false)
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -120,6 +121,7 @@ export default function VerificationManagement() {
       pending: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', icon: Clock },
       documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileCheck },
       contract_signed: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', icon: Clock },
+      resubmission_required: { variant: 'secondary' as const, className: 'bg-orange-100 text-orange-800', icon: AlertTriangle },
       verified: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800', icon: CheckCircle2 },
       rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800', icon: XCircle }
     }
@@ -138,6 +140,7 @@ export default function VerificationManagement() {
     setSelectedUser(user)
     setReviewAction(null)
     setRejectionReason('')
+    setAllowResubmission(false) // Reset resubmission option
     setIsReviewDialogOpen(true)
   }
 
@@ -147,49 +150,54 @@ export default function VerificationManagement() {
     if (reviewAction === 'reject' && !rejectionReason.trim()) {
       toast({
         title: "Error",
-        description: "Please provide a reason for rejection",
+        description: "Please provide a rejection reason",
         variant: "destructive",
       })
       return
     }
 
     try {
-      setIsSubmitting(true)
+      setIsSubmittingReview(true)
       const response = await fetch(`/api/admin/verification/${selectedUser._id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: reviewAction,
-          rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined
+          status: reviewAction === 'approve' ? 'verified' : 'rejected',
+          rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
+          allowResubmission: reviewAction === 'reject' ? allowResubmission : false
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        setUsers(users.map(user => 
-          user._id === selectedUser._id ? data.user : user
-        ))
-        setIsReviewDialogOpen(false)
         toast({
           title: "Success",
-          description: `User verification ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully`,
+          description: data.message,
         })
-        fetchUsers() // Refresh to update stats
+        
+        // Reset form and close dialog
+        setReviewAction(null)
+        setRejectionReason('')
+        setAllowResubmission(false)
+        setIsReviewDialogOpen(false)
+        
+        // Refresh users list
+        fetchUsers()
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update verification')
+        throw new Error(errorData.error || 'Failed to submit review')
       }
     } catch (error: any) {
-      console.error('Error updating verification:', error)
+      console.error('Review submission error:', error)
       toast({
         title: "Error",
-        description: error.message || "Failed to update verification",
+        description: error.message || "Failed to submit review",
         variant: "destructive",
       })
     } finally {
-      setIsSubmitting(false)
+      setIsSubmittingReview(false)
     }
   }
 
@@ -269,6 +277,7 @@ export default function VerificationManagement() {
             <option value="pending">Pending</option>
             <option value="documents_uploaded">Documents Uploaded</option>
             <option value="contract_signed">Contract Signed</option>
+            <option value="resubmission_required">Resubmission Required</option>
             <option value="verified">Verified</option>
             <option value="rejected">Rejected</option>
           </select>
@@ -353,7 +362,7 @@ export default function VerificationManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleReviewUser(user)}
-                          disabled={user.verificationStatus === 'pending'}
+                          disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -520,9 +529,20 @@ export default function VerificationManagement() {
                 )}
 
                 {/* Review Actions */}
-                {selectedUser.verificationStatus === 'contract_signed' && (
+                {(selectedUser.verificationStatus === 'contract_signed' || selectedUser.verificationStatus === 'resubmission_required') && (
                   <div className="space-y-4">
                     <h4 className="text-lg font-medium">Review Decision</h4>
+                    
+                    {selectedUser.verificationStatus === 'resubmission_required' && (
+                      <div className="bg-orange-50 p-3 rounded-lg mb-4">
+                        <div className="flex items-center space-x-2">
+                          <AlertTriangle className="h-5 w-5 text-orange-600" />
+                          <p className="text-sm text-orange-800">
+                            <strong>Resubmission Status:</strong> This user was previously rejected and is allowed to resubmit documents.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="flex space-x-4">
                       <Button
@@ -543,15 +563,47 @@ export default function VerificationManagement() {
                     </div>
 
                     {reviewAction === 'reject' && (
-                      <div>
-                        <Label htmlFor="rejectionReason">Reason for Rejection</Label>
-                        <Textarea
-                          id="rejectionReason"
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="Please provide a detailed reason for rejection..."
-                          className="mt-1"
-                        />
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="rejectionReason">Reason for Rejection</Label>
+                          <Textarea
+                            id="rejectionReason"
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Please provide a detailed reason for rejection..."
+                            className="mt-1"
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="allowResubmission"
+                              checked={allowResubmission}
+                              onChange={(e) => setAllowResubmission(e.target.checked)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <Label htmlFor="allowResubmission" className="text-sm font-medium">
+                              Allow document re-submission
+                            </Label>
+                          </div>
+                          
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <p><strong>If checked:</strong> User can upload new documents without re-signing the contract</p>
+                            <p><strong>If unchecked:</strong> User verification will be permanently rejected</p>
+                          </div>
+                          
+                          {allowResubmission && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <p className="text-sm text-blue-800">
+                                📧 The user will receive an email with instructions to upload new documents. 
+                                Their contract signature will remain valid.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -565,10 +617,10 @@ export default function VerificationManagement() {
                       </Button>
                       <Button
                         onClick={handleSubmitReview}
-                        disabled={isSubmitting || !reviewAction}
+                        disabled={isSubmittingReview || !reviewAction}
                         className="flex-1"
                       >
-                        {isSubmitting ? 'Processing...' : 'Submit Review'}
+                        {isSubmittingReview ? 'Processing...' : 'Submit Review'}
                       </Button>
                     </div>
                   </div>

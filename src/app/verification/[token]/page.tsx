@@ -20,7 +20,8 @@ import {
   FileText,
   Shield,
   Clock,
-  Eye
+  Eye,
+  AlertTriangle
 } from 'lucide-react'
 
 interface VerificationData {
@@ -29,6 +30,9 @@ interface VerificationData {
     lastName: string
     email: string
     verificationStatus: string
+    passportDocument?: {
+      rejectionReason?: string
+    }
   }
   valid: boolean
 }
@@ -75,6 +79,10 @@ export default function VerificationPage() {
             break
           case 'contract_signed':
             setCurrentStep(3)
+            break
+          case 'resubmission_required':
+            // For resubmission, go back to step 1 but show resubmission message
+            setCurrentStep(1)
             break
           case 'verified':
             setCurrentStep(4)
@@ -156,11 +164,19 @@ export default function VerificationPage() {
           })
         }
         
-        setCurrentStep(2)
+        // Handle step progression based on API response
+        if (data.nextStep === 'review') {
+          // Resubmission case - contract already signed, go to review
+          setCurrentStep(3)
+        } else {
+          // Normal flow - go to contract signing
+          setCurrentStep(2)
+        }
+        
         setUploadProgress(100)
         toast({
           title: "Success",
-          description: "Document uploaded successfully",
+          description: data.message || "Document uploaded successfully",
         })
         // Refresh verification data
         await verifyToken()
@@ -361,6 +377,27 @@ export default function VerificationPage() {
               <CardDescription>
                 Please upload a clear photo of your passport or national ID card.
               </CardDescription>
+              
+              {/* Resubmission Notice */}
+              {verificationData?.user.verificationStatus === 'resubmission_required' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-orange-800">Document Resubmission Required</h4>
+                      <p className="text-sm text-orange-700 mt-1">
+                        Your previous documents need to be updated. Please upload new documents below. 
+                        <strong> Your contract signature remains valid.</strong>
+                      </p>
+                      {verificationData.user.passportDocument?.rejectionReason && (
+                        <div className="mt-2 p-2 bg-orange-100 rounded text-xs text-orange-800">
+                          <strong>Reason:</strong> {verificationData.user.passportDocument.rejectionReason}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">

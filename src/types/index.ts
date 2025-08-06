@@ -9,7 +9,7 @@ export interface User extends Document {
   role: 'user' | 'admin'
   isActive: boolean
   // Document verification fields
-  verificationStatus: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected'
+  verificationStatus: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'
   passportDocument?: {
     filename: string
     uploadedAt: Date

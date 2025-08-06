@@ -7,7 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Upload, FileText, LogOut, AlertCircle, Clock, CheckCircle2, XCircle, Mail } from 'lucide-react'
+import { 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  XCircle, 
+  Mail, 
+  BookOpen, 
+  Play,
+  Upload
+} from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
 export default function DashboardPage() {
@@ -84,6 +93,8 @@ export default function DashboardPage() {
         return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Documents Uploaded</Badge>
       case 'contract_signed':
         return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Under Review</Badge>
+      case 'resubmission_required':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Resubmission Required</Badge>
       case 'verified':
         return <Badge variant="secondary" className="bg-green-100 text-green-800">Verified</Badge>
       case 'rejected':
@@ -101,6 +112,8 @@ export default function DashboardPage() {
         return 'Your documents have been uploaded. Please complete the contract signing process.'
       case 'contract_signed':
         return 'Your documents and contract are being reviewed by our team. This typically takes 1-2 business days.'
+      case 'resubmission_required':
+        return 'Your documents need to be updated. Please upload new documents. Your contract signature remains valid.'
       case 'rejected':
         return 'Your submission was rejected. Please contact support for more information and to resubmit.'
       default:
@@ -184,6 +197,22 @@ export default function DashboardPage() {
                           <Mail className="h-4 w-4 mr-2" />
                           Contact Support for Verification Link
                         </Button>
+                      </div>
+                    )}
+                    {userDetails.verificationStatus === 'resubmission_required' && (
+                      <div className="mt-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => window.open('/dashboard', '_blank')} // This would be replaced with actual resubmission link
+                          className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload New Documents
+                        </Button>
+                        <p className="text-xs text-orange-600 mt-2">
+                          Your contract signature is still valid - only document upload is required.
+                        </p>
                       </div>
                     )}
                   </div>

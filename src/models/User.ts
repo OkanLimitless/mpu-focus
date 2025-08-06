@@ -37,19 +37,21 @@ const UserSchema = new Schema<User>({
   // Document verification fields
   verificationStatus: {
     type: String,
-    enum: ['pending', 'documents_uploaded', 'contract_signed', 'verified', 'rejected'],
+    enum: ['pending', 'documents_uploaded', 'contract_signed', 'verified', 'rejected', 'resubmission_required'],
     default: 'pending',
   },
   passportDocument: {
     filename: { type: String },
-    uploadedAt: { type: Date },
     url: { type: String }, // Add URL for document access
+    uploadedAt: { type: Date },
     status: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending'
     },
-    rejectionReason: { type: String }
+    rejectionReason: { type: String },
+    resubmissionCount: { type: Number, default: 0 }, // Track how many times documents were resubmitted
+    allowResubmission: { type: Boolean, default: false } // Whether user can resubmit documents
   },
   contractSigned: {
     signedAt: { type: Date },

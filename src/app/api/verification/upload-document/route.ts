@@ -28,9 +28,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user is already verified
     if (user.verificationStatus === 'verified') {
       return NextResponse.json(
         { error: 'User is already verified' },
+        { status: 400 }
+      )
+    }
+
+    // Check if this is a resubmission scenario
+    const isResubmission = user.verificationStatus === 'resubmission_required' && 
+                          user.passportDocument?.allowResubmission
+
+    // For new uploads, user should be in pending status
+    // For resubmissions, user should be in resubmission_required status
+    if (!isResubmission && user.verificationStatus !== 'pending') {
+      return NextResponse.json(
+        { error: 'Documents can only be uploaded when verification is pending or resubmission is required' },
         { status: 400 }
       )
     }
@@ -67,18 +81,38 @@ export async function POST(request: NextRequest) {
         filename: uploadedFile.name,
         url: uploadedFile.url, // Store the URL for preview/download
         uploadedAt: new Date(),
-        status: 'pending'
+        status: 'pending',
+        // Preserve resubmission tracking
+        resubmissionCount: user.passportDocument?.resubmissionCount || 0,
+        allowResubmission: false, // Reset until admin decides
+        // Clear previous rejection reason
+        rejectionReason: undefined
       }
-      user.verificationStatus = 'documents_uploaded'
+
+      // Update verification status based on whether contract was already signed
+      if (isResubmission && user.contractSigned) {
+        // User is resubmitting documents but contract is already signed
+        user.verificationStatus = 'contract_signed'
+      } else {
+        // First time upload or no contract signed yet
+        user.verificationStatus = 'documents_uploaded'
+      }
+
       await user.save()
+
+      const responseMessage = isResubmission 
+        ? 'Document resubmitted successfully. Your previous contract signature remains valid.'
+        : 'Document uploaded successfully'
 
       return NextResponse.json({
         success: true,
-        message: 'Document uploaded successfully',
+        message: responseMessage,
         file: {
           name: uploadedFile.name,
           url: uploadedFile.url
-        }
+        },
+        isResubmission: isResubmission,
+        nextStep: user.contractSigned ? 'review' : 'contract_signing'
       })
 
     } catch (uploadError) {
