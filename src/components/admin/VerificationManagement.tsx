@@ -463,10 +463,13 @@ export default function VerificationManagement() {
                     </div>
                     
                     {/* Document Preview */}
-                    {selectedUser.passportDocument?.url ? (
+                    {selectedUser.passportDocument?.url || selectedUser.passportDocument?.filename ? (
                       <DocumentPreview
                         filename={selectedUser.passportDocument.filename}
-                        url={selectedUser.passportDocument.url}
+                        url={
+                          selectedUser.passportDocument.url || 
+                          `https://utfs.io/f/${selectedUser.passportDocument.filename}`
+                        }
                         className="w-full"
                       />
                     ) : (
@@ -474,7 +477,7 @@ export default function VerificationManagement() {
                         <div className="flex items-center space-x-2 text-gray-600">
                           <AlertTriangle className="h-5 w-5" />
                           <p className="text-sm">
-                            Document URL not available. Document may have been uploaded before URL storage was implemented.
+                            Document not available for preview. Please contact support.
                           </p>
                         </div>
                       </div>

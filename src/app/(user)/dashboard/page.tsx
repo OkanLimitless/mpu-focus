@@ -15,7 +15,9 @@ import {
   Mail, 
   BookOpen, 
   Play,
-  Upload
+  Upload,
+  LogOut,
+  FileText
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
