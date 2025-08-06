@@ -1,22 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { connectToDatabase } from '@/lib/db'
-import User from '@/models/User'
-import UserProgress from '@/models/UserProgress'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
-    if (!session || session.user.role !== 'admin') {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    await connectToDatabase()
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: User } = await import('@/models/User')
+    const { default: VideoProgress } = await import('@/models/VideoProgress')
+    
+    await connectDB()
+
+    // Check if user is admin
+    const adminUser = await User.findOne({ email: session.user.email })
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
 
     // Get all users with their basic info
     const users = await User.find({})
@@ -29,7 +38,7 @@ export async function GET(request: NextRequest) {
       users.map(async (user) => {
         if (user.role === 'user') {
           // Get user progress summary
-          const progressData = await UserProgress.aggregate([
+          const progressData = await VideoProgress.aggregate([
             { $match: { userId: user._id } },
             {
               $group: {
@@ -37,20 +46,22 @@ export async function GET(request: NextRequest) {
                 totalVideos: { $sum: 1 },
                 completedVideos: { 
                   $sum: { 
-                    $cond: [{ $gte: ['$progress', 95] }, 1, 0] 
+                    $cond: [{ $eq: ['$isCompleted', true] }, 1, 0] 
                   } 
                 },
-                averageProgress: { $avg: '$progress' },
+                averageProgress: { $avg: '$completionPercentage' },
                 lastActivity: { $max: '$lastWatched' }
               }
             }
           ])
 
-          // Get total chapters for this user
-          const chapterCount = await UserProgress.distinct('chapterId', { userId: user._id })
-          const completedChapters = await UserProgress.aggregate([
+          // Get unique videos and chapters for this user
+          const uniqueVideos = await VideoProgress.distinct('videoId', { userId: user._id })
+          const userChapters = await VideoProgress.aggregate([
             { $match: { userId: user._id } },
-            { $group: { _id: '$chapterId', avgProgress: { $avg: '$progress' } } },
+            { $lookup: { from: 'videos', localField: 'videoId', foreignField: '_id', as: 'video' } },
+            { $unwind: '$video' },
+            { $group: { _id: '$video.chapterId', avgProgress: { $avg: '$completionPercentage' } } },
             { $match: { avgProgress: { $gte: 95 } } },
             { $count: 'completed' }
           ])
@@ -66,8 +77,9 @@ export async function GET(request: NextRequest) {
             ...user,
             progress: {
               ...progress,
-              totalChapters: chapterCount.length,
-              completedChapters: completedChapters[0]?.completed || 0,
+              totalVideos: uniqueVideos.length,
+              totalChapters: 0, // Will be calculated properly in detailed view
+              completedChapters: userChapters[0]?.completed || 0,
               averageProgress: Math.round(progress.averageProgress || 0)
             }
           }
@@ -93,12 +105,26 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
-    if (!session || session.user.role !== 'admin') {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: User } = await import('@/models/User')
+    
+    await connectDB()
+
+    // Check if user is admin
+    const adminUser = await User.findOne({ email: session.user.email })
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
       )
     }
 
@@ -110,8 +136,6 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    await connectToDatabase()
 
     // Update user status
     const user = await User.findByIdAndUpdate(

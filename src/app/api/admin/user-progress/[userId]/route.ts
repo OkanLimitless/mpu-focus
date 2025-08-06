@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { connectToDatabase } from '@/lib/db'
-import UserProgress from '@/models/UserProgress'
-import Chapter from '@/models/Chapter'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
-    if (!session || session.user.role !== 'admin') {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    const { default: connectDB } = await import('@/lib/mongodb')
+    const { default: User } = await import('@/models/User')
+    const { default: VideoProgress } = await import('@/models/VideoProgress')
+    const { default: Chapter } = await import('@/models/Chapter')
+    const { default: Video } = await import('@/models/Video')
+    
+    await connectDB()
+
+    // Check if user is admin
+    const adminUser = await User.findOne({ email: session.user.email })
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
       )
     }
 
@@ -28,8 +41,6 @@ export async function GET(
       )
     }
 
-    await connectToDatabase()
-
     // Get all chapters for reference
     const chapters = await Chapter.find({ isActive: true })
       .select('_id title order')
@@ -37,22 +48,21 @@ export async function GET(
       .lean()
 
     // Get detailed progress for the user
-    const userProgress = await UserProgress.find({ userId })
-      .populate('chapterId', 'title order')
-      .populate('videoId', 'title order')
-      .sort({ 'chapterId.order': 1, 'videoId.order': 1 })
+    const userProgress = await VideoProgress.find({ userId })
+      .populate('videoId', 'title order chapterId')
+      .sort({ 'videoId.order': 1 })
       .lean()
 
     // Group progress by chapter
     const progressByChapter = chapters.map(chapter => {
       const chapterProgress = userProgress.filter(
-        progress => progress.chapterId._id.toString() === chapter._id.toString()
+        progress => progress.videoId?.chapterId?.toString() === (chapter._id as any).toString()
       )
 
       const totalVideos = chapterProgress.length
-      const completedVideos = chapterProgress.filter(p => p.progress >= 95).length
+      const completedVideos = chapterProgress.filter(p => p.isCompleted).length
       const averageProgress = totalVideos > 0 
-        ? Math.round(chapterProgress.reduce((sum, p) => sum + p.progress, 0) / totalVideos)
+        ? Math.round(chapterProgress.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / totalVideos)
         : 0
 
       const lastActivity = chapterProgress.reduce((latest, p) => {
@@ -63,7 +73,7 @@ export async function GET(
       }, null)
 
       return {
-        chapterId: chapter._id,
+        chapterId: chapter._id as any,
         chapterTitle: chapter.title,
         chapterOrder: chapter.order,
         totalVideos,
@@ -71,22 +81,22 @@ export async function GET(
         progress: averageProgress,
         lastActivity,
         videos: chapterProgress.map(p => ({
-          videoId: p.videoId._id,
-          videoTitle: p.videoId.title,
-          videoOrder: p.videoId.order,
-          progress: Math.round(p.progress),
+          videoId: p.videoId?._id,
+          videoTitle: p.videoId?.title,
+          videoOrder: p.videoId?.order,
+          progress: Math.round(p.completionPercentage || 0),
           timeWatched: p.timeWatched,
           lastWatched: p.lastWatched,
-          isCompleted: p.progress >= 95
+          isCompleted: p.isCompleted
         }))
       }
     })
 
     // Calculate overall statistics
     const totalVideos = userProgress.length
-    const completedVideos = userProgress.filter(p => p.progress >= 95).length
+    const completedVideos = userProgress.filter(p => p.isCompleted).length
     const overallProgress = totalVideos > 0 
-      ? Math.round(userProgress.reduce((sum, p) => sum + p.progress, 0) / totalVideos)
+      ? Math.round(userProgress.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / totalVideos)
       : 0
 
     return NextResponse.json({
