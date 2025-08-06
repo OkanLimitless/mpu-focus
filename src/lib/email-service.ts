@@ -9,7 +9,7 @@ interface User {
 
 // Create transporter
 const createTransporter = () => {
-  return nodemailer.createTransport({
+  const config = {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: false, // true for 465, false for other ports
@@ -20,17 +20,44 @@ const createTransporter = () => {
     tls: {
       rejectUnauthorized: false
     }
+  }
+  
+  console.log('Creating transporter with config:', {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    user: config.auth.user ? '***' + config.auth.user.slice(-4) : 'undefined',
+    pass: config.auth.pass ? '***' + config.auth.pass.slice(-4) : 'undefined'
   })
+  
+  return nodemailer.createTransport(config)
+}
+
+// Enhanced SMTP credential check
+function checkSMTPCredentials(): { configured: boolean; missing: string[] } {
+  const missing = []
+  
+  if (!process.env.SMTP_USER) missing.push('SMTP_USER')
+  if (!process.env.SMTP_PASS) missing.push('SMTP_PASS')
+  if (!process.env.SMTP_HOST) missing.push('SMTP_HOST')
+  
+  return {
+    configured: missing.length === 0,
+    missing
+  }
 }
 
 // Send verification approved email
 export async function sendVerificationApprovedEmail(user: User): Promise<boolean> {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.warn('SMTP credentials not configured, skipping email notification')
+    const credentialCheck = checkSMTPCredentials()
+    
+    if (!credentialCheck.configured) {
+      console.warn('SMTP credentials not configured for approval email, missing:', credentialCheck.missing)
       return false
     }
 
+    console.log('Sending verification approved email to:', user.email)
     const transporter = createTransporter()
     const template = getVerificationApprovedEmailTemplate(user)
 
@@ -43,7 +70,7 @@ export async function sendVerificationApprovedEmail(user: User): Promise<boolean
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('Verification approved email sent:', info.messageId)
+    console.log('Verification approved email sent successfully:', info.messageId)
     return true
 
   } catch (error) {
@@ -59,11 +86,18 @@ export async function sendVerificationRejectedEmail(
   allowResubmission: boolean = false
 ): Promise<boolean> {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.warn('SMTP credentials not configured, skipping email notification')
+    const credentialCheck = checkSMTPCredentials()
+    
+    if (!credentialCheck.configured) {
+      console.warn('SMTP credentials not configured for rejection email, missing:', credentialCheck.missing)
       return false
     }
 
+    console.log('Sending verification rejected email to:', user.email, {
+      allowResubmission,
+      rejectionReasonLength: rejectionReason.length
+    })
+    
     const transporter = createTransporter()
     const template = getVerificationRejectedEmailTemplate(user, rejectionReason, allowResubmission)
 
@@ -75,12 +109,25 @@ export async function sendVerificationRejectedEmail(
       text: template.text,
     }
 
+    console.log('Sending rejection email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      htmlLength: mailOptions.html.length,
+      textLength: mailOptions.text.length
+    })
+
     const info = await transporter.sendMail(mailOptions)
-    console.log('Verification rejected email sent:', info.messageId)
+    console.log('Verification rejected email sent successfully:', info.messageId)
     return true
 
-  } catch (error) {
-    console.error('Error sending verification rejected email:', error)
+  } catch (error: any) {
+    console.error('Error sending verification rejected email:', {
+      error: error.message,
+      stack: error.stack,
+      user: user.email,
+      allowResubmission
+    })
     return false
   }
 }
@@ -88,11 +135,14 @@ export async function sendVerificationRejectedEmail(
 // Test email configuration
 export async function testEmailConfiguration(): Promise<boolean> {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.warn('SMTP credentials not configured')
+    const credentialCheck = checkSMTPCredentials()
+    
+    if (!credentialCheck.configured) {
+      console.warn('SMTP credentials not configured for testing, missing:', credentialCheck.missing)
       return false
     }
 
+    console.log('Testing email configuration...')
     const transporter = createTransporter()
     await transporter.verify()
     console.log('Email configuration is valid')

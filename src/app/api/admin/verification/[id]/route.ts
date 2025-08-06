@@ -8,6 +8,11 @@ import { sendVerificationApprovedEmail, sendVerificationRejectedEmail } from '@/
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
+// Helper function to check SMTP configuration
+function isEmailConfigured(): boolean {
+  return !!(process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_HOST)
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -59,6 +64,17 @@ export async function PUT(
       )
     }
 
+    // Check email configuration upfront
+    const emailConfigured = isEmailConfigured()
+    if (!emailConfigured) {
+      console.warn('SMTP configuration incomplete:', {
+        SMTP_USER: !!process.env.SMTP_USER,
+        SMTP_PASS: !!process.env.SMTP_PASS,
+        SMTP_HOST: !!process.env.SMTP_HOST,
+        SMTP_FROM: !!process.env.SMTP_FROM
+      })
+    }
+
     // Update user verification status
     if (status === 'verified') {
       user.verificationStatus = 'verified'
@@ -74,20 +90,36 @@ export async function PUT(
       await user.save()
 
       // Send approval email
-      try {
-        await sendVerificationApprovedEmail({
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email
-        })
-      } catch (emailError) {
-        console.error('Failed to send approval email:', emailError)
-        // Continue with the process even if email fails
+      let emailSent = false
+      let emailError: Error | null = null
+      
+      if (emailConfigured) {
+        try {
+          emailSent = await sendVerificationApprovedEmail({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email
+          })
+          
+          if (!emailSent) {
+            console.warn('Verification approved email sending returned false')
+          }
+        } catch (error) {
+          emailError = error instanceof Error ? error : new Error(String(error))
+          console.error('Failed to send approval email:', error)
+        }
       }
+
+      const message = emailConfigured 
+        ? (emailSent ? 'User verified successfully and notification email sent' : 'User verified successfully but email notification failed')
+        : 'User verified successfully (email notification skipped - SMTP not configured)'
 
       return NextResponse.json({
         success: true,
-        message: 'User verified successfully and notification email sent',
+        message,
+        emailSent,
+        emailConfigured,
+        emailError: emailError?.message,
         user: {
           _id: user._id,
           verificationStatus: user.verificationStatus,
@@ -121,24 +153,51 @@ export async function PUT(
       await user.save()
 
       // Send rejection email
-      try {
-        await sendVerificationRejectedEmail(
-          {
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email
-          },
-          rejectionReason,
-          allowResubmission
-        )
-      } catch (emailError) {
-        console.error('Failed to send rejection email:', emailError)
-        // Continue with the process even if email fails
+      let emailSent = false
+      let emailError: Error | null = null
+      
+      if (emailConfigured) {
+        try {
+          console.log('Attempting to send rejection email...', {
+            email: user.email,
+            allowResubmission,
+            rejectionReason: rejectionReason.substring(0, 50) + '...'
+          })
+          
+          emailSent = await sendVerificationRejectedEmail(
+            {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email
+            },
+            rejectionReason,
+            allowResubmission
+          )
+          
+          if (!emailSent) {
+            console.warn('Verification rejected email sending returned false')
+          } else {
+            console.log('Verification rejected email sent successfully')
+          }
+        } catch (error) {
+          emailError = error instanceof Error ? error : new Error(String(error))
+          console.error('Failed to send rejection email:', error)
+        }
+      } else {
+        console.warn('Skipping rejection email - SMTP not configured')
       }
+
+      const statusText = allowResubmission ? 'requires resubmission' : 'rejected'
+      const message = emailConfigured 
+        ? (emailSent ? `User verification ${statusText} and notification email sent` : `User verification ${statusText} but email notification failed`)
+        : `User verification ${statusText} (email notification skipped - SMTP not configured)`
 
       return NextResponse.json({
         success: true,
-        message: `User verification ${allowResubmission ? 'requires resubmission' : 'rejected'} and notification email sent`,
+        message,
+        emailSent,
+        emailConfigured,
+        emailError: emailError?.message,
         user: {
           _id: user._id,
           verificationStatus: user.verificationStatus,
