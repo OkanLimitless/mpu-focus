@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 
-export async function GET() {
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
     

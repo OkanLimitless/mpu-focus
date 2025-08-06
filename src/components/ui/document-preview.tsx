@@ -1,14 +1,30 @@
 'use client'
 
-import { useState } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Download, Eye, FileText, Image, Loader2, ZoomIn, ZoomOut } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+// Dynamically import react-pdf components to avoid SSR issues
+const Document = dynamic(
+  () => import('react-pdf').then(mod => ({ default: mod.Document })),
+  { ssr: false }
+)
+const Page = dynamic(
+  () => import('react-pdf').then(mod => ({ default: mod.Page })),
+  { ssr: false }
+)
+
+// Set up PDF.js worker only on client side
+const setupPdfWorker = () => {
+  if (typeof window !== 'undefined') {
+    import('react-pdf').then(({ pdfjs }) => {
+      pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`
+    })
+  }
+}
 
 interface DocumentPreviewProps {
   filename: string
@@ -23,10 +39,16 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
   const [scale, setScale] = useState<number>(1.0)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState<boolean>(false)
 
   const fileExtension = filename.split('.').pop()?.toLowerCase()
   const isPDF = fileExtension === 'pdf'
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '')
+
+  useEffect(() => {
+    setIsMounted(true)
+    setupPdfWorker()
+  }, [])
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -89,7 +111,7 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
             <span className="text-sm font-medium truncate">{filename}</span>
           </div>
           <div className="flex items-center space-x-2">
-            {isPDF && (
+            {isPDF && isMounted && (
               <>
                 <Button
                   variant="outline"
@@ -132,7 +154,7 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
             </div>
           )}
 
-          {isPDF && !error && (
+          {isPDF && !error && isMounted && (
             <div className="pdf-container">
               <Document
                 file={url}

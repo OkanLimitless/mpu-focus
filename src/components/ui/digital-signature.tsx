@@ -1,11 +1,35 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
-import SignatureCanvas from 'react-signature-canvas'
+import { useRef, useState, useEffect, forwardRef } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { PenTool, RotateCcw, Check, X } from 'lucide-react'
+import { PenTool, RotateCcw, Check, X, Loader2 } from 'lucide-react'
+
+// Create a wrapper component for SignatureCanvas
+const SignatureCanvasWrapper = forwardRef((props: any, ref: any) => {
+  const [SignatureCanvas, setSignatureCanvas] = useState<any>(null)
+
+  useEffect(() => {
+    import('react-signature-canvas').then((mod) => {
+      setSignatureCanvas(() => mod.default)
+    })
+  }, [])
+
+  if (!SignatureCanvas) {
+    return (
+      <div className="flex items-center justify-center h-48 border rounded">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Loading signature pad...</span>
+      </div>
+    )
+  }
+
+  return <SignatureCanvas ref={ref} {...props} />
+})
+
+SignatureCanvasWrapper.displayName = 'SignatureCanvasWrapper'
 
 interface DigitalSignatureProps {
   onSignatureCapture: (signatureData: string) => void
@@ -20,21 +44,28 @@ export default function DigitalSignature({
   isSubmitting = false,
   className 
 }: DigitalSignatureProps) {
-  const sigCanvasRef = useRef<SignatureCanvas>(null)
+  const sigCanvasRef = useRef<any>(null)
   const [isEmpty, setIsEmpty] = useState(true)
   const [isValid, setIsValid] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     // Check if signature canvas is available
-    if (sigCanvasRef.current) {
+    if (sigCanvasRef.current && isMounted) {
       setIsEmpty(sigCanvasRef.current.isEmpty())
     }
-  }, [])
+  }, [isMounted])
 
   const handleClear = () => {
-    sigCanvasRef.current?.clear()
-    setIsEmpty(true)
-    setIsValid(false)
+    if (sigCanvasRef.current) {
+      sigCanvasRef.current.clear()
+      setIsEmpty(true)
+      setIsValid(false)
+    }
   }
 
   const handleSave = () => {
@@ -61,6 +92,24 @@ export default function DigitalSignature({
     penColor: 'rgb(0, 0, 0)',
     backgroundColor: 'rgb(255, 255, 255)',
     onEnd: handleSignatureEnd,
+    canvasProps: {
+      width: 500,
+      height: 200,
+      className: 'signature-canvas w-full h-48 border rounded cursor-crosshair',
+    }
+  }
+
+  if (!isMounted) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center h-48">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Loading signature pad...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -78,13 +127,8 @@ export default function DigitalSignature({
         {/* Signature Canvas */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white">
           <div className="relative">
-            <SignatureCanvas
+            <SignatureCanvasWrapper
               ref={sigCanvasRef}
-              canvasProps={{
-                width: 500,
-                height: 200,
-                className: 'signature-canvas w-full h-48 border rounded cursor-crosshair',
-              }}
               {...canvasProps}
             />
             {isEmpty && (

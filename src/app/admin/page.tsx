@@ -3,16 +3,38 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck } from 'lucide-react'
+import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck, Loader2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import UserManagement from '@/components/admin/UserManagement'
-import VideoManagement from '@/components/admin/VideoManagement'
-import ChapterManagement from '@/components/admin/ChapterManagement'
-import LeadManagement from '@/components/admin/LeadManagement'
-import VerificationManagement from '@/components/admin/VerificationManagement'
+
+// Dynamic imports for admin components to prevent SSR issues
+const UserManagement = dynamic(() => import('@/components/admin/UserManagement'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
+
+const VideoManagement = dynamic(() => import('@/components/admin/VideoManagement'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
+
+const ChapterManagement = dynamic(() => import('@/components/admin/ChapterManagement'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
+
+const LeadManagement = dynamic(() => import('@/components/admin/LeadManagement'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
+
+const VerificationManagement = dynamic(() => import('@/components/admin/VerificationManagement'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
 
 type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters' | 'videos'
 
