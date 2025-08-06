@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get all users with their basic info
+    // Get all users with their basic info and verification status
     const users = await User.find({})
-      .select('email firstName lastName role isActive createdAt lastLoginAt')
+      .select('email firstName lastName role isActive createdAt lastLoginAt verificationStatus passportDocument contractSigned verifiedAt verifiedBy')
       .sort({ createdAt: -1 })
       .lean()
 
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession()
     
@@ -115,37 +115,58 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { userId, isActive } = await request.json()
+    const { userId } = await request.json()
 
-    if (!userId || typeof isActive !== 'boolean') {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid request data' },
+        { error: 'User ID is required' },
         { status: 400 }
       )
     }
 
-    // Update user status
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { isActive },
-      { new: true }
-    ).select('email firstName lastName isActive')
+    // Find the user first to get their info for the response
+    const userToDelete = await User.findById(userId).select('email firstName lastName role')
 
-    if (!user) {
+    if (!userToDelete) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       )
     }
 
+    // Prevent deletion of admin users for safety
+    if (userToDelete.role === 'admin') {
+      return NextResponse.json(
+        { error: 'Cannot delete admin users' },
+        { status: 403 }
+      )
+    }
+
+    // Delete the user
+    await User.findByIdAndDelete(userId)
+
+    // Note: You might also want to clean up related data here:
+    // - User course progress
+    // - User uploaded documents (from UploadThing)
+    // - Any other user-related data
+    
+    // Clean up related course progress data
+    const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
+    await UserCourseProgress.deleteMany({ userId })
+
     return NextResponse.json({
       success: true,
-      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
-      user
+      message: `User ${userToDelete.firstName} ${userToDelete.lastName} (${userToDelete.email}) has been permanently deleted`,
+      deletedUser: {
+        id: userId,
+        email: userToDelete.email,
+        firstName: userToDelete.firstName,
+        lastName: userToDelete.lastName
+      }
     })
 
   } catch (error) {
-    console.error('Error updating user:', error)
+    console.error('Error deleting user:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

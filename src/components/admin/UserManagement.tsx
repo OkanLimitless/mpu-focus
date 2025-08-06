@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { formatDate } from '@/lib/utils'
-import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, Ban } from 'lucide-react'
+import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 
@@ -22,6 +22,19 @@ interface User {
   isActive: boolean
   createdAt: string
   lastLoginAt?: string
+  verificationStatus?: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'
+  passportDocument?: {
+    filename?: string
+    uploadedAt?: string
+    status?: string
+    rejectionReason?: string
+  }
+  contractSigned?: {
+    signedAt?: string
+    signatureMethod?: string
+  }
+  verifiedAt?: string
+  verifiedBy?: string
   progress?: {
     totalVideos: number
     completedVideos: number
@@ -45,11 +58,34 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [verificationFilter, setVerificationFilter] = useState<string>('all')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const { toast } = useToast()
+
+  // Helper function to get verification status badge
+  const getVerificationStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'verified':
+        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>
+      case 'pending':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
+      case 'documents_uploaded':
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><FileText className="w-3 h-3 mr-1" />Documents Uploaded</Badge>
+      case 'contract_signed':
+        return <Badge variant="secondary" className="bg-purple-100 text-purple-800"><Shield className="w-3 h-3 mr-1" />Contract Signed</Badge>
+      case 'rejected':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>
+      case 'resubmission_required':
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800"><AlertTriangle className="w-3 h-3 mr-1" />Resubmission Required</Badge>
+      default:
+        return <Badge variant="outline">No Status</Badge>
+    }
+  }
 
   const [userProgress, setUserProgress] = useState<any[]>([])
 
@@ -106,30 +142,23 @@ export default function UserManagement() {
     }
   }
 
-  const toggleUserStatus = async (userId: string, isActive: boolean) => {
+  const deleteUser = async (userId: string) => {
     setActionLoading(true)
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          isActive: !isActive,
-        }),
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
       })
 
       if (response.ok) {
         toast({
           title: 'Success',
-          description: `User ${!isActive ? 'activated' : 'deactivated'} successfully`,
+          description: 'User deleted successfully',
         })
         fetchUsers()
       } else {
         toast({
           title: 'Error',
-          description: 'Failed to update user status',
+          description: 'Failed to delete user',
           variant: 'destructive',
         })
       }
@@ -160,8 +189,10 @@ export default function UserManagement() {
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'active' && user.isActive) || 
       (statusFilter === 'inactive' && !user.isActive)
+    
+    const matchesVerification = verificationFilter === 'all' || user.verificationStatus === verificationFilter
 
-    return matchesSearch && matchesRole && matchesStatus
+    return matchesSearch && matchesRole && matchesStatus && matchesVerification
   })
 
   const getUserStatusBadge = (user: User) => {
@@ -249,10 +280,27 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label htmlFor="verification-filter">Verification</Label>
+              <Select value={verificationFilter} onValueChange={setVerificationFilter}>
+                <SelectTrigger id="verification-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Verification</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
+                  <SelectItem value="contract_signed">Contract Signed</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* User Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -268,10 +316,32 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Active Users</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.isActive).length}</p>
+                    <p className="text-sm text-muted-foreground">Verified Users</p>
+                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified').length}</p>
                   </div>
-                  <Shield className="h-8 w-8 text-green-500" />
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Verification</p>
+                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'pending' || u.verificationStatus === 'documents_uploaded' || u.verificationStatus === 'contract_signed').length}</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Rejected/Resubmission</p>
+                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'rejected' || u.verificationStatus === 'resubmission_required').length}</p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
@@ -283,17 +353,6 @@ export default function UserManagement() {
                     <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
                   </div>
                   <Shield className="h-8 w-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Inactive</p>
-                    <p className="text-2xl font-bold">{users.filter(u => !u.isActive).length}</p>
-                  </div>
-                  <Ban className="h-8 w-8 text-red-500" />
                 </div>
               </CardContent>
             </Card>
@@ -326,6 +385,50 @@ export default function UserManagement() {
                           <p>Last Login: {formatDate(new Date(user.lastLoginAt))}</p>
                         )}
                       </div>
+                      
+                      {/* Verification Status Information */}
+                      {user.role === 'user' && (
+                        <div className="space-y-2 pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">Verification:</span>
+                            {getVerificationStatusBadge(user.verificationStatus)}
+                          </div>
+                          
+                          {user.verificationStatus && user.verificationStatus !== 'pending' && (
+                            <div className="text-xs text-muted-foreground space-y-1">
+                              {user.passportDocument?.uploadedAt && (
+                                <p className="flex items-center gap-1">
+                                  <FileText className="w-3 h-3" />
+                                  Document: {formatDate(new Date(user.passportDocument.uploadedAt))}
+                                </p>
+                              )}
+                              {user.contractSigned?.signedAt && (
+                                <p className="flex items-center gap-1">
+                                  <Shield className="w-3 h-3" />
+                                  Contract: {formatDate(new Date(user.contractSigned.signedAt))} 
+                                  {user.contractSigned.signatureMethod && (
+                                    <span className="ml-1 text-gray-500">
+                                      ({user.contractSigned.signatureMethod})
+                                    </span>
+                                  )}
+                                </p>
+                              )}
+                              {user.verifiedAt && (
+                                <p className="flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Verified: {formatDate(new Date(user.verifiedAt))}
+                                </p>
+                              )}
+                              {user.passportDocument?.rejectionReason && (
+                                <p className="flex items-center gap-1 text-red-600">
+                                  <XCircle className="w-3 h-3" />
+                                  Reason: {user.passportDocument.rejectionReason}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
                     {/* Progress Bar for Users */}
@@ -356,21 +459,15 @@ export default function UserManagement() {
                     {user.role !== 'admin' && (
                       <Button
                         size="sm"
-                        variant={user.isActive ? "destructive" : "default"}
-                        onClick={() => toggleUserStatus(user._id, user.isActive)}
+                        variant="outline"
+                        onClick={() => {
+                          setUserToDelete(user);
+                          setDeleteDialogOpen(true);
+                        }}
                         disabled={actionLoading}
                       >
-                        {user.isActive ? (
-                          <>
-                            <Ban className="w-4 h-4 mr-1" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="w-4 h-4 mr-1" />
-                            Activate
-                          </>
-                        )}
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
                       </Button>
                     )}
                   </div>
@@ -468,6 +565,35 @@ export default function UserManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setProgressDialogOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete user {userToDelete?.firstName} {userToDelete?.lastName}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (userToDelete) {
+                  deleteUser(userToDelete._id);
+                }
+                setDeleteDialogOpen(false);
+              }}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
