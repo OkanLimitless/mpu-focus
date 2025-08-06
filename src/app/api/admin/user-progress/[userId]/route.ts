@@ -20,7 +20,6 @@ export async function GET(
     const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
     const { default: Chapter } = await import('@/models/Chapter')
     const { default: Course } = await import('@/models/Course')
-    const { default: VideoProgress } = await import('@/models/VideoProgress')
     
     await connectDB()
 
@@ -79,12 +78,9 @@ export async function GET(
         chapterId: chapter._id as any,
         chapterTitle: chapter.title,
         chapterOrder: chapter.order,
-        totalVideos: 0, // Could be populated if needed from Video model
-        completedVideos: 0, // Could be populated if needed
         progress: isChapterCompleted ? 100 : 0,
         isChapterCompleted,
-        lastActivity: courseProgress?.lastAccessedAt,
-        videos: [] // Could be populated from VideoProgress if needed
+        lastActivity: courseProgress?.lastAccessedAt
       }
     })
 
@@ -95,19 +91,13 @@ export async function GET(
       ? Math.round((completedChapters / totalChapters) * 100)
       : 0
 
-    // Video statistics would need to be calculated from VideoProgress if needed
-    const totalVideos = 0
-    const completedVideos = 0
-
     return NextResponse.json({
       success: true,
       progress: progressByChapter,
       summary: {
         totalChapters,
         completedChapters,
-        overallProgress,
-        totalVideos,
-        completedVideos
+        overallProgress
       }
     })
 

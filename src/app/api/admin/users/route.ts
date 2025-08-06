@@ -61,17 +61,15 @@ export async function GET(request: NextRequest) {
             ? Math.round((completedChapters / totalChapters) * 100)
             : 0
 
-          return {
-            ...user,
-            progress: {
-              totalChapters,
-              completedChapters,
-              totalVideos: 0, // Will be calculated in detailed view if needed
-              completedVideos: 0, // Will be calculated in detailed view if needed
-              averageProgress: overallProgress,
-              lastActivity: courseProgress?.lastAccessedAt || user.createdAt
+                      return {
+              ...user,
+              progress: {
+                totalChapters,
+                completedChapters,
+                averageProgress: overallProgress,
+                lastActivity: courseProgress?.lastAccessedAt || user.createdAt
+              }
             }
-          }
         }
 
         return user

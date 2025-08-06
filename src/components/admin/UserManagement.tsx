@@ -332,15 +332,12 @@ export default function UserManagement() {
                     {user.role === 'user' && user.progress && (
                       <div className="w-48 space-y-2">
                         <div className="flex justify-between text-xs">
-                          <span>Chapter Progress</span>
+                          <span>Progress</span>
                           <span>{user.progress.averageProgress}%</span>
                         </div>
                         <Progress value={user.progress.averageProgress} className="h-2" />
                         <div className="text-xs text-muted-foreground">
-                          {user.progress.completedChapters}/{user.progress.totalChapters} chapters
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ({user.progress.completedVideos}/{user.progress.totalVideos} videos)
+                          {user.progress.completedChapters}/{user.progress.totalChapters} chapters completed
                         </div>
                       </div>
                     )}
@@ -399,20 +396,7 @@ export default function UserManagement() {
           {selectedUser && (
             <div className="space-y-6 py-4">
               {/* Overall Progress */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Videos Completed</p>
-                        <p className="text-2xl font-bold">
-                          {selectedUser.progress?.completedVideos || 0}/{selectedUser.progress?.totalVideos || 0}
-                        </p>
-                      </div>
-                      <Play className="h-8 w-8 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -459,7 +443,7 @@ export default function UserManagement() {
                           )}
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          {chapter.completedVideos}/{chapter.totalVideos} videos
+                          Chapter {chapter.chapterOrder}
                         </span>
                       </div>
                       <Progress 
@@ -467,11 +451,7 @@ export default function UserManagement() {
                         className={`h-2 mb-2 ${chapter.isChapterCompleted ? 'bg-green-100' : ''}`}
                       />
                       <div className="text-xs text-muted-foreground">
-                        Progress: {chapter.progress}% 
-                        {chapter.isChapterCompleted 
-                          ? ' (Chapter Completed)' 
-                          : ` (Need ${Math.ceil(chapter.totalVideos * 0.8) - chapter.completedVideos} more videos)`
-                        }
+                        Status: {chapter.isChapterCompleted ? 'Completed' : 'Not Started'}
                         {chapter.lastActivity && (
                           <span className="ml-4">
                             Last activity: {formatDate(new Date(chapter.lastActivity))}
