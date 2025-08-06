@@ -92,7 +92,7 @@ export default function QuizStep({ step, value, onChange }: QuizStepProps) {
                       ? 'border-white bg-white' 
                       : 'border-gray-400'
                   }`}>
-                    {isSelected(option) && step.type !== 'multiple' && (
+                    {isSelected(option) && step.type === 'single' && (
                       <div className="w-2 h-2 rounded-full bg-blue-600 m-0.5"></div>
                     )}
                   </div>

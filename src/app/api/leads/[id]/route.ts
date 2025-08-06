@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { connectDB } from '@/lib/mongodb'
+import connectDB from '@/lib/mongodb'
 import Lead from '@/models/Lead'
 import User from '@/models/User'
 import { getServerSession } from 'next-auth'

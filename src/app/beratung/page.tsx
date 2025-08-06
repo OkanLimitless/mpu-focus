@@ -45,10 +45,16 @@ export default function BeratungPage() {
 
   const totalSteps = 7 // 6 quiz steps + 1 contact form
 
-  const quizSteps = [
+  const quizSteps: Array<{
+    question: string
+    subtitle?: string
+    type: 'single' | 'multiple' | 'boolean'
+    field: string
+    options: string[]
+  }> = [
     {
       question: "In welcher Zeit wollen Sie Ihre positive MPU abgeschlossen haben?",
-      type: "single",
+      type: "single" as const,
       field: "timeframe",
       options: [
         "Innerhalb von 3 Monaten",
@@ -59,7 +65,7 @@ export default function BeratungPage() {
     },
     {
       question: "Warum wurde Ihnen der Führerschein entzogen?",
-      type: "single",
+      type: "single" as const,
       field: "reason",
       options: [
         "Alkohol",
@@ -71,14 +77,14 @@ export default function BeratungPage() {
     },
     {
       question: "Haben Sie durch den Führerscheinentzug Ihren Job verloren?",
-      type: "boolean",
+      type: "boolean" as const,
       field: "jobLoss",
       options: ["Ja", "Nein"]
     },
     {
       question: "Warum glauben Sie, bestehen 70% nicht die MPU?",
       subtitle: "(Mehrfachauswahl möglich)",
-      type: "multiple",
+      type: "multiple" as const,
       field: "mpuChallenges",
       options: [
         "Mangelnde Vorbereitung",
@@ -92,7 +98,7 @@ export default function BeratungPage() {
     {
       question: "Welches sind Ihre größten Hürden und Ängste die Sie gerade beschäftigen?",
       subtitle: "(Mehrfachauswahl möglich)",
-      type: "multiple",
+      type: "multiple" as const,
       field: "concerns",
       options: [
         "Angst vor dem Gespräch",
@@ -106,7 +112,7 @@ export default function BeratungPage() {
     {
       question: "Zu welcher Tageszeit sind Sie am besten erreichbar?",
       subtitle: "(Mehrfachauswahl möglich)",
-      type: "multiple",
+      type: "multiple" as const,
       field: "availability",
       options: [
         "Vormittag (8-12 Uhr)",
