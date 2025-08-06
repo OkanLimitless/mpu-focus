@@ -11,7 +11,7 @@ import ContactForm from '@/components/enrollment/ContactForm'
 interface QuizData {
   timeframe: string
   reason: string
-  jobLoss: boolean
+  jobLoss: boolean | undefined
   mpuChallenges: string[]
   concerns: string[]
   availability: string[]
@@ -29,7 +29,7 @@ export default function BeratungPage() {
   const [quizData, setQuizData] = useState<QuizData>({
     timeframe: '',
     reason: '',
-    jobLoss: false,
+    jobLoss: undefined,
     mpuChallenges: [],
     concerns: [],
     availability: []

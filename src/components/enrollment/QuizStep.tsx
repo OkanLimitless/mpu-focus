@@ -37,6 +37,9 @@ export default function QuizStep({ step, value, onChange }: QuizStepProps) {
     if (step.type === 'single') {
       return value === option
     } else if (step.type === 'boolean') {
+      if (value === undefined || value === null) {
+        return false
+      }
       return (value === true && option === 'Ja') || (value === false && option === 'Nein')
     } else if (step.type === 'multiple') {
       return Array.isArray(value) && value.includes(option)
@@ -92,7 +95,7 @@ export default function QuizStep({ step, value, onChange }: QuizStepProps) {
                       ? 'border-white bg-white' 
                       : 'border-gray-400'
                   }`}>
-                    {isSelected(option) && step.type === 'single' && (
+                    {isSelected(option) && (step.type === 'single' || step.type === 'boolean') && (
                       <div className="w-2 h-2 rounded-full bg-blue-600 m-0.5"></div>
                     )}
                   </div>
