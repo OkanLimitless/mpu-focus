@@ -206,14 +206,30 @@ export default function DashboardPage() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => window.open('/dashboard', '_blank')} // This would be replaced with actual resubmission link
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/user/resubmission-link')
+                              const data = await response.json()
+                              
+                              if (data.success && data.resubmissionUrl) {
+                                window.open(data.resubmissionUrl, '_blank')
+                              } else {
+                                // Fallback to dashboard if API fails
+                                window.open('/dashboard', '_blank')
+                              }
+                            } catch (error) {
+                              console.error('Failed to get resubmission link:', error)
+                              // Fallback to dashboard
+                              window.open('/dashboard', '_blank')
+                            }
+                          }}
                           className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           Upload New Documents
                         </Button>
                         <p className="text-xs text-orange-600 mt-2">
-                          Your contract signature is still valid - only document upload is required.
+                          Your contract signature remains valid - just upload new documents.
                         </p>
                       </div>
                     )}

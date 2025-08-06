@@ -4,6 +4,7 @@ interface User {
   firstName?: string
   lastName?: string
   email: string
+  verificationToken?: string
 }
 
 export function getVerificationApprovedEmailTemplate(user: User) {
@@ -117,13 +118,20 @@ export function getVerificationRejectedEmailTemplate(
   allowResubmission: boolean = false
 ) {
   const firstName = user.firstName || 'Dear User'
+  
+  // Create the correct resubmission URL using the verification token
+  const resubmissionUrl = user.verificationToken 
+    ? `${process.env.NEXTAUTH_URL}/verification/${user.verificationToken}`
+    : `${process.env.NEXTAUTH_URL}/dashboard`
+    
   const resubmissionSection = allowResubmission ? `
     <div class="resubmission-section">
       <h3 style="color: #1f2937; margin-bottom: 15px;">📝 Document Re-submission</h3>
       <p>Good news! You can upload new documents without having to sign the contract again. Your previous contract signature remains valid.</p>
       <div style="text-align: center; margin: 20px 0;">
-        <a href="${process.env.NEXTAUTH_URL}/dashboard" class="button">Upload New Documents</a>
+        <a href="${resubmissionUrl}" class="button">Upload New Documents</a>
       </div>
+      <p style="font-size: 14px; color: #6b7280;">Click the button above to go directly to the verification page where you can upload your updated documents.</p>
     </div>
   ` : `
     <div class="info-section">
@@ -217,7 +225,7 @@ export function getVerificationRejectedEmailTemplate(
       📝 Document Re-submission
       Good news! You can upload new documents without having to sign the contract again. Your previous contract signature remains valid.
       
-      Upload new documents at: ${process.env.NEXTAUTH_URL}/dashboard
+      Upload new documents at: ${resubmissionUrl}
       ` : `
       To proceed with your verification, please contact our support team for guidance on the next steps.
       `}

@@ -168,7 +168,8 @@ export async function PUT(
             {
               firstName: user.firstName,
               lastName: user.lastName,
-              email: user.email
+              email: user.email,
+              verificationToken: user.verificationToken
             },
             rejectionReason,
             allowResubmission
