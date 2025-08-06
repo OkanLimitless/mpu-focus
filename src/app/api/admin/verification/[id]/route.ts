@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 // Helper function to check SMTP configuration
 function isEmailConfigured(): boolean {
-  return !!(process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_HOST)
+  return !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_HOST)
 }
 
 export async function PUT(
@@ -69,9 +69,9 @@ export async function PUT(
     if (!emailConfigured) {
       console.warn('SMTP configuration incomplete:', {
         SMTP_USER: !!process.env.SMTP_USER,
-        SMTP_PASS: !!process.env.SMTP_PASS,
+        SMTP_PASSWORD: !!process.env.SMTP_PASSWORD,
         SMTP_HOST: !!process.env.SMTP_HOST,
-        SMTP_FROM: !!process.env.SMTP_FROM
+        FROM_EMAIL: !!process.env.FROM_EMAIL
       })
     }
 

@@ -15,7 +15,7 @@ const createTransporter = () => {
     secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      pass: process.env.SMTP_PASSWORD, // Using SMTP_PASSWORD like the working email service
     },
     tls: {
       rejectUnauthorized: false
@@ -27,18 +27,18 @@ const createTransporter = () => {
     port: config.port,
     secure: config.secure,
     user: config.auth.user ? '***' + config.auth.user.slice(-4) : 'undefined',
-    pass: config.auth.pass ? '***' + config.auth.pass.slice(-4) : 'undefined'
+    pass: config.auth.pass ? '***configured***' : 'undefined'
   })
   
   return nodemailer.createTransport(config)
 }
 
-// Enhanced SMTP credential check
+// Enhanced SMTP credential check - using same variable names as working email service
 function checkSMTPCredentials(): { configured: boolean; missing: string[] } {
   const missing = []
   
   if (!process.env.SMTP_USER) missing.push('SMTP_USER')
-  if (!process.env.SMTP_PASS) missing.push('SMTP_PASS')
+  if (!process.env.SMTP_PASSWORD) missing.push('SMTP_PASSWORD') // Changed from SMTP_PASS
   if (!process.env.SMTP_HOST) missing.push('SMTP_HOST')
   
   return {
@@ -62,7 +62,7 @@ export async function sendVerificationApprovedEmail(user: User): Promise<boolean
     const template = getVerificationApprovedEmailTemplate(user)
 
     const mailOptions = {
-      from: `"MPU-Focus Team" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      from: `"MPU-Focus Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: user.email,
       subject: template.subject,
       html: template.html,
@@ -102,7 +102,7 @@ export async function sendVerificationRejectedEmail(
     const template = getVerificationRejectedEmailTemplate(user, rejectionReason, allowResubmission)
 
     const mailOptions = {
-      from: `"MPU-Focus Verification Team" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      from: `"MPU-Focus Verification Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
       to: user.email,
       subject: template.subject,
       html: template.html,

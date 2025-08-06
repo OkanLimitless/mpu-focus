@@ -117,8 +117,8 @@ UPLOADTHING_TOKEN=your_uploadthing_v7_token
 SMTP_HOST=your_smtp_host
 SMTP_PORT=587
 SMTP_USER=your_smtp_username
-SMTP_PASS=your_smtp_password
-SMTP_FROM=your_from_email
+SMTP_PASSWORD=your_smtp_password
+FROM_EMAIL=your_from_email
 ```
 
 ### UploadThing v7 Migration Note

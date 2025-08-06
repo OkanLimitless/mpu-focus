@@ -38,17 +38,17 @@ export async function POST(request: NextRequest) {
       SMTP_HOST: process.env.SMTP_HOST,
       SMTP_PORT: process.env.SMTP_PORT,
       SMTP_USER: process.env.SMTP_USER ? '***' + process.env.SMTP_USER.slice(-4) : undefined,
-      SMTP_PASS: process.env.SMTP_PASS ? '***configured***' : undefined,
-      SMTP_FROM: process.env.SMTP_FROM
+      SMTP_PASSWORD: process.env.SMTP_PASSWORD ? '***configured***' : undefined,
+      FROM_EMAIL: process.env.FROM_EMAIL
     }
 
     const configStatus = {
-      configured: !!(process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_HOST),
+      configured: !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD && process.env.SMTP_HOST),
       missing: [] as string[]
     }
 
     if (!process.env.SMTP_USER) configStatus.missing.push('SMTP_USER')
-    if (!process.env.SMTP_PASS) configStatus.missing.push('SMTP_PASS')
+    if (!process.env.SMTP_PASSWORD) configStatus.missing.push('SMTP_PASSWORD')
     if (!process.env.SMTP_HOST) configStatus.missing.push('SMTP_HOST')
 
     if (action === 'check') {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
             secure: false,
             auth: {
               user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
+              pass: process.env.SMTP_PASSWORD,
             },
             tls: {
               rejectUnauthorized: false
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           })
 
           const mailOptions = {
-            from: `"MPU-Focus Test" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+            from: `"MPU-Focus Test" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
             to: testEmail,
             subject: 'MPU-Focus SMTP Test Email',
             html: `
