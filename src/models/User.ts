@@ -43,6 +43,7 @@ const UserSchema = new Schema<User>({
   passportDocument: {
     filename: { type: String },
     uploadedAt: { type: Date },
+    url: { type: String }, // Add URL for document access
     status: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
@@ -53,7 +54,13 @@ const UserSchema = new Schema<User>({
   contractSigned: {
     signedAt: { type: Date },
     ipAddress: { type: String },
-    userAgent: { type: String }
+    userAgent: { type: String },
+    signatureData: { type: String }, // Base64 encoded signature image
+    signatureMethod: { 
+      type: String, 
+      enum: ['digital_signature', 'checkbox'], 
+      default: 'checkbox' 
+    }
   },
   verifiedAt: { type: Date },
   verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },

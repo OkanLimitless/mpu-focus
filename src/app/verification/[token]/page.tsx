@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
+import DocumentPreview from '@/components/ui/document-preview'
+import DigitalSignature from '@/components/ui/digital-signature'
 import { 
   Upload, 
   FileCheck, 
@@ -17,7 +19,8 @@ import {
   Download,
   FileText,
   Shield,
-  Clock
+  Clock,
+  Eye
 } from 'lucide-react'
 
 interface VerificationData {
@@ -45,6 +48,11 @@ export default function VerificationPage() {
   // Form state
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  
+  // Document preview and signature state
+  const [uploadedDocument, setUploadedDocument] = useState<{filename: string, url: string} | null>(null)
+  const [showDigitalSignature, setShowDigitalSignature] = useState(false)
+  const [signatureData, setSignatureData] = useState<string | null>(null)
 
   useEffect(() => {
     verifyToken()
@@ -139,6 +147,15 @@ export default function VerificationPage() {
       })
 
       if (response.ok) {
+        const data = await response.json()
+        // Store document info for preview
+        if (data.file) {
+          setUploadedDocument({
+            filename: data.file.name,
+            url: data.file.url
+          })
+        }
+        
         setCurrentStep(2)
         setUploadProgress(100)
         toast({
@@ -163,11 +180,56 @@ export default function VerificationPage() {
     }
   }
 
+  // Fetch document data for preview
+  const fetchDocumentData = async () => {
+    try {
+      const response = await fetch(`/api/verification/document/${token}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.document) {
+          setUploadedDocument({
+            filename: data.document.filename,
+            url: data.document.url
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching document:', error)
+    }
+  }
+
+  // Handle digital signature capture
+  const handleSignatureCapture = (signature: string) => {
+    setSignatureData(signature)
+    setShowDigitalSignature(false)
+    toast({
+      title: "Signature Captured",
+      description: "Your digital signature has been captured successfully.",
+    })
+  }
+
+  // Use effect to fetch document when moving to step 2
+  useEffect(() => {
+    if (currentStep === 2 && !uploadedDocument) {
+      fetchDocumentData()
+    }
+  }, [currentStep, token])
+
   const signContract = async () => {
     if (!agreedToTerms) {
       toast({
         title: "Error",
         description: "Please read and agree to the terms",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // If using digital signature, require signature data
+    if (showDigitalSignature && !signatureData) {
+      toast({
+        title: "Error",
+        description: "Please provide your digital signature",
         variant: "destructive",
       })
       return
@@ -183,7 +245,9 @@ export default function VerificationPage() {
         },
         body: JSON.stringify({
           token: token as string,
-          agreed: true
+          agreed: true,
+          signatureData: signatureData,
+          signatureMethod: showDigitalSignature ? 'digital_signature' : 'checkbox'
         }),
       })
 
@@ -341,6 +405,17 @@ export default function VerificationPage() {
               >
                 {isSubmitting ? 'Uploading...' : 'Upload Document'}
               </Button>
+
+              {/* Document Preview after upload */}
+              {uploadedDocument && (
+                <div className="mt-6">
+                  <DocumentPreview
+                    filename={uploadedDocument.filename}
+                    url={uploadedDocument.url}
+                    className="w-full"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -390,9 +465,79 @@ export default function VerificationPage() {
                 </Label>
               </div>
 
+              {/* Signature Method Selection */}
+              <div className="space-y-4">
+                <Label className="text-sm font-medium">Choose your signature method:</Label>
+                <div className="flex flex-col space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="checkbox-signature"
+                      checked={!showDigitalSignature}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setShowDigitalSignature(false)
+                          setSignatureData(null)
+                        }
+                      }}
+                    />
+                    <Label htmlFor="checkbox-signature" className="text-sm">
+                      Simple agreement (checkbox confirmation)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="digital-signature"
+                      checked={showDigitalSignature}
+                      onCheckedChange={(checked) => {
+                        setShowDigitalSignature(checked as boolean)
+                        if (!checked) {
+                          setSignatureData(null)
+                        }
+                      }}
+                    />
+                    <Label htmlFor="digital-signature" className="text-sm">
+                      Digital signature (more secure and legally binding)
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Digital Signature Component */}
+              {showDigitalSignature && !signatureData && (
+                <DigitalSignature
+                  onSignatureCapture={handleSignatureCapture}
+                  isSubmitting={isSubmitting}
+                  className="w-full"
+                />
+              )}
+
+              {/* Show captured signature */}
+              {signatureData && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Your Digital Signature:</Label>
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <img
+                      src={signatureData}
+                      alt="Your signature"
+                      className="max-w-full h-auto max-h-24 object-contain"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSignatureData(null)
+                      setShowDigitalSignature(true)
+                    }}
+                  >
+                    Change Signature
+                  </Button>
+                </div>
+              )}
+
               <Button
                 onClick={signContract}
-                disabled={!agreedToTerms || isSubmitting}
+                disabled={!agreedToTerms || (showDigitalSignature && !signatureData) || isSubmitting}
                 className="w-full"
               >
                 {isSubmitting ? 'Signing...' : 'Sign Agreement'}

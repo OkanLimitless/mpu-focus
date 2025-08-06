@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       // Update user with document information
       user.passportDocument = {
         filename: uploadedFile.name,
+        url: uploadedFile.url, // Store the URL for preview/download
         uploadedAt: new Date(),
         status: 'pending'
       }

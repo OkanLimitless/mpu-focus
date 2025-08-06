@@ -7,11 +7,26 @@ export async function POST(request: NextRequest) {
     await connectDB()
 
     const body = await request.json()
-    const { token, agreed } = body
+    const { token, agreed, signatureData, signatureMethod = 'digital_signature' } = body
 
-    if (!token || !agreed) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Token and agreement confirmation are required' },
+        { error: 'Token is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!agreed) {
+      return NextResponse.json(
+        { error: 'You must agree to the terms and conditions' },
+        { status: 400 }
+      )
+    }
+
+    // For digital signatures, signature data is required
+    if (signatureMethod === 'digital_signature' && !signatureData) {
+      return NextResponse.json(
+        { error: 'Digital signature is required' },
         { status: 400 }
       )
     }
@@ -26,39 +41,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.verificationStatus === 'verified') {
-      return NextResponse.json(
-        { error: 'User is already verified' },
-        { status: 400 }
-      )
-    }
-
     if (user.verificationStatus !== 'documents_uploaded') {
       return NextResponse.json(
-        { error: 'Please upload your document first' },
+        { error: 'Please upload your documents first' },
         { status: 400 }
       )
     }
 
-    // Get client IP and user agent for audit trail
+    // Get client information
     const clientIP = request.headers.get('x-forwarded-for') || 
-                     request.headers.get('x-real-ip') || 
-                     'unknown'
+                    request.headers.get('x-real-ip') || 
+                    'unknown'
     const userAgent = request.headers.get('user-agent') || 'unknown'
 
     // Update user with contract signing information
     user.contractSigned = {
       signedAt: new Date(),
       ipAddress: clientIP,
-      userAgent: userAgent
+      userAgent: userAgent,
+      signatureData: signatureData || null,
+      signatureMethod: signatureMethod
     }
     user.verificationStatus = 'contract_signed'
+
     await user.save()
 
     return NextResponse.json({
       success: true,
       message: 'Contract signed successfully. Your account is now under review.',
-      verificationStatus: user.verificationStatus
     })
 
   } catch (error) {

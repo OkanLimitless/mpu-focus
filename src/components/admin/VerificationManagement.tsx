@@ -5,23 +5,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
+import DocumentPreview from '@/components/ui/document-preview'
+import { SignatureDisplay } from '@/components/ui/digital-signature'
 import { 
   FileCheck, 
   Clock, 
-  CheckCircle, 
+  CheckCircle2, 
   XCircle, 
-  Eye, 
-  Download,
-  Search,
+  AlertTriangle, 
+  Search, 
   Filter,
-  UserCheck,
-  FileText,
-  Calendar
+  Eye,
+  Download,
+  PenTool
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 
 interface VerificationUser {
   _id: string
@@ -34,11 +35,14 @@ interface VerificationUser {
     uploadedAt: Date
     status: string
     rejectionReason?: string
+    url?: string // Added for document preview
   }
   contractSigned?: {
     signedAt: Date
     ipAddress: string
-    userAgent: string
+    userAgent?: string
+    signatureData?: string // Base64 encoded signature
+    signatureMethod?: string
   }
   verifiedAt?: Date
   createdAt: Date
@@ -116,7 +120,7 @@ export default function VerificationManagement() {
       pending: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', icon: Clock },
       documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileCheck },
       contract_signed: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', icon: Clock },
-      verified: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800', icon: CheckCircle },
+      verified: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800', icon: CheckCircle2 },
       rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800', icon: XCircle }
     }
     
@@ -211,7 +215,7 @@ export default function VerificationManagement() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <UserCheck className="h-5 w-5" />
+          <PenTool className="h-5 w-5" />
           <span>Verification Management</span>
         </CardTitle>
         <CardDescription>
@@ -328,7 +332,7 @@ export default function VerificationManagement() {
                         <div className="text-sm">
                           {user.contractSigned ? (
                             <div className="flex items-center space-x-2">
-                              <FileText className="h-4 w-4 text-green-600" />
+                              <PenTool className="h-4 w-4 text-green-600" />
                               <span>Signed</span>
                             </div>
                           ) : (
@@ -449,12 +453,23 @@ export default function VerificationManagement() {
                       </div>
                     </div>
                     
-                    {/* Document viewing would require integration with file storage */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-600">
-                        Document preview and download functionality would be integrated with your file storage system.
-                      </p>
-                    </div>
+                    {/* Document Preview */}
+                    {selectedUser.passportDocument?.url ? (
+                      <DocumentPreview
+                        filename={selectedUser.passportDocument.filename}
+                        url={selectedUser.passportDocument.url}
+                        className="w-full"
+                      />
+                    ) : (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <AlertTriangle className="h-5 w-5" />
+                          <p className="text-sm">
+                            Document URL not available. Document may have been uploaded before URL storage was implemented.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -473,7 +488,34 @@ export default function VerificationManagement() {
                         <Label className="text-sm font-medium">IP Address</Label>
                         <p className="text-sm text-gray-600">{selectedUser.contractSigned.ipAddress}</p>
                       </div>
+                      <div>
+                        <Label className="text-sm font-medium">Signature Method</Label>
+                        <p className="text-sm text-gray-600">
+                          {selectedUser.contractSigned.signatureMethod === 'digital_signature' 
+                            ? 'Digital Signature' 
+                            : 'Checkbox Agreement'}
+                        </p>
+                      </div>
+                      {selectedUser.contractSigned.userAgent && (
+                        <div>
+                          <Label className="text-sm font-medium">User Agent</Label>
+                          <p className="text-xs text-gray-600 truncate" title={selectedUser.contractSigned.userAgent}>
+                            {selectedUser.contractSigned.userAgent}
+                          </p>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Digital Signature Display */}
+                    {selectedUser.contractSigned.signatureData && (
+                      <div className="mt-4">
+                        <SignatureDisplay
+                          signatureData={selectedUser.contractSigned.signatureData}
+                          title="Digital Signature"
+                          className="w-full max-w-md"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -488,7 +530,7 @@ export default function VerificationManagement() {
                         onClick={() => setReviewAction('approve')}
                         className={reviewAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
                       >
-                        <CheckCircle className="h-4 w-4 mr-2" />
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
                         Approve
                       </Button>
                       <Button
