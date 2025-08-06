@@ -14,8 +14,9 @@ export async function GET() {
 
     const { default: connectDB } = await import('@/lib/mongodb')
     const { default: User } = await import('@/models/User')
-    const { default: VideoProgress } = await import('@/models/VideoProgress')
-    const { default: Video } = await import('@/models/Video')
+    const { default: UserCourseProgress } = await import('@/models/UserCourseProgress')
+    const { default: Chapter } = await import('@/models/Chapter')
+    const { default: Course } = await import('@/models/Course')
     
     await connectDB()
 
@@ -30,29 +31,33 @@ export async function GET() {
 
     // Get all regular users
     const users = await User.find({ role: 'user', isActive: true })
-      .select('firstName lastName email')
+      .select('firstName lastName email createdAt')
       .lean()
 
-    // Get all videos to calculate total count
-    const totalVideos = await Video.countDocuments({ isActive: true })
+    // Get total chapters count (assuming one active course for simplicity)
+    const activeCourse = await Course.findOne({ isActive: true })
+    const totalChapters = activeCourse ? await Chapter.countDocuments({ 
+      courseId: activeCourse._id, 
+      isActive: true 
+    }) : 0
 
     // Get progress data for all users
     const userProgressData = await Promise.all(
       users.map(async (user) => {
-        // Get user's video progress
-        const progressRecords = await VideoProgress.find({ userId: user._id })
-          .populate('videoId', 'title duration')
-          .sort({ lastWatchedAt: -1 })
-          .lean()
+        // Get user's course progress
+        const courseProgress = await UserCourseProgress.findOne({ 
+          userId: user._id,
+          courseId: activeCourse?._id 
+        }).lean() as {
+          completedChapters?: number[]
+          currentChapterOrder?: number
+          lastAccessedAt?: Date
+        } | null
 
-        const completedVideos = progressRecords.filter(p => p.isCompleted).length
-        const totalProgress = progressRecords.length > 0 
-          ? progressRecords.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) / progressRecords.length
-          : 0
-
-        const lastActivity = progressRecords.length > 0 
-          ? progressRecords[0].lastWatchedAt 
-          : user.createdAt
+        const completedChapters = courseProgress?.completedChapters?.length || 0
+        const currentChapter = courseProgress?.currentChapterOrder || 1
+        const lastActivity = courseProgress?.lastAccessedAt || user.createdAt
+        const overallProgress = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0
 
         return {
           user: {
@@ -61,19 +66,11 @@ export async function GET() {
             lastName: user.lastName,
             email: user.email
           },
-          totalVideos,
-          completedVideos,
-          overallProgress: Math.round(totalProgress),
-          lastActivity,
-          recentProgress: progressRecords.slice(0, 5).map(progress => ({
-            video: {
-              title: progress.videoId?.title || 'Unknown Video',
-              duration: progress.videoId?.duration || 0
-            },
-            completionPercentage: progress.completionPercentage || 0,
-            isCompleted: progress.isCompleted,
-            lastWatchedAt: progress.lastWatchedAt
-          }))
+          totalChapters,
+          completedChapters,
+          currentChapter,
+          overallProgress,
+          lastActivity
         }
       })
     )
