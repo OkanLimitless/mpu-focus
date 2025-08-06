@@ -8,13 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
-import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
+import UserManagement from '@/components/admin/UserManagement'
 import VideoManagement from '@/components/admin/VideoManagement'
 import ChapterManagement from '@/components/admin/ChapterManagement'
 import LeadManagement from '@/components/admin/LeadManagement'
 
-type AdminSection = 'dashboard' | 'users' | 'leads' | 'chapters' | 'videos' | 'progress'
+type AdminSection = 'dashboard' | 'users' | 'leads' | 'chapters' | 'videos'
 
 const navigationItems = [
   {
@@ -25,15 +24,15 @@ const navigationItems = [
   },
   {
     id: 'users' as AdminSection,
-    name: 'User Requests',
-    icon: UserCheck,
-    description: 'Manage user access requests'
+    name: 'User Management',
+    icon: Users,
+    description: 'Manage users and track progress'
   },
   {
     id: 'leads' as AdminSection,
     name: 'Lead Management',
-    icon: Users,
-    description: 'Manage and track leads'
+    icon: UserCheck,
+    description: 'Manage and convert leads'
   },
   {
     id: 'chapters' as AdminSection,
@@ -46,12 +45,6 @@ const navigationItems = [
     name: 'Videos',
     icon: Video,
     description: 'Manage course videos'
-  },
-  {
-    id: 'progress' as AdminSection,
-    name: 'User Progress',
-    icon: BarChart3,
-    description: 'Track user progress'
   }
 ]
 
@@ -182,15 +175,15 @@ export default function AdminDashboardPage() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveSection('users')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <UserCheck className="h-5 w-5 text-red-500" />
-                    Pending Requests
+                    <Users className="h-5 w-5 text-blue-500" />
+                    User Management
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{loading ? '...' : stats.pendingRequests}</div>
-                  <p className="text-sm text-muted-foreground">User access requests awaiting review</p>
+                  <div className="text-3xl font-bold text-blue-600">{loading ? '...' : stats.totalUsers}</div>
+                  <p className="text-sm text-muted-foreground">Manage all users and track their progress</p>
                   <Button className="mt-3 w-full" variant="outline">
-                    Review Requests
+                    Manage Users
                   </Button>
                 </CardContent>
               </Card>
@@ -198,13 +191,13 @@ export default function AdminDashboardPage() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveSection('leads')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5 text-blue-500" />
+                    <UserCheck className="h-5 w-5 text-green-500" />
                     New Leads
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{loading ? '...' : stats.newLeads}</div>
-                  <p className="text-sm text-muted-foreground">Fresh leads to contact</p>
+                  <div className="text-3xl font-bold text-green-600">{loading ? '...' : stats.newLeads}</div>
+                  <p className="text-sm text-muted-foreground">Fresh leads to contact and convert</p>
                   <Button className="mt-3 w-full" variant="outline">
                     Manage Leads
                   </Button>
@@ -214,12 +207,12 @@ export default function AdminDashboardPage() {
               <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveSection('videos')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Play className="h-5 w-5 text-green-500" />
+                    <Play className="h-5 w-5 text-purple-500" />
                     Videos Completed
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{loading ? '...' : stats.completedVideos}</div>
+                  <div className="text-3xl font-bold text-purple-600">{loading ? '...' : stats.completedVideos}</div>
                   <p className="text-sm text-muted-foreground">Total video completions</p>
                   <Button className="mt-3 w-full" variant="outline">
                     Manage Videos
@@ -230,15 +223,13 @@ export default function AdminDashboardPage() {
           </div>
         )
       case 'users':
-        return <UserRequestsManagement />
+        return <UserManagement />
       case 'leads':
         return <LeadManagement />
       case 'chapters':
         return <ChapterManagement />
       case 'videos':
         return <VideoManagement />
-      case 'progress':
-        return <UserProgressDashboard />
       default:
         return null
     }
@@ -285,11 +276,8 @@ export default function AdminDashboardPage() {
                     <div className="font-medium">{item.name}</div>
                     <div className="text-xs text-gray-500 truncate">{item.description}</div>
                   </div>
-                  {(item.id === 'users' && stats.pendingRequests > 0) && (
-                    <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
-                  )}
                   {(item.id === 'leads' && stats.newLeads > 0) && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
                   )}
                 </button>
               )
@@ -350,24 +338,13 @@ export default function AdminDashboardPage() {
 
             {/* Desktop Action Buttons */}
             <div className="hidden lg:flex items-center gap-4">
-              {stats.pendingRequests > 0 && (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => setActiveSection('users')}
-                  className="relative"
-                >
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  {stats.pendingRequests} Pending
-                </Button>
-              )}
               {stats.newLeads > 0 && (
                 <Button
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-green-600 hover:bg-green-700"
                   onClick={() => setActiveSection('leads')}
                 >
-                  <Users className="h-4 w-4 mr-2" />
+                  <UserCheck className="h-4 w-4 mr-2" />
                   {stats.newLeads} New Leads
                 </Button>
               )}
@@ -394,24 +371,13 @@ export default function AdminDashboardPage() {
 
           {/* Mobile Action Buttons */}
           <div className="lg:hidden mt-4 flex gap-2">
-            {stats.pendingRequests > 0 && (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setActiveSection('users')}
-                className="flex-1"
-              >
-                <UserCheck className="h-4 w-4 mr-2" />
-                {stats.pendingRequests} Pending
-              </Button>
-            )}
             {stats.newLeads > 0 && (
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 flex-1"
+                className="bg-green-600 hover:bg-green-700 flex-1"
                 onClick={() => setActiveSection('leads')}
               >
-                <Users className="h-4 w-4 mr-2" />
+                <UserCheck className="h-4 w-4 mr-2" />
                 {stats.newLeads} New Leads
               </Button>
             )}
