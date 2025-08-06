@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
 
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
@@ -20,6 +23,7 @@ export async function GET(
 
     // Find user with this verification token
     const user = await User.findOne({ verificationToken: token })
+      .select('passportDocument')
     
     if (!user) {
       return NextResponse.json(
@@ -28,26 +32,69 @@ export async function GET(
       )
     }
 
-    // Check if user has uploaded a document
-    if (!user.passportDocument || !user.passportDocument.filename) {
+    if (!user.passportDocument?.filename) {
       return NextResponse.json(
-        { error: 'No document found' },
+        { error: 'No document found for this user' },
         { status: 404 }
       )
     }
 
-    // Get the document URL - either from stored URL or construct from filename
+    // Get the document URL - prioritize stored URL, then try v7 pattern, then legacy
     let documentUrl = user.passportDocument.url
-
+    
+    // If no stored URL, try to construct one using v7 pattern first
     if (!documentUrl && user.passportDocument.filename) {
-      // For legacy documents without stored URLs, construct the UploadThing URL
-      documentUrl = `https://utfs.io/f/${user.passportDocument.filename}`
+      // Try v7 pattern first: https://<APP_ID>.ufs.sh/f/<FILE_KEY>
+      // Note: Replace 'app' with your actual app ID from UploadThing dashboard
+      const v7Url = `https://app.ufs.sh/f/${user.passportDocument.filename}`
+      
+      // Test if v7 URL works
+      try {
+        const testResponse = await fetch(v7Url, { method: 'HEAD' })
+        if (testResponse.ok) {
+          documentUrl = v7Url
+          // Update the database with the working URL
+          await User.findByIdAndUpdate(user._id, {
+            'passportDocument.url': v7Url
+          })
+        }
+      } catch (error) {
+        // v7 URL doesn't work, try legacy
+      }
+      
+      // If v7 doesn't work, try legacy pattern
+      if (!documentUrl) {
+        const legacyUrl = `https://utfs.io/f/${user.passportDocument.filename}`
+        try {
+          const testResponse = await fetch(legacyUrl, { method: 'HEAD' })
+          if (testResponse.ok) {
+            documentUrl = legacyUrl
+            // Update the database with the working URL
+            await User.findByIdAndUpdate(user._id, {
+              'passportDocument.url': legacyUrl
+            })
+          }
+        } catch (error) {
+          // Neither URL works - file might be missing
+        }
+      }
     }
 
-    // Create a proxied URL to avoid CORS issues
-    const proxiedUrl = documentUrl 
+    // Create proxied URL to bypass CORS
+    const proxiedUrl = documentUrl
       ? `/api/documents/proxy?url=${encodeURIComponent(documentUrl)}`
       : null
+
+    if (!proxiedUrl) {
+      return NextResponse.json(
+        { 
+          error: 'Document URL not available', 
+          details: 'Document may have been uploaded before URL storage was implemented or the file may no longer exist.',
+          filename: user.passportDocument.filename
+        },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -61,7 +108,7 @@ export async function GET(
       }
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error retrieving document:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -15,8 +15,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Validate that the URL is from UploadThing
-    const allowedDomains = ['utfs.io', 'uploadthing.com']
+    // Validate that the URL is from UploadThing (including v7 patterns)
+    const allowedDomains = [
+      'utfs.io',                    // Legacy pattern
+      'uploadthing.com',           // General UploadThing domain
+      'ufs.sh'                     // New v7 pattern (*.ufs.sh)
+    ]
     let urlObj: URL
     
     try {
@@ -29,10 +33,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (!allowedDomains.some(domain => urlObj.hostname.includes(domain))) {
+    // Check if the hostname matches any allowed domain or is a subdomain of ufs.sh
+    const isValidDomain = allowedDomains.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+    )
+
+    if (!isValidDomain) {
       console.error('Unauthorized domain:', urlObj.hostname)
       return NextResponse.json(
-        { error: 'Invalid file source' },
+        { error: 'Invalid file source - only UploadThing URLs are allowed' },
         { status: 403 }
       )
     }
@@ -56,7 +65,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           { 
             error: 'Document not found', 
-            details: 'The requested document no longer exists or the URL is incorrect',
+            details: 'The requested document no longer exists or the URL is incorrect. This could be due to UploadThing v7 migration - please try re-uploading the document.',
             url: fileUrl 
           },
           { status: 404 }
@@ -98,7 +107,7 @@ export async function GET(request: NextRequest) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'public, max-age=3600', // Reduced cache time for debugging
+        'Cache-Control': 'public, max-age=3600', // Cache for debugging
         'Content-Disposition': 'inline',
       }
     })

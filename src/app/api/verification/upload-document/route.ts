@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type and size
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf']
     if (!allowedTypes.includes(document.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Please upload JPEG, PNG, or PDF files only.' },
+        { error: 'Invalid file type. Please upload JPEG, PNG, WEBP, or PDF files only.' },
         { status: 400 }
       )
     }
@@ -66,35 +66,32 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Upload to UploadThing
+      // Upload to UploadThing v7
       const utapi = new UTApi()
       const uploadResult = await utapi.uploadFiles([document])
       
+      // In v7, the response structure has changed
       if (!uploadResult[0] || uploadResult[0].error) {
-        throw new Error('Upload failed')
+        throw new Error(uploadResult[0]?.error?.message || 'Upload failed')
       }
 
       const uploadedFile = uploadResult[0].data
       
-      // Update user with document information
+      // Update user with document information - store both filename and URL
       user.passportDocument = {
         filename: uploadedFile.name,
-        url: uploadedFile.url, // Store the URL for preview/download
+        url: uploadedFile.url, // Store the full URL from UploadThing
         uploadedAt: new Date(),
         status: 'pending',
-        // Preserve resubmission tracking
         resubmissionCount: user.passportDocument?.resubmissionCount || 0,
         allowResubmission: false, // Reset until admin decides
-        // Clear previous rejection reason
         rejectionReason: undefined
       }
 
-      // Update verification status based on whether contract was already signed
+      // If this is a resubmission and user has already signed contract, set them directly to contract_signed
       if (isResubmission && user.contractSigned) {
-        // User is resubmitting documents but contract is already signed
         user.verificationStatus = 'contract_signed'
       } else {
-        // First time upload or no contract signed yet
         user.verificationStatus = 'documents_uploaded'
       }
 
@@ -115,16 +112,16 @@ export async function POST(request: NextRequest) {
         nextStep: user.contractSigned ? 'review' : 'contract_signing'
       })
 
-    } catch (uploadError) {
+    } catch (uploadError: any) {
       console.error('Upload error:', uploadError)
       return NextResponse.json(
-        { error: 'Failed to upload document. Please try again.' },
+        { error: 'Failed to upload document: ' + uploadError.message },
         { status: 500 }
       )
     }
 
-  } catch (error) {
-    console.error('Error uploading document:', error)
+  } catch (error: any) {
+    console.error('Upload document error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -79,22 +79,32 @@ export async function POST(request: NextRequest) {
         }
 
         if (!isValid) {
-          // Try constructed URL from filename
-          const constructedUrl = `https://utfs.io/f/${user.passportDocument.filename}`
+          // Try multiple URL patterns for UploadThing
+          const urlsToTry = [
+            // Current pattern for v7: https://<APP_ID>.ufs.sh/f/<FILE_KEY>
+            `https://app.ufs.sh/f/${user.passportDocument.filename}`,
+            // Legacy pattern: https://utfs.io/f/<FILE_KEY>
+            `https://utfs.io/f/${user.passportDocument.filename}`,
+            // Alternative app ID patterns (if available)
+            `https://uploadthing.ufs.sh/f/${user.passportDocument.filename}`
+          ]
           
-          try {
-            const response = await fetch(constructedUrl, { method: 'HEAD' })
-            if (response.ok) {
-              // Update the user with the correct URL
-              await User.findByIdAndUpdate(user._id, {
-                'passportDocument.url': constructedUrl
-              })
-              
-              results.fixed++
-              isValid = true
+          for (const testUrl of urlsToTry) {
+            try {
+              const response = await fetch(testUrl, { method: 'HEAD' })
+              if (response.ok) {
+                // Update the user with the correct URL
+                await User.findByIdAndUpdate(user._id, {
+                  'passportDocument.url': testUrl
+                })
+                
+                results.fixed++
+                isValid = true
+                break
+              }
+            } catch (error) {
+              // Continue to next URL
             }
-          } catch (error) {
-            // File doesn't exist at constructed URL either
           }
         }
 
@@ -106,6 +116,7 @@ export async function POST(request: NextRequest) {
             filename: user.passportDocument.filename,
             testedUrls: [
               user.passportDocument.url,
+              `https://app.ufs.sh/f/${user.passportDocument.filename}`,
               `https://utfs.io/f/${user.passportDocument.filename}`
             ].filter(Boolean)
           }
@@ -200,18 +211,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Test constructed URL
-    const constructedUrl = `https://utfs.io/f/${document.filename}`
+    // Test v7 pattern
+    const v7Url = `https://app.ufs.sh/f/${document.filename}`
     try {
-      const response = await fetch(constructedUrl, { method: 'HEAD' })
+      const response = await fetch(v7Url, { method: 'HEAD' })
       testUrls.push({
-        url: constructedUrl,
+        url: v7Url,
         status: response.status,
         exists: response.ok
       })
     } catch (error: any) {
       testUrls.push({
-        url: constructedUrl,
+        url: v7Url,
+        status: 'error',
+        exists: false,
+        error: error.message
+      })
+    }
+
+    // Test legacy pattern
+    const legacyUrl = `https://utfs.io/f/${document.filename}`
+    try {
+      const response = await fetch(legacyUrl, { method: 'HEAD' })
+      testUrls.push({
+        url: legacyUrl,
+        status: response.status,
+        exists: response.ok
+      })
+    } catch (error: any) {
+      testUrls.push({
+        url: legacyUrl,
         status: 'error',
         exists: false,
         error: error.message

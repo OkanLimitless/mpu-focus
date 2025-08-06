@@ -1,7 +1,7 @@
 # MPU Focus - Enhanced Verification System
 
 ## Overview
-A comprehensive verification and learning platform with document preview, digital signatures, and email notifications.
+A comprehensive verification and learning platform with document preview, digital signatures, and email notifications. **Recently upgraded to UploadThing v7** for improved performance and reliability.
 
 ## 📋 Table of Contents
 - [Features](#features)
@@ -15,7 +15,7 @@ A comprehensive verification and learning platform with document preview, digita
 ## ✨ Features
 
 ### Core Verification System
-- **Document Upload & Storage**: Secure document uploads via UploadThing
+- **Document Upload & Storage**: Secure document uploads via UploadThing v7
 - **Document Preview**: In-browser PDF and image viewing with zoom controls
 - **Digital Signatures**: Canvas-based signature capture for legal binding
 - **Email Notifications**: Automated approval/rejection notifications
@@ -25,7 +25,7 @@ A comprehensive verification and learning platform with document preview, digita
 ### 🔧 Document 404 Error Fix
 
 #### Problem Solved
-The system now automatically resolves "Document proxy error: Error: Failed to fetch file: 404" issues that occur when document URLs become inaccessible.
+The system now automatically resolves "Document proxy error: Error: Failed to fetch file: 404" issues that occur when document URLs become inaccessible. **This was a key driver for migrating to UploadThing v7.**
 
 #### Root Causes Addressed
 1. **Filename Mismatch**: UploadThing sometimes modifies filenames during upload
@@ -110,9 +110,8 @@ MONGODB_URI=your_mongodb_connection_string
 NEXTAUTH_SECRET=your_secret_key
 NEXTAUTH_URL=http://localhost:3000
 
-# File Upload (UploadThing)
-UPLOADTHING_SECRET=your_uploadthing_secret
-UPLOADTHING_APP_ID=your_uploadthing_app_id
+# File Upload (UploadThing v7)
+UPLOADTHING_TOKEN=your_uploadthing_v7_token
 
 # Email Service (for notifications)
 SMTP_HOST=your_smtp_host
@@ -121,6 +120,16 @@ SMTP_USER=your_smtp_username
 SMTP_PASS=your_smtp_password
 SMTP_FROM=your_from_email
 ```
+
+### UploadThing v7 Migration Note
+
+**Important**: We've updated to UploadThing v7 which uses a single `UPLOADTHING_TOKEN` instead of separate `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID` variables.
+
+To get your v7 token:
+1. Go to your [UploadThing Dashboard](https://uploadthing.com/dashboard)
+2. Navigate to "API Keys" 
+3. Select the "V7" tab
+4. Copy your token and set it as `UPLOADTHING_TOKEN`
 
 ## 📖 Usage Guide
 
