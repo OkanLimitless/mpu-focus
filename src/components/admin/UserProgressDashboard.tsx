@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { formatDate } from '@/lib/utils'
-import { Users, Play, Clock, CheckCircle, Search, Filter } from 'lucide-react'
+import { Users, BookOpen, Search } from 'lucide-react'
 
 interface UserProgress {
   user: {
@@ -15,19 +15,11 @@ interface UserProgress {
     lastName: string
     email: string
   }
-  totalVideos: number
-  completedVideos: number
+  totalChapters: number
+  completedChapters: number
+  currentChapter: number
   overallProgress: number
   lastActivity: Date
-  recentProgress: Array<{
-    video: {
-      title: string
-      duration: number
-    }
-    completionPercentage: number
-    isCompleted: boolean
-    lastWatchedAt: Date
-  }>
 }
 
 export default function UserProgressDashboard() {
@@ -98,7 +90,7 @@ export default function UserProgressDashboard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>User Video Progress</CardTitle>
+          <CardTitle>User Chapter Progress</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -114,10 +106,10 @@ export default function UserProgressDashboard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          User Video Progress
+          User Chapter Progress
         </CardTitle>
         <CardDescription>
-          Monitor user engagement and video completion progress
+          Monitor user progress through course chapters
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -177,17 +169,17 @@ export default function UserProgressDashboard() {
                     </h3>
                     <p className="text-sm text-muted-foreground">{userProgress.user.email}</p>
                   </div>
-                                     <div className="text-right">
-                     <div className="text-sm text-muted-foreground">
-                       Last Activity: {userProgress.lastActivity ? formatDate(new Date(userProgress.lastActivity)) : 'No activity'}
-                     </div>
-                   </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">
+                      Last Activity: {userProgress.lastActivity ? formatDate(new Date(userProgress.lastActivity)) : 'No activity'}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Overall Progress */}
+                {/* Chapter Progress */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Overall Progress</span>
+                    <span className="font-medium">Chapter Progress</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       userProgress.overallProgress >= 90 ? 'bg-green-100 text-green-800' :
                       userProgress.overallProgress >= 70 ? 'bg-blue-100 text-blue-800' :
@@ -206,38 +198,19 @@ export default function UserProgressDashboard() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{userProgress.overallProgress}% Complete</span>
                     <span>
-                      {userProgress.completedVideos} / {userProgress.totalVideos} videos completed
+                      {userProgress.completedChapters} / {userProgress.totalChapters} chapters completed
                     </span>
                   </div>
                 </div>
 
-                {/* Recent Activity */}
-                {userProgress.recentProgress.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Recent Activity</h4>
-                    <div className="space-y-1">
-                      {userProgress.recentProgress.slice(0, 3).map((progress, index) => (
-                        <div key={index} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
-                          <div className="flex items-center gap-2">
-                            {progress.isCompleted ? (
-                              <CheckCircle className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <Play className="h-3 w-3 text-blue-500" />
-                            )}
-                            <span className="font-medium">{progress.video.title}</span>
-                          </div>
-                                                     <div className="flex items-center gap-2">
-                             <span>{progress.completionPercentage}%</span>
-                             <Clock className="h-3 w-3 text-gray-400" />
-                             <span className="text-gray-500">
-                               {progress.lastWatchedAt ? formatDate(new Date(progress.lastWatchedAt)) : 'Unknown'}
-                             </span>
-                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Current Chapter */}
+                <div className="flex items-center gap-2 text-sm p-3 bg-blue-50 rounded-lg">
+                  <BookOpen className="h-4 w-4 text-blue-600" />
+                  <span className="text-blue-800">
+                    <strong>Current Chapter:</strong> Chapter {userProgress.currentChapter}
+                    {userProgress.totalChapters > 0 && ` of ${userProgress.totalChapters}`}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

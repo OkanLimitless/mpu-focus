@@ -11,7 +11,6 @@ import UserRequestsManagement from '@/components/admin/UserRequestsManagement'
 import UserProgressDashboard from '@/components/admin/UserProgressDashboard'
 import VideoManagement from '@/components/admin/VideoManagement'
 import ChapterManagement from '@/components/admin/ChapterManagement'
-import MuxSetupGuide from '@/components/admin/MuxSetupGuide'
 import LeadManagement from '@/components/admin/LeadManagement'
 
 export default function AdminDashboardPage() {
@@ -194,11 +193,6 @@ export default function AdminDashboardPage() {
           {/* Lead Management */}
           <div className="mt-8">
             <LeadManagement />
-          </div>
-
-          {/* Mux Setup Guide */}
-          <div className="mt-8">
-            <MuxSetupGuide />
           </div>
 
           {/* Chapter Management */}
