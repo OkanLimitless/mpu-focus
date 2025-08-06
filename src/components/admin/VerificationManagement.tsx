@@ -109,6 +109,9 @@ export default function VerificationManagement() {
   }
 
   const getStatusBadge = (status: string) => {
+    // Ensure status is a string and provide fallback
+    const safeStatus = status || 'pending'
+    
     const variants = {
       pending: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', icon: Clock },
       documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileCheck },
@@ -117,12 +120,12 @@ export default function VerificationManagement() {
       rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800', icon: XCircle }
     }
     
-    const { variant, className, icon: Icon } = variants[status as keyof typeof variants] || variants.pending
+    const { variant, className, icon: Icon } = variants[safeStatus as keyof typeof variants] || variants.pending
     
     return (
       <Badge variant={variant} className={`flex items-center space-x-1 ${className}`}>
         <Icon className="w-3 h-3" />
-        <span className="capitalize">{status.replace('_', ' ')}</span>
+        <span className="capitalize">{safeStatus.replace(/_/g, ' ')}</span>
       </Badge>
     )
   }
@@ -187,13 +190,21 @@ export default function VerificationManagement() {
   }
 
   const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date'
+      }
+      return date.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      return 'Invalid Date'
+    }
   }
 
   return (
@@ -291,12 +302,12 @@ export default function VerificationManagement() {
                     <tr key={user._id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div>
-                          <div className="font-medium">{user.firstName} {user.lastName}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="font-medium">{user.firstName || 'N/A'} {user.lastName || ''}</div>
+                          <div className="text-sm text-gray-500">{user.email || 'N/A'}</div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {getStatusBadge(user.verificationStatus)}
+                        {getStatusBadge(user.verificationStatus || 'pending')}
                       </td>
                       <td className="px-4 py-3">
                         <div className="text-sm">
@@ -330,7 +341,7 @@ export default function VerificationManagement() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-gray-500">
-                          {formatDate(user.createdAt)}
+                          {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -396,22 +407,22 @@ export default function VerificationManagement() {
                   <div>
                     <Label className="text-sm font-medium">Name</Label>
                     <p className="text-sm text-gray-600">
-                      {selectedUser.firstName} {selectedUser.lastName}
+                      {selectedUser.firstName || 'N/A'} {selectedUser.lastName || ''}
                     </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Email</Label>
-                    <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                    <p className="text-sm text-gray-600">{selectedUser.email || 'N/A'}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Current Status</Label>
                     <div className="mt-1">
-                      {getStatusBadge(selectedUser.verificationStatus)}
+                      {getStatusBadge(selectedUser.verificationStatus || 'pending')}
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Registered</Label>
-                    <p className="text-sm text-gray-600">{formatDate(selectedUser.createdAt)}</p>
+                    <p className="text-sm text-gray-600">{selectedUser.createdAt ? formatDate(selectedUser.createdAt) : 'N/A'}</p>
                   </div>
                 </div>
 

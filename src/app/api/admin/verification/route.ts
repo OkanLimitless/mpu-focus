@@ -55,6 +55,16 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean()
 
+    // Ensure all users have proper default values
+    const safeUsers = users.map(user => ({
+      ...user,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      verificationStatus: user.verificationStatus || 'pending',
+      createdAt: user.createdAt || new Date()
+    }))
+
     const total = await User.countDocuments(query)
     const pages = Math.ceil(total / limit)
 
@@ -86,7 +96,7 @@ export async function GET(request: NextRequest) {
     })
 
     return NextResponse.json({
-      users,
+      users: safeUsers,
       pagination: {
         page,
         limit,
