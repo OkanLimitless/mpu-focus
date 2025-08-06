@@ -467,8 +467,11 @@ export default function VerificationManagement() {
                       <DocumentPreview
                         filename={selectedUser.passportDocument.filename}
                         url={
-                          selectedUser.passportDocument.url || 
-                          `https://utfs.io/f/${selectedUser.passportDocument.filename}`
+                          selectedUser.passportDocument.url 
+                            ? `/api/documents/proxy?url=${encodeURIComponent(selectedUser.passportDocument.url)}`
+                            : `/api/documents/proxy?url=${encodeURIComponent(
+                                `https://utfs.io/f/${selectedUser.passportDocument.filename}`
+                              )}`
                         }
                         className="w-full"
                       />

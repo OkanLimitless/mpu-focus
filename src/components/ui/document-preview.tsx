@@ -65,11 +65,19 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
   const handleDownload = async () => {
     try {
       const response = await fetch(url)
+      
+      if (!response.ok) {
+        throw new Error('Download failed')
+      }
+      
       const blob = await response.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = downloadUrl
-      link.download = filename
+      
+      // Use the provided filename or extract from URL
+      link.download = filename || 'document'
+      
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

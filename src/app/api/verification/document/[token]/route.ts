@@ -41,15 +41,20 @@ export async function GET(
 
     if (!documentUrl && user.passportDocument.filename) {
       // For legacy documents without stored URLs, construct the UploadThing URL
-      // UploadThing URLs follow the pattern: https://utfs.io/f/{filename}
       documentUrl = `https://utfs.io/f/${user.passportDocument.filename}`
     }
+
+    // Create a proxied URL to avoid CORS issues
+    const proxiedUrl = documentUrl 
+      ? `/api/documents/proxy?url=${encodeURIComponent(documentUrl)}`
+      : null
 
     return NextResponse.json({
       success: true,
       document: {
         filename: user.passportDocument.filename,
-        url: documentUrl,
+        url: proxiedUrl,
+        originalUrl: documentUrl, // Keep original for reference
         uploadedAt: user.passportDocument.uploadedAt,
         status: user.passportDocument.status,
         rejectionReason: user.passportDocument.rejectionReason
