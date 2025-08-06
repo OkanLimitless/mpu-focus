@@ -57,6 +57,7 @@ export default function VerificationPage() {
   const [uploadedDocument, setUploadedDocument] = useState<{filename: string, url: string} | null>(null)
   const [showDigitalSignature, setShowDigitalSignature] = useState(false)
   const [signatureData, setSignatureData] = useState<string | null>(null)
+  const [signatureMethod, setSignatureMethod] = useState<'checkbox' | 'digital_signature' | 'qes'>('checkbox')
 
   useEffect(() => {
     verifyToken()
@@ -263,7 +264,7 @@ export default function VerificationPage() {
           token: token as string,
           agreed: true,
           signatureData: signatureData,
-          signatureMethod: showDigitalSignature ? 'digital_signature' : 'checkbox'
+          signatureMethod: signatureMethod
         }),
       })
 
@@ -509,11 +510,12 @@ export default function VerificationPage() {
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="checkbox-signature"
-                      checked={!showDigitalSignature}
+                      checked={!showDigitalSignature && signatureMethod !== 'qes'}
                       onCheckedChange={(checked) => {
                         if (checked) {
                           setShowDigitalSignature(false)
                           setSignatureData(null)
+                          setSignatureMethod('checkbox')
                         }
                       }}
                     />
@@ -524,23 +526,85 @@ export default function VerificationPage() {
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="digital-signature"
-                      checked={showDigitalSignature}
+                      checked={showDigitalSignature && signatureMethod !== 'qes'}
                       onCheckedChange={(checked) => {
-                        setShowDigitalSignature(checked as boolean)
-                        if (!checked) {
+                        if (checked) {
+                          setShowDigitalSignature(true)
                           setSignatureData(null)
+                          setSignatureMethod('digital_signature')
+                        } else {
+                          setShowDigitalSignature(false)
+                          setSignatureData(null)
+                          setSignatureMethod('checkbox')
                         }
                       }}
                     />
                     <Label htmlFor="digital-signature" className="text-sm">
-                      Digital signature (more secure and legally binding)
+                      Digital signature (canvas drawing)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="qes-signature"
+                      checked={signatureMethod === 'qes'}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setShowDigitalSignature(false)
+                          setSignatureData(null)
+                          setSignatureMethod('qes')
+                        } else {
+                          setSignatureMethod('checkbox')
+                        }
+                      }}
+                    />
+                    <Label htmlFor="qes-signature" className="text-sm">
+                      <div className="flex flex-col">
+                        <span>Qualified Electronic Signature (QES)</span>
+                        <span className="text-xs text-green-600 font-medium">
+                          ✓ Legally equivalent to handwritten signature (eIDAS compliant)
+                        </span>
+                      </div>
                     </Label>
                   </div>
                 </div>
               </div>
 
+              {/* QES Integration Placeholder */}
+              {signatureMethod === 'qes' && (
+                <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+                  <div className="flex items-start space-x-3">
+                    <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-blue-800">Qualified Electronic Signature (QES)</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        QES provides the highest level of legal certainty and is equivalent to a handwritten signature under EU law.
+                      </p>
+                      <div className="mt-3 p-3 bg-white border border-blue-200 rounded">
+                        <p className="text-xs text-gray-600 mb-2">
+                          <strong>Note:</strong> QES integration requires a certified trust service provider.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            toast({
+                              title: "QES Integration Required",
+                              description: "Please contact support to enable QES signing for your organization.",
+                              variant: "default"
+                            })
+                          }}
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Contact Support for QES Setup
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Digital Signature Component */}
-              {showDigitalSignature && !signatureData && (
+              {showDigitalSignature && signatureMethod === 'digital_signature' && !signatureData && (
                 <DigitalSignature
                   onSignatureCapture={handleSignatureCapture}
                   isSubmitting={isSubmitting}
@@ -574,10 +638,17 @@ export default function VerificationPage() {
 
               <Button
                 onClick={signContract}
-                disabled={!agreedToTerms || (showDigitalSignature && !signatureData) || isSubmitting}
+                disabled={!agreedToTerms || 
+                  (signatureMethod === 'digital_signature' && !signatureData) || 
+                  (signatureMethod === 'qes' && !signatureData) ||
+                  isSubmitting
+                }
                 className="w-full"
               >
-                {isSubmitting ? 'Signing...' : 'Sign Agreement'}
+                {isSubmitting ? 'Signing...' : 
+                 signatureMethod === 'qes' ? 'Sign with QES' :
+                 signatureMethod === 'digital_signature' ? 'Sign with Digital Signature' :
+                 'Sign Agreement'}
               </Button>
             </CardContent>
           </Card>

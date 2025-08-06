@@ -168,3 +168,7 @@ export interface Lead extends Document {
   createdAt: Date
   updatedAt: Date
 }
+
+export type verificationStatus = 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'
+
+export type signatureMethod = 'checkbox' | 'digital_signature' | 'qes'

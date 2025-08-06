@@ -60,7 +60,7 @@ const UserSchema = new Schema<User>({
     signatureData: { type: String }, // Base64 encoded signature image
     signatureMethod: { 
       type: String, 
-      enum: ['digital_signature', 'checkbox'], 
+      enum: ['digital_signature', 'checkbox', 'qes'], 
       default: 'checkbox' 
     }
   },
