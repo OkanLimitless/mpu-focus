@@ -64,147 +64,60 @@ export async function POST(request: NextRequest) {
           message: `Downloaded ${Math.round(fileSize / 1024 / 1024)}MB PDF file`
         });
         
-        // Convert PDF to images using pdf-poppler with adaptive quality
-        let imagePages: string[] = [];
-        try {
-          const pdfPoppler = await import('pdf-poppler');
-          
-          // Adaptive quality based on file size
-          const getConversionSettings = (fileSize: number) => {
-            if (fileSize < 15 * 1024 * 1024) { // < 15MB
-              return { out_size: 300, quality: 'high' }; // High quality
-            } else if (fileSize < 35 * 1024 * 1024) { // 15-35MB
-              return { out_size: 200, quality: 'medium' }; // Medium quality  
-            } else if (fileSize < 60 * 1024 * 1024) { // 35-60MB
-              return { out_size: 150, quality: 'low' }; // Lower quality
-            } else {
-              return { out_size: 100, quality: 'ultra_low' }; // Very compressed
-            }
-          };
-          
-          const conversionSettings = getConversionSettings(fileSize);
-          
-          sendStatus({
-            step: 'Converting PDF to images',
-            progress: 25,
-            message: `Converting PDF with ${conversionSettings.quality} quality (${Math.round(fileSize / 1024 / 1024)}MB file)...`
-          });
-          
-          const options = {
-            format: 'jpeg' as const,
-            out_dir: '/tmp',
-            out_prefix: `pdf_${Date.now()}`,
-            page: null, // Convert all pages
-            file_path: tempFilePath,
-            // Adaptive quality settings
-            out_size: conversionSettings.out_size,
-            poppler_path: undefined, // Use system poppler
-          };
-
-          const imageFiles = await pdfPoppler.convert(options);
-          
-          sendStatus({
-            step: 'Loading image data',
-            progress: 40,
-            message: `Processing ${imageFiles.length} pages...`
-          });
-          
-          // Convert images to base64
-          const fs = await import('fs');
-          imagePages = imageFiles.map((imagePath) => {
-            const imageBuffer = fs.readFileSync(imagePath.path);
-            const base64Image = imageBuffer.toString('base64');
-            // Clean up individual image files
-            try {
-              unlinkSync(imagePath.path);
-            } catch (e) {
-              console.warn('Could not delete temp image:', e);
-            }
-            return `data:image/jpeg;base64,${base64Image}`;
-          });
-          
-        } catch (error) {
-          console.error('PDF conversion error:', error);
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            error: 'Failed to convert PDF to images. Please ensure the PDF is valid and not corrupted.'
-          })}\n\n`));
-          controller.close();
-          return;
-        }
+        // Convert PDF to base64 for direct GPT-4o processing
+        sendStatus({
+          step: 'Preparing PDF for analysis',
+          progress: 25,
+          message: `Preparing ${Math.round(fileSize / 1024 / 1024)}MB PDF for AI analysis...`
+        });
         
-        // Process images with GPT-4o vision using batch processing for large documents
+        const fs = await import('fs');
+        const pdfBuffer = fs.readFileSync(tempFilePath);
+        const base64Pdf = pdfBuffer.toString('base64');
+        const pdfDataUrl = `data:application/pdf;base64,${base64Pdf}`;
+        
+        sendStatus({
+          step: 'PDF prepared for analysis',
+          progress: 40,
+          message: 'PDF converted to format compatible with AI analysis...'
+        });
+        
+        // Process PDF directly with GPT-4o vision
         let extractedData = '';
         try {
-          // Adaptive batch settings based on file size
-          const getProcessingSettings = (fileSize: number) => {
-            if (fileSize < 15 * 1024 * 1024) { // Small files
-              return { maxPagesPerBatch: 8, maxPayloadSize: 20 * 1024 * 1024 };
-            } else if (fileSize < 35 * 1024 * 1024) { // Medium files
-              return { maxPagesPerBatch: 6, maxPayloadSize: 18 * 1024 * 1024 };
-            } else if (fileSize < 60 * 1024 * 1024) { // Large files
-              return { maxPagesPerBatch: 4, maxPayloadSize: 15 * 1024 * 1024 };
-            } else { // Very large files
-              return { maxPagesPerBatch: 3, maxPayloadSize: 12 * 1024 * 1024 };
-            }
-          };
-          
-          const processingSettings = getProcessingSettings(fileSize);
-          const { maxPagesPerBatch, maxPayloadSize } = processingSettings;
-          
-          if (imagePages.length <= maxPagesPerBatch) {
-            // Process small documents in a single batch
-            sendStatus({
-              step: 'Processing with GPT-4o Vision',
-              progress: 50,
-              message: `Analyzing ${imagePages.length} pages with AI...`
-            });
+          sendStatus({
+            step: 'Processing with GPT-4o Vision',
+            progress: 50,
+            message: 'Analyzing PDF content with AI...'
+          });
 
-            const { createOpenAIClient, VISION_ANALYSIS_PROMPT } = await import('@/lib/document-processor');
-            const openai = createOpenAIClient();
+          const { createOpenAIClient, VISION_ANALYSIS_PROMPT } = await import('@/lib/document-processor');
+          const openai = createOpenAIClient();
 
-            const imageMessages = imagePages.map((imagePage) => ({
-              type: "image_url" as const,
-              image_url: {
-                url: imagePage,
-                detail: "medium" as const // Reduced from "high" to manage payload size
-              } as any
-            }));
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: VISION_ANALYSIS_PROMPT
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: pdfDataUrl,
+                      detail: "high" // Use high detail for PDF analysis
+                    } as any
+                  }
+                ]
+              }
+            ],
+            max_tokens: 4000,
+          });
 
-            const completion = await openai.chat.completions.create({
-              model: "gpt-4o",
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    {
-                      type: "text",
-                      text: VISION_ANALYSIS_PROMPT
-                    },
-                    ...imageMessages
-                  ]
-                }
-              ],
-              max_tokens: 4000,
-            });
-
-            extractedData = completion.choices[0]?.message?.content || '';
-          } else {
-            // Process large documents in batches
-            sendStatus({
-              step: 'Processing with GPT-4o Vision',
-              progress: 50,
-              message: `Processing ${imagePages.length} pages in batches...`
-            });
-
-            const { processPDFInBatches } = await import('@/lib/batch-processor');
-            const { VISION_ANALYSIS_PROMPT } = await import('@/lib/document-processor');
-
-            extractedData = await processPDFInBatches(imagePages, {
-              maxPagesPerBatch,
-              maxPayloadSize,
-              analysisPrompt: VISION_ANALYSIS_PROMPT
-            });
-          }
+          extractedData = completion.choices[0]?.message?.content || '';
 
           sendStatus({
             step: 'Finalizing results',
@@ -228,7 +141,7 @@ export async function POST(request: NextRequest) {
           message: 'Document processing complete!',
           result: {
             extractedData: extractedData,
-            totalPages: imagePages.length
+            processingMethod: 'Direct PDF Analysis'
           }
         })}\n\n`));
         
