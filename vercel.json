@@ -3,5 +3,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "functions": {
+    "src/app/api/document-processor/process-image-urls/route.ts": {
+      "maxDuration": 900
+    }
+  }
 }

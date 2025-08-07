@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
 
           let allExtractedData = '';
           
-          // Use very small batches to avoid timeout issues
-          const maxPagesPerBatch = 3; // Conservative batch size to prevent timeouts
+          // Use larger batches for faster processing - GPT-4o can handle this easily
+          const maxPagesPerBatch = imageUrls.length > 50 ? 12 : 15; // Much larger batches for speed
 
           if (imageUrls.length <= maxPagesPerBatch) {
             // Process all images at once for smaller documents
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
             const imageMessages = imageUrls.map((imageUrl) => ({
               type: "image_url" as const,
-              image_url: { url: imageUrl, detail: "low" as const } // Use "low" to reduce download time
+              image_url: { url: imageUrl, detail: "high" as const } // Use "high" for better OCR quality
             } as any));
 
             const completion = await openai.chat.completions.create({
@@ -81,10 +81,10 @@ export async function POST(request: NextRequest) {
                 message: `Processing batch ${batchNumber}/${totalBatches} (${batch.length} pages)...`
               });
 
-              const imageMessages = batch.map((imageUrl) => ({
-                type: "image_url" as const,
-                image_url: { url: imageUrl, detail: "low" as const } // Use "low" to reduce download time
-              } as any));
+                              const imageMessages = batch.map((imageUrl) => ({
+                  type: "image_url" as const,
+                  image_url: { url: imageUrl, detail: "high" as const } // Use "high" for better OCR quality
+                } as any));
 
               // Retry logic for failed requests
               let batchResult = '';
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
                       message: `Batch ${batchNumber} failed, retrying... (${retryCount}/${maxRetries})`
                     });
                     
-                    // Wait longer before retry
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Shorter retry delay for faster recovery
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                     continue;
                   } else {
                     throw error; // Re-throw if not retryable or max retries reached
@@ -134,8 +134,8 @@ export async function POST(request: NextRequest) {
 
               allExtractedData += `\n\n--- Batch ${batchNumber} Results ---\n${batchResult}`;
 
-              // Longer delay between batches to prevent overwhelming UploadThing/OpenAI
-              await new Promise(resolve => setTimeout(resolve, 3000));
+                              // Minimal delay between batches for faster processing
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
 
