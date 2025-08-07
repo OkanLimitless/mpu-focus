@@ -134,8 +134,8 @@ export async function POST(request: NextRequest) {
 
               allExtractedData += `\n\n--- Batch ${batchNumber} Results ---\n${batchResult}`;
 
-                              // No delay between batches for maximum speed
-                // await new Promise(resolve => setTimeout(resolve, 500));
+                              // Small delay between batches to prevent API overwhelming
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
 

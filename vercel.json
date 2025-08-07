@@ -6,7 +6,7 @@
   "devCommand": "npm run dev",
   "functions": {
     "src/app/api/document-processor/process-image-urls/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }
