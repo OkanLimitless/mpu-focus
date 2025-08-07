@@ -19,15 +19,7 @@ export interface DocumentProcessorResponse {
   error?: string;
 }
 
-export interface OCRPage {
-  pageNumber: number;
-  text: string;
-  confidence?: number;
-}
-
 export interface ProcessingConfig {
-  ocrProvider: 'google-vision' | 'azure-cv';
-  llmProvider: 'openai' | 'claude';
   extractionTemplate: string;
   imageQuality: 'low' | 'medium' | 'high';
   maxPages?: number;

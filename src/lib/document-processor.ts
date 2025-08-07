@@ -1,19 +1,7 @@
-// Dynamic imports to avoid build issues
 import OpenAI from 'openai';
-import { ProcessingConfig, OCRPage } from '@/types/document-processor';
+import { ProcessingConfig } from '@/types/document-processor';
 
-// Initialize clients with environment variables
-export const createVisionClient = async () => {
-  const { parseGoogleCredentials } = await import('@/lib/google-credentials');
-  const credentials = parseGoogleCredentials();
-  
-  const { default: vision } = await import('@google-cloud/vision');
-  return new vision.ImageAnnotatorClient({
-    credentials,
-    projectId: credentials.project_id,
-  });
-};
-
+// Initialize OpenAI client
 export const createOpenAIClient = () => {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
@@ -24,68 +12,33 @@ export const createOpenAIClient = () => {
   });
 };
 
-// OCR processing functions
-export async function performOCR(
-  imagePath: string, 
-  provider: 'google-vision' | 'azure-cv' = 'google-vision'
+// GPT-4o Vision processing function
+export async function processDocumentWithGPT4o(
+  imageBase64Array: string[],
+  analysisPrompt: string
 ): Promise<string> {
-  switch (provider) {
-    case 'google-vision':
-      return performGoogleVisionOCR(imagePath);
-    case 'azure-cv':
-      return performAzureOCR(imagePath);
-    default:
-      throw new Error(`Unsupported OCR provider: ${provider}`);
-  }
-}
-
-async function performGoogleVisionOCR(imagePath: string): Promise<string> {
-  const client = await createVisionClient();
-  const [result] = await client.textDetection(imagePath);
-  const detections = result.textAnnotations;
-  
-  if (detections && detections.length > 0) {
-    return detections[0].description || '';
-  }
-  
-  return '';
-}
-
-async function performAzureOCR(imagePath: string): Promise<string> {
-  // Azure Computer Vision implementation
-  // This would require Azure Cognitive Services SDK
-  throw new Error('Azure OCR not implemented yet');
-}
-
-// LLM extraction functions
-export async function extractStructuredData(
-  ocrText: string,
-  template: string,
-  provider: 'openai' | 'claude' = 'openai'
-): Promise<string> {
-  switch (provider) {
-    case 'openai':
-      return extractWithOpenAI(ocrText, template);
-    case 'claude':
-      return extractWithClaude(ocrText, template);
-    default:
-      throw new Error(`Unsupported LLM provider: ${provider}`);
-  }
-}
-
-async function extractWithOpenAI(ocrText: string, template: string): Promise<string> {
   const client = createOpenAIClient();
   
+  const imageMessages = imageBase64Array.map(base64 => ({
+    type: "image_url" as const,
+    image_url: {
+      url: `data:image/jpeg;base64,${base64}`,
+      detail: "high" as const
+    }
+  }));
+
   const completion = await client.chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       {
-        role: 'system',
-        content: template
-      },
-      {
         role: 'user',
-        content: `Please extract and structure the information from this OCR text:\n\n${ocrText}`
+        content: [
+          {
+            type: "text",
+            text: analysisPrompt
+          },
+          ...imageMessages
+        ]
       }
     ],
     max_tokens: 4000,
@@ -93,12 +46,6 @@ async function extractWithOpenAI(ocrText: string, template: string): Promise<str
   });
 
   return completion.choices[0].message.content || 'No data could be extracted';
-}
-
-async function extractWithClaude(ocrText: string, template: string): Promise<string> {
-  // Claude implementation would go here
-  // This would require Anthropic's SDK
-  throw new Error('Claude extraction not implemented yet');
 }
 
 // Utility functions
@@ -125,29 +72,21 @@ export function chunkText(text: string, maxLength: number = 4000): string[] {
   return chunks;
 }
 
-export function combineOCRResults(pages: OCRPage[]): string {
+export function combineImageResults(pages: string[]): string {
   return pages
-    .map(page => `--- Page ${page.pageNumber} ---\n${page.text}`)
+    .map((content, index) => `--- Page ${index + 1} ---\n${content}`)
     .join('\n\n');
 }
 
 export function validateProcessingConfig(config: ProcessingConfig): string[] {
   const errors: string[] = [];
   
-  if (!['google-vision', 'azure-cv'].includes(config.ocrProvider)) {
-    errors.push('Invalid OCR provider');
-  }
-  
-  if (!['openai', 'claude'].includes(config.llmProvider)) {
-    errors.push('Invalid LLM provider');
-  }
-  
   if (!config.extractionTemplate.trim()) {
     errors.push('Extraction template is required');
   }
   
-  if (config.maxPages && (config.maxPages < 1 || config.maxPages > 500)) {
-    errors.push('Max pages must be between 1 and 500');
+  if (config.maxPages && (config.maxPages < 1 || config.maxPages > 200)) {
+    errors.push('Max pages must be between 1 and 200');
   }
   
   return errors;

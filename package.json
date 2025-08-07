@@ -11,7 +11,6 @@
     "setup": "node scripts/setup.js"
   },
   "dependencies": {
-    "@google-cloud/vision": "^5.3.3",
     "@hookform/resolvers": "^3.3.2",
     "@mux/mux-node": "^8.2.0",
     "@mux/mux-player-react": "^2.4.0",
@@ -40,7 +39,7 @@
     "next-auth": "^4.24.5",
     "nodemailer": "^6.10.1",
     "openai": "^5.12.0",
-    "pdf-parse": "^1.1.1",
+    "pdf-poppler": "^0.2.1",
     "postcss": "^8.4.32",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

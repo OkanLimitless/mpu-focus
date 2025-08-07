@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, unlink } from 'fs/promises';
+import { writeFile, unlink, readFile } from 'fs/promises';
 import { join } from 'path';
-// Google Cloud Vision will be dynamically imported to avoid build issues
 import OpenAI from 'openai';
-// PDF parsing will be dynamically imported to avoid build issues
 
-// Initialize clients only when needed
-async function createVisionClient() {
-  const { default: vision } = await import('@google-cloud/vision');
-  const { parseGoogleCredentials } = await import('@/lib/google-credentials');
-  
-  const credentials = parseGoogleCredentials();
-  
-  return new vision.ImageAnnotatorClient({
-    credentials,
-    projectId: credentials.project_id,
-  });
-}
-
+// Initialize OpenAI client
 function createOpenAIClient() {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OpenAI API key not configured');
@@ -27,9 +13,9 @@ function createOpenAIClient() {
   });
 }
 
-// Template for data extraction
-const EXTRACTION_TEMPLATE = `
-You are an expert document analyst. Extract structured information from this OCR text and format it according to the following template:
+// Template for GPT-4o vision analysis
+const VISION_ANALYSIS_PROMPT = `
+You are an expert document analyst with OCR capabilities. Analyze these PDF page images and extract structured information according to the following template:
 
 "Overzicht van Delicten
 
@@ -67,7 +53,13 @@ Geboortedatum:
 Voornaam en achternaam:
 [Full name]"
 
-Extract all relevant information and format it exactly like this template. If information is missing, state that it's not mentioned in the document.
+Instructions:
+1. Carefully read and analyze all the images provided
+2. Extract text using your vision capabilities
+3. Structure the information according to the template above
+4. If information is missing, state that it's not mentioned in the document
+5. Be thorough and accurate in your extraction
+6. Maintain the exact format shown in the template
 `;
 
 interface ProcessingStatus {
@@ -105,97 +97,84 @@ export async function POST(request: NextRequest) {
         };
 
         sendStatus({
-          step: 'Extracting text from PDF',
+          step: 'Converting PDF to images',
           progress: 10,
-          message: 'Attempting direct text extraction...'
+          message: 'Converting PDF pages to images for GPT-4o analysis...'
         });
 
-        // First, try direct text extraction from PDF
-        let allExtractedText = '';
-        let useOCR = false;
-        
+        // Convert PDF to images using pdf-poppler
+        let imagePages: string[] = [];
         try {
-          // Dynamically import pdf-parse to avoid build issues
-          const { default: pdfParse } = await import('pdf-parse');
-          const pdfData = await pdfParse(buffer);
-          allExtractedText = pdfData.text;
+          const pdfPoppler = await import('pdf-poppler');
           
-          // Check if extracted text is meaningful (not just spaces/newlines)
-          const meaningfulText = allExtractedText.replace(/\s/g, '');
-          if (meaningfulText.length < 100) {
-            useOCR = true;
-            sendStatus({
-              step: 'Switching to OCR',
-              progress: 20,
-              message: 'PDF contains mostly images, switching to OCR processing...'
-            });
-          } else {
-            sendStatus({
-              step: 'Text extraction successful',
-              progress: 50,
-              message: `Extracted ${allExtractedText.length} characters from PDF`
-            });
-          }
-        } catch (pdfError) {
-          console.error('PDF text extraction failed:', pdfError);
-          useOCR = true;
-          sendStatus({
-            step: 'Switching to OCR',
-            progress: 20,
-            message: 'Direct text extraction failed, switching to OCR...'
-          });
-        }
+          const options = {
+            format: 'jpeg' as const,
+            out_dir: '/tmp',
+            out_prefix: `pdf_${Date.now()}`,
+            page: null, // Convert all pages
+            file_path: tempFilePath
+          };
 
-        // If direct extraction failed or produced poor results, use OCR
-        if (useOCR) {
+          const imageFiles = await pdfPoppler.convert(options);
+          imagePages = imageFiles.map((file) => file.path);
+          
           sendStatus({
-            step: 'Processing with OCR',
+            step: 'PDF conversion complete',
             progress: 30,
-            message: 'Processing document with Google Cloud Vision OCR...'
+            message: `Converted ${imagePages.length} pages to images`
           });
-
-          try {
-            // Use Google Cloud Vision to process the entire PDF
-            const visionClient = await createVisionClient();
-            const [result] = await visionClient.textDetection(tempFilePath);
-            const detections = result.textAnnotations;
-            
-            if (detections && detections.length > 0) {
-              allExtractedText = detections[0].description || '';
-              sendStatus({
-                step: 'OCR processing complete',
-                progress: 70,
-                message: `OCR extracted ${allExtractedText.length} characters`
-              });
-            } else {
-              allExtractedText = '[No text could be extracted from this document]';
-            }
-          } catch (ocrError) {
-            console.error('OCR processing failed:', ocrError);
-            allExtractedText = `[Error during OCR processing: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}]`;
-          }
+        } catch (conversionError) {
+          console.error('PDF conversion failed:', conversionError);
+          throw new Error(`Failed to convert PDF to images: ${conversionError instanceof Error ? conversionError.message : 'Unknown error'}`);
         }
 
         sendStatus({
-          step: 'Extracting structured data',
-          progress: 75,
-          message: 'Using AI to extract and structure the data...'
+          step: 'Processing with GPT-4o Vision',
+          progress: 40,
+          message: 'Analyzing document images with GPT-4o vision capabilities...'
         });
 
-        // Use OpenAI to extract structured data
+        // Process images with GPT-4o vision
         let extractedData = '';
         try {
           const openai = createOpenAIClient();
+          
+          // Prepare images for GPT-4o
+          const imageMessages = [];
+          
+          for (let i = 0; i < Math.min(imagePages.length, 20); i++) { // Limit to 20 pages for API limits
+            const imagePath = imagePages[i];
+            const imageBuffer = await readFile(imagePath);
+            const base64Image = imageBuffer.toString('base64');
+            
+            imageMessages.push({
+              type: "image_url" as const,
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+                detail: "high" as const
+              }
+            });
+
+            sendStatus({
+              step: 'Processing with GPT-4o Vision',
+              progress: 40 + (i / imagePages.length) * 30,
+              message: `Processing page ${i + 1} of ${imagePages.length}...`
+            });
+          }
+
+          // Send all images to GPT-4o for analysis
           const completion = await openai.chat.completions.create({
-            model: 'gpt-4-turbo-preview',
+            model: 'gpt-4o',
             messages: [
               {
-                role: 'system',
-                content: EXTRACTION_TEMPLATE
-              },
-              {
                 role: 'user',
-                content: `Please extract and structure the information from this OCR text:\n\n${allExtractedText}`
+                content: [
+                  {
+                    type: "text",
+                    text: VISION_ANALYSIS_PROMPT
+                  },
+                  ...imageMessages
+                ]
               }
             ],
             max_tokens: 4000,
@@ -203,9 +182,24 @@ export async function POST(request: NextRequest) {
           });
 
           extractedData = completion.choices[0].message.content || 'No data could be extracted';
-        } catch (llmError) {
-          console.error('LLM extraction error:', llmError);
-          extractedData = `Error during data extraction: ${llmError instanceof Error ? llmError.message : 'Unknown error'}\n\nRaw OCR Text:\n${allExtractedText}`;
+          
+          sendStatus({
+            step: 'GPT-4o analysis complete',
+            progress: 80,
+            message: 'Document analysis completed successfully'
+          });
+        } catch (visionError) {
+          console.error('GPT-4o vision processing failed:', visionError);
+          extractedData = `Error during GPT-4o vision processing: ${visionError instanceof Error ? visionError.message : 'Unknown error'}`;
+        }
+
+        // Clean up image files
+        for (const imagePath of imagePages) {
+          try {
+            await unlink(imagePath);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup image file:', imagePath);
+          }
         }
 
         sendStatus({
@@ -219,14 +213,14 @@ export async function POST(request: NextRequest) {
 
         const processingTime = Math.round((Date.now() - startTime) / 1000);
 
-        // Estimate page count based on content length
-        const estimatedPages = Math.max(1, Math.ceil(allExtractedText.length / 2000));
+        // Use actual page count from images
+        const actualPages = imagePages.length;
 
         // Send final result
         const result = {
           id: `doc_${Date.now()}`,
           fileName: file.name,
-          totalPages: estimatedPages,
+          totalPages: actualPages,
           extractedData,
           processingTime,
           createdAt: new Date().toISOString()
