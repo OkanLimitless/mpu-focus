@@ -64,62 +64,169 @@ export async function POST(request: NextRequest) {
           message: `Downloaded ${Math.round(fileSize / 1024 / 1024)}MB PDF file`
         });
         
-        // Extract text from PDF using pdf-parse
+        // Convert PDF pages to images for GPT-4o Vision
         sendStatus({
-          step: 'Extracting text from PDF',
+          step: 'Converting PDF to images',
           progress: 25,
-          message: `Extracting text from ${Math.round(fileSize / 1024 / 1024)}MB PDF...`
+          message: `Converting ${Math.round(fileSize / 1024 / 1024)}MB PDF to images...`
         });
         
-        const fs = await import('fs');
-        const pdfBuffer = fs.readFileSync(tempFilePath);
-        
-        let extractedText = '';
+        let imagePages: string[] = [];
         try {
-          const pdfParse = await import('pdf-parse');
-          const pdfData = await pdfParse.default(pdfBuffer);
-          extractedText = pdfData.text;
+          const pdf2pic = await import('pdf2pic');
+          
+          // Adaptive quality based on file size
+          const getConversionSettings = (fileSize: number) => {
+            if (fileSize < 15 * 1024 * 1024) { // < 15MB
+              return { density: 300, quality: 100, format: 'jpg' as const };
+            } else if (fileSize < 35 * 1024 * 1024) { // 15-35MB
+              return { density: 200, quality: 80, format: 'jpg' as const };
+            } else if (fileSize < 60 * 1024 * 1024) { // 35-60MB
+              return { density: 150, quality: 70, format: 'jpg' as const };
+            } else {
+              return { density: 100, quality: 60, format: 'jpg' as const };
+            }
+          };
+          
+          const conversionSettings = getConversionSettings(fileSize);
+          
+          const convert = pdf2pic.fromPath(tempFilePath, {
+            density: conversionSettings.density,
+            saveFilename: "page",
+            savePath: "/tmp",
+            format: conversionSettings.format,
+            quality: conversionSettings.quality
+          });
+          
+          // Convert all pages
+          const convertResult = await convert.bulk(-1);
           
           sendStatus({
-            step: 'Text extraction complete',
+            step: 'Loading images',
             progress: 40,
-            message: `Extracted text from ${pdfData.numpages} pages`
+            message: `Converted ${convertResult.length} pages to images`
           });
-        } catch (parseError) {
-          console.error('PDF text extraction failed:', parseError);
-          throw new Error(`Failed to extract text from PDF: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+          
+          // Convert images to base64
+          const fs = await import('fs');
+          imagePages = convertResult.map((result, index) => {
+            try {
+              if (!result.path) {
+                console.warn(`Page ${index + 1} has no path`);
+                return null;
+              }
+              const imageBuffer = fs.readFileSync(result.path);
+              const base64Image = imageBuffer.toString('base64');
+              // Clean up individual image files
+              fs.unlinkSync(result.path);
+              return `data:image/jpeg;base64,${base64Image}`;
+            } catch (error) {
+              console.warn(`Failed to process page ${index + 1}:`, error);
+              return null;
+            }
+          }).filter(Boolean) as string[];
+          
+        } catch (conversionError) {
+          console.error('PDF to image conversion failed:', conversionError);
+          throw new Error(`Failed to convert PDF to images: ${conversionError instanceof Error ? conversionError.message : 'Unknown error'}`);
         }
         
-        // Process extracted text with GPT-4o
+        // Process images with GPT-4o Vision using batch processing
         let extractedData = '';
         try {
           sendStatus({
-            step: 'Processing with GPT-4o',
+            step: 'Processing with GPT-4o Vision',
             progress: 50,
-            message: 'Analyzing extracted text with AI...'
+            message: `Analyzing ${imagePages.length} pages with AI...`
           });
 
           const { createOpenAIClient, VISION_ANALYSIS_PROMPT } = await import('@/lib/document-processor');
           const openai = createOpenAIClient();
 
-          const completion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-              {
-                role: "user",
-                content: `${VISION_ANALYSIS_PROMPT}
-
-DOCUMENT TEXT TO ANALYZE:
-${extractedText}
-
-Please analyze the above document text and extract the required information according to the template provided.`
+          // For large documents, process in batches to avoid payload limits
+          const maxPagesPerBatch = fileSize > 30 * 1024 * 1024 ? 3 : 6; // Smaller batches for larger files
+          
+          if (imagePages.length <= maxPagesPerBatch) {
+            // Small document - process all pages at once
+            const imageMessages = imagePages.map((imagePage) => ({
+              type: "image_url" as const,
+              image_url: {
+                url: imagePage,
+                detail: "medium" as const // Use medium for better performance
               }
-            ],
-            max_tokens: 4000,
-            temperature: 0.1
-          });
+            } as any));
 
-          extractedData = completion.choices[0]?.message?.content || '';
+            const completion = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: VISION_ANALYSIS_PROMPT
+                    },
+                    ...imageMessages
+                  ]
+                }
+              ],
+              max_tokens: 4000,
+              temperature: 0.1
+            });
+
+            extractedData = completion.choices[0]?.message?.content || '';
+          } else {
+            // Large document - process in batches
+            let allResults: string[] = [];
+            
+            for (let i = 0; i < imagePages.length; i += maxPagesPerBatch) {
+              const batch = imagePages.slice(i, i + maxPagesPerBatch);
+              const batchNum = Math.floor(i / maxPagesPerBatch) + 1;
+              const totalBatches = Math.ceil(imagePages.length / maxPagesPerBatch);
+              
+              sendStatus({
+                step: 'Processing with GPT-4o Vision',
+                progress: 50 + (30 * i / imagePages.length),
+                message: `Processing batch ${batchNum}/${totalBatches} (${batch.length} pages)...`
+              });
+              
+                             const imageMessages = batch.map((imagePage) => ({
+                 type: "image_url" as const,
+                 image_url: {
+                   url: imagePage,
+                   detail: "medium" as const
+                 }
+               } as any));
+
+              const completion = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      {
+                        type: "text",
+                        text: `${VISION_ANALYSIS_PROMPT}
+                        
+This is batch ${batchNum} of ${totalBatches}. Extract any relevant information from these pages.`
+                      },
+                      ...imageMessages
+                    ]
+                  }
+                ],
+                max_tokens: 4000,
+                temperature: 0.1
+              });
+
+              const batchResult = completion.choices[0]?.message?.content || '';
+              if (batchResult.trim()) {
+                allResults.push(batchResult);
+              }
+            }
+            
+            // Combine all batch results
+            extractedData = allResults.join('\n\n--- Next Batch ---\n\n');
+          }
 
           sendStatus({
             step: 'Finalizing results',
@@ -143,7 +250,8 @@ Please analyze the above document text and extract the required information acco
           message: 'Document processing complete!',
           result: {
             extractedData: extractedData,
-            processingMethod: 'Direct PDF Analysis'
+            totalPages: imagePages.length,
+            processingMethod: 'GPT-4o Vision Analysis'
           }
         })}\n\n`));
         
