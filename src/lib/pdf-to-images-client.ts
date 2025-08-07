@@ -12,7 +12,7 @@ export async function convertPdfToImages(
     // Dynamic import to avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist');
     
-    // Disable worker for better compatibility in serverless environments
+    // Disable worker for maximum compatibility - PDF.js will run on main thread
     pdfjsLib.GlobalWorkerOptions.workerSrc = '';
     
     onProgress?.(10, 'Loading PDF document...');
