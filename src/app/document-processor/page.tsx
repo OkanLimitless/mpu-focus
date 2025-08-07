@@ -43,12 +43,8 @@ export default function DocumentProcessor() {
         return;
       }
       
-      // Determine upload method based on file size
-      if (selectedFile.size > 4 * 1024 * 1024) { // >4MB
-        setUploadMethod('uploadthing');
-      } else {
-        setUploadMethod('direct');
-      }
+      // All files now use client-side processing - no need for UploadThing
+      setUploadMethod('direct');
       
       setFile(selectedFile);
       setError(null);
