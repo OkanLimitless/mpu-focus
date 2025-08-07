@@ -5,17 +5,22 @@ import vision from '@google-cloud/vision';
 import { fromPath } from 'pdf2pic';
 import OpenAI from 'openai';
 
-// Initialize Google Cloud Vision client
-const visionClient = new vision.ImageAnnotatorClient({
-  // Add your Google Cloud credentials here
-  keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-});
+// Initialize clients only when needed
+function createVisionClient() {
+  return new vision.ImageAnnotatorClient({
+    keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
+    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  });
+}
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function createOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured');
+  }
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // Template for data extraction
 const EXTRACTION_TEMPLATE = `
@@ -131,7 +136,15 @@ export async function POST(request: NextRequest) {
           });
 
           try {
+            // Check if path exists
+            if (!pageResult.path) {
+              console.error(`No path for page ${i + 1}`);
+              allExtractedText += `\n--- Page ${i + 1} ---\n[Error: No image path generated]\n`;
+              continue;
+            }
+
             // Perform OCR on the image
+            const visionClient = createVisionClient();
             const [result] = await visionClient.textDetection(pageResult.path);
             const detections = result.textAnnotations;
             
@@ -157,6 +170,7 @@ export async function POST(request: NextRequest) {
         // Use OpenAI to extract structured data
         let extractedData = '';
         try {
+          const openai = createOpenAIClient();
           const completion = await openai.chat.completions.create({
             model: 'gpt-4-turbo-preview',
             messages: [
