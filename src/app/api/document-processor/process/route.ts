@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        // Check file size upfront with more generous limits
+        // Check file size upfront - now we're more generous since we handle it differently
         if (file.size > 100 * 1024 * 1024) { // 100MB hard limit
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
             error: 'File too large. Please use a PDF smaller than 100MB. Large files will be processed with lower quality for better performance.' 
@@ -92,18 +92,82 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        const startTime = Date.now();
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        
-        // Save uploaded file temporarily
-        const tempFilePath = join('/tmp', `upload_${Date.now()}.pdf`);
-        await writeFile(tempFilePath, buffer);
-
-        // Send initial status
+        // Define status sender function
         const sendStatus = (status: ProcessingStatus) => {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status })}\n\n`));
         };
+
+        // For large files (>10MB), we'll upload to UploadThing first to bypass Vercel's 4.5MB limit
+        let tempFilePath: string;
+        const startTime = Date.now();
+        
+        if (file.size > 10 * 1024 * 1024) { // >10MB files
+          // Upload to UploadThing first, then download for processing
+          sendStatus({
+            step: 'Uploading large file',
+            progress: 5,
+            message: 'Uploading large file to temporary storage...'
+          });
+          
+          try {
+            const { UTApi } = await import('uploadthing/server');
+            const utapi = new UTApi();
+            
+            const uploadResult = await utapi.uploadFiles([file]);
+            if (!uploadResult || uploadResult.length === 0 || uploadResult[0].error) {
+              throw new Error('Upload failed: ' + (uploadResult[0]?.error?.message || 'Unknown error'));
+            }
+            
+            const fileUrl = uploadResult[0].data.url;
+            
+            sendStatus({
+              step: 'Downloading for processing',
+              progress: 15,
+              message: 'Retrieving file for analysis...'
+            });
+            
+            // Download the file for processing
+            const fileResponse = await fetch(fileUrl);
+            if (!fileResponse.ok) {
+              throw new Error(`Failed to download file: ${fileResponse.statusText}`);
+            }
+            
+            const fileBuffer = await fileResponse.arrayBuffer();
+            const buffer = Buffer.from(fileBuffer);
+            
+            // Save to temporary file
+            tempFilePath = join('/tmp', `upload_${Date.now()}.pdf`);
+            await writeFile(tempFilePath, buffer);
+            
+            // Clean up from UploadThing after download
+            setTimeout(async () => {
+              try {
+                if (uploadResult[0]?.data?.key) {
+                  await utapi.deleteFiles([uploadResult[0].data.key]);
+                }
+              } catch (e) {
+                console.warn('Could not delete temporary file from UploadThing:', e);
+              }
+            }, 5000); // Give some time for processing to complete
+            
+          } catch (error) {
+            console.error('Large file handling error:', error);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              error: 'Failed to process large file. Please try a smaller file or try again.'
+            })}\n\n`));
+            controller.close();
+            return;
+          }
+        } else {
+          // For smaller files, handle directly 
+          const bytes = await file.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          
+          tempFilePath = join('/tmp', `upload_${Date.now()}.pdf`);
+          await writeFile(tempFilePath, buffer);
+        }
+
+        // Send initial status for PDF conversion
 
         sendStatus({
           step: 'Converting PDF to images',

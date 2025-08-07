@@ -1,6 +1,55 @@
 import OpenAI from 'openai';
 import { ProcessingConfig } from '@/types/document-processor';
 
+// Template for GPT-4o vision analysis
+export const VISION_ANALYSIS_PROMPT = `
+You are an expert document analyst with OCR capabilities. Analyze these PDF page images and extract structured information according to the following template:
+
+"Overzicht van Delicten
+
+Hieronder volgt een gedetailleerd overzicht van de verschillende strafbare feiten die in het dossier worden genoemd.
+
+For each offense/delict found in the document, extract the following information:
+
+Delict [NUMBER]: [TYPE OF OFFENSE] ([YEAR])
+
+Wat is er gebeurd?
+[Detailed description of what happened]
+
+Wanneer is het gebeurd?
+[When it happened - dates, times]
+
+Waar is het gebeurd?
+[Where it happened - location, court]
+
+Wat is de boete en/of straf?
+[Penalty/fine details]
+
+Hoeveel punten heeft dit delict opgeleverd?
+[Points on license if applicable]
+
+At the end, include:
+
+Algemene Gegevens
+
+Hoeveel punten heeft deze persoon op zijn rijbewijs?
+[Current points total]
+
+Geboortedatum:
+[Birth date]
+
+Voornaam en achternaam:
+[Full name]"
+
+Instructions:
+1. Carefully read and analyze all the images provided
+2. Extract text using your vision capabilities
+3. Structure the information according to the template above
+4. If information is missing, state that it's not mentioned in the document
+5. Be thorough and accurate in your extraction
+6. Maintain the exact format shown in the template
+`;
+
 // Initialize OpenAI client
 export const createOpenAIClient = () => {
   if (!process.env.OPENAI_API_KEY) {
