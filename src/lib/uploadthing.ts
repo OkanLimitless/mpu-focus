@@ -29,8 +29,14 @@ export const ourFileRouter = {
       return { uploadedBy: "user" };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("Image upload complete:", file.name);
-      return { uploadedBy: metadata.uploadedBy, fileUrl: file.ufsUrl };
+      // Log upload completion
+      console.log("Image upload complete:", file.name, "URL:", file.ufsUrl);
+      
+      // Return the required data structure
+      return { 
+        uploadedBy: metadata.uploadedBy, 
+        fileUrl: file.ufsUrl || file.url // Fallback for compatibility
+      };
     }),
 } satisfies FileRouter;
 

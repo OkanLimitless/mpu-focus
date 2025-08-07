@@ -213,6 +213,20 @@ export default function DocumentProcessor() {
         throw new Error('Failed to upload images to cloud storage');
       }
 
+      // Check for any failed uploads
+      const validUrls = uploadedImages.map(img => {
+        const url = img.serverData?.fileUrl || img.url;
+        return url;
+      }).filter(Boolean);
+
+      if (validUrls.length === 0) {
+        throw new Error('No valid image URLs received from cloud storage. Check UploadThing callback status.');
+      }
+
+      if (validUrls.length < uploadedImages.length) {
+        console.warn(`Warning: Only ${validUrls.length} out of ${uploadedImages.length} images have valid URLs`);
+      }
+
       // Now send just the image URLs to the server for AI processing
       setProcessingStatus({
         step: 'AI Analysis',
@@ -226,7 +240,12 @@ export default function DocumentProcessor() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          imageUrls: uploadedImages.map(img => img.serverData?.fileUrl || img.url),
+          imageUrls: uploadedImages.map(img => {
+            // Handle different UploadThing response formats
+            const url = img.serverData?.fileUrl || img.url;
+            console.log('Image URL:', url, 'Full object:', img);
+            return url;
+          }).filter(Boolean), // Remove any undefined URLs
           fileName: file.name
         }),
       });

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
             const imageMessages = imageUrls.map((imageUrl) => ({
               type: "image_url" as const,
-              image_url: { url: imageUrl, detail: "medium" as const }
+              image_url: { url: imageUrl, detail: "high" as const }
             } as any));
 
             const completion = await openai.chat.completions.create({
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
               const imageMessages = batch.map((imageUrl) => ({
                 type: "image_url" as const,
-                image_url: { url: imageUrl, detail: "medium" as const }
+                image_url: { url: imageUrl, detail: "high" as const }
               } as any));
 
               const completion = await openai.chat.completions.create({
