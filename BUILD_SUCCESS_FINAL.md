@@ -16,7 +16,8 @@ The document processing tool has been successfully built, optimized, and is read
 1. **Removed Problematic Dependencies**: 
    - Replaced `pdf2pic` (GraphicsMagick issues) with `pdf-parse`
    - Removed `multer` (unnecessary for serverless)
-   - Used dynamic imports for better compatibility
+   - Removed `canvas` and `sharp` (native dependencies causing stack overflow)
+   - Used dynamic imports for all heavy packages
 
 2. **Hybrid Processing Approach**:
    - First tries direct PDF text extraction (fast, cheap)
@@ -24,7 +25,8 @@ The document processing tool has been successfully built, optimized, and is read
    - Intelligent detection of which method to use
 
 3. **Serverless Optimization**:
-   - Dynamic imports to avoid build-time issues
+   - All heavy packages dynamically imported
+   - No build-time dependency issues
    - Efficient memory usage
    - Automatic cleanup of temporary files
 
@@ -47,17 +49,17 @@ The document processing tool has been successfully built, optimized, and is read
 {
   "@google-cloud/vision": "^5.3.3",
   "openai": "^5.12.0", 
-  "pdf-parse": "^3.2.0",
-  "canvas": "^2.11.2",
-  "sharp": "^0.34.3"
+  "pdf-parse": "^3.2.0"
 }
 ```
 
 ### Dependencies Removed
 ```json
 {
-  "pdf2pic": "removed - causing build issues",
-  "multer": "removed - unnecessary for serverless"
+  "pdf2pic": "removed - GraphicsMagick build issues",
+  "multer": "removed - unnecessary for serverless",
+  "canvas": "removed - native dependencies cause stack overflow",
+  "sharp": "removed - native dependencies cause stack overflow"
 }
 ```
 

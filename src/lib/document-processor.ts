@@ -1,13 +1,14 @@
-import vision from '@google-cloud/vision';
+// Dynamic imports to avoid build issues
 import OpenAI from 'openai';
 import { ProcessingConfig, OCRPage } from '@/types/document-processor';
 
 // Initialize clients with environment variables
-export const createVisionClient = () => {
+export const createVisionClient = async () => {
   if (!process.env.GOOGLE_CLOUD_PROJECT_ID) {
     throw new Error('Google Cloud Project ID not configured');
   }
   
+  const { default: vision } = await import('@google-cloud/vision');
   return new vision.ImageAnnotatorClient({
     keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
     projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -40,7 +41,7 @@ export async function performOCR(
 }
 
 async function performGoogleVisionOCR(imagePath: string): Promise<string> {
-  const client = createVisionClient();
+  const client = await createVisionClient();
   const [result] = await client.textDetection(imagePath);
   const detections = result.textAnnotations;
   

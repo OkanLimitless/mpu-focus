@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
-import vision from '@google-cloud/vision';
+// Google Cloud Vision will be dynamically imported to avoid build issues
 import OpenAI from 'openai';
 // PDF parsing will be dynamically imported to avoid build issues
 
 // Initialize clients only when needed
-function createVisionClient() {
+async function createVisionClient() {
+  const { default: vision } = await import('@google-cloud/vision');
   return new vision.ImageAnnotatorClient({
     keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
     projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
 
           try {
             // Use Google Cloud Vision to process the entire PDF
-            const visionClient = createVisionClient();
+            const visionClient = await createVisionClient();
             const [result] = await visionClient.textDetection(tempFilePath);
             const detections = result.textAnnotations;
             
