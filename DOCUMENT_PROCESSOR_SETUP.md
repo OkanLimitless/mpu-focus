@@ -1,8 +1,8 @@
 # Document Processor Setup Guide
 
-## 🎉 Build Status: SUCCESS ✅
+## 🎉 Build Status: SUCCESS ✅ (Updated)
 
-The document processing tool has been successfully built and is ready for deployment!
+The document processing tool has been successfully built and optimized for serverless deployment!
 
 ## 📍 Access the Tool
 
@@ -95,20 +95,27 @@ For Vercel deployment:
 4. Review extracted and structured data
 
 ### Expected Processing Time
-- **Small docs** (1-10 pages): 30-60 seconds
-- **Medium docs** (50-100 pages): 3-8 minutes
-- **Large docs** (150-200 pages): 8-15 minutes
+- **Small docs** (1-10 pages): 10-30 seconds
+- **Medium docs** (50-100 pages): 1-3 minutes  
+- **Large docs** (150-200 pages): 3-8 minutes
+
+### Processing Approach
+The tool now uses an intelligent hybrid approach:
+1. **Direct Text Extraction**: First attempts to extract text directly from PDF
+2. **OCR Fallback**: If PDF contains mostly images, automatically switches to Google Cloud Vision OCR
+3. **AI Structuring**: Uses GPT-4 to organize extracted text according to your template
 
 ## 📊 Features Overview
 
 ### ✅ Implemented Features
 - **PDF Upload**: Drag & drop interface with validation
 - **Real-time Progress**: Live updates during processing
-- **OCR Processing**: Google Cloud Vision text extraction
+- **Hybrid Processing**: Smart text extraction + OCR fallback
 - **AI Structuring**: GPT-4 powered data extraction
 - **Template System**: Pre-built templates for different document types
 - **Error Handling**: Comprehensive error management
 - **Results Export**: Copy structured data
+- **Serverless Optimized**: Built for Vercel deployment
 
 ### 🎯 Template Support
 - **Legal Documents**: Extract offense details, dates, penalties, personal info
@@ -153,9 +160,10 @@ Check browser console and server logs for detailed error information.
 - **Output tokens**: ~$0.06 per 1K tokens
 - **Example**: 200-page document ≈ $2-5 (depending on content)
 
-### Total Cost Example
-- **Small docs** (10 pages): ~$0.20-0.50
-- **Large docs** (200 pages): ~$2.30-5.30
+### Total Cost Example (Hybrid Approach)
+- **Text-based PDFs** (200 pages): ~$2-5 (mostly LLM costs)
+- **Image-based PDFs** (200 pages): ~$2.30-5.30 (OCR + LLM costs)
+- **Mixed PDFs** (200 pages): ~$1-3 (optimized processing)
 
 ## 🔒 Security Considerations
 

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import vision from '@google-cloud/vision';
-import { fromPath } from 'pdf2pic';
 import OpenAI from 'openai';
+// PDF parsing will be dynamically imported to avoid build issues
 
 // Initialize clients only when needed
 function createVisionClient() {
@@ -100,70 +100,80 @@ export async function POST(request: NextRequest) {
         };
 
         sendStatus({
-          step: 'Converting PDF to images',
+          step: 'Extracting text from PDF',
           progress: 10,
-          message: 'Breaking down PDF into individual pages...'
+          message: 'Attempting direct text extraction...'
         });
 
-        // Convert PDF to images
-        const convert = fromPath(tempFilePath, {
-          density: 300,
-          saveFilename: 'page',
-          savePath: '/tmp',
-          format: 'png',
-          width: 2000,
-          height: 2000
-        });
-
-        const pageResults = await convert.bulk(-1, { responseType: 'image' });
-        const totalPages = pageResults.length;
-
-        sendStatus({
-          step: 'Processing with OCR',
-          progress: 30,
-          message: `Processing ${totalPages} pages with Google Cloud Vision...`
-        });
-
-        // Process each page with OCR
+        // First, try direct text extraction from PDF
         let allExtractedText = '';
-        for (let i = 0; i < pageResults.length; i++) {
-          const pageResult = pageResults[i];
+        let useOCR = false;
+        
+        try {
+          // Dynamically import pdf-parse to avoid build issues
+          const { default: pdfParse } = await import('pdf-parse');
+          const pdfData = await pdfParse(buffer);
+          allExtractedText = pdfData.text;
           
+          // Check if extracted text is meaningful (not just spaces/newlines)
+          const meaningfulText = allExtractedText.replace(/\s/g, '');
+          if (meaningfulText.length < 100) {
+            useOCR = true;
+            sendStatus({
+              step: 'Switching to OCR',
+              progress: 20,
+              message: 'PDF contains mostly images, switching to OCR processing...'
+            });
+          } else {
+            sendStatus({
+              step: 'Text extraction successful',
+              progress: 50,
+              message: `Extracted ${allExtractedText.length} characters from PDF`
+            });
+          }
+        } catch (pdfError) {
+          console.error('PDF text extraction failed:', pdfError);
+          useOCR = true;
+          sendStatus({
+            step: 'Switching to OCR',
+            progress: 20,
+            message: 'Direct text extraction failed, switching to OCR...'
+          });
+        }
+
+        // If direct extraction failed or produced poor results, use OCR
+        if (useOCR) {
           sendStatus({
             step: 'Processing with OCR',
-            progress: 30 + (i / totalPages) * 40,
-            message: `Processing page ${i + 1} of ${totalPages}...`
+            progress: 30,
+            message: 'Processing document with Google Cloud Vision OCR...'
           });
 
           try {
-            // Check if path exists
-            if (!pageResult.path) {
-              console.error(`No path for page ${i + 1}`);
-              allExtractedText += `\n--- Page ${i + 1} ---\n[Error: No image path generated]\n`;
-              continue;
-            }
-
-            // Perform OCR on the image
+            // Use Google Cloud Vision to process the entire PDF
             const visionClient = createVisionClient();
-            const [result] = await visionClient.textDetection(pageResult.path);
+            const [result] = await visionClient.textDetection(tempFilePath);
             const detections = result.textAnnotations;
             
             if (detections && detections.length > 0) {
-              const pageText = detections[0].description || '';
-              allExtractedText += `\n--- Page ${i + 1} ---\n${pageText}\n`;
+              allExtractedText = detections[0].description || '';
+              sendStatus({
+                step: 'OCR processing complete',
+                progress: 70,
+                message: `OCR extracted ${allExtractedText.length} characters`
+              });
+            } else {
+              allExtractedText = '[No text could be extracted from this document]';
             }
-
-            // Clean up temporary image file
-            await unlink(pageResult.path);
           } catch (ocrError) {
-            console.error(`OCR error for page ${i + 1}:`, ocrError);
-            allExtractedText += `\n--- Page ${i + 1} ---\n[OCR Error: Could not process this page]\n`;
+            console.error('OCR processing failed:', ocrError);
+            allExtractedText = `[Error during OCR processing: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}]`;
           }
         }
 
         sendStatus({
           step: 'Extracting structured data',
-          progress: 80,
+          progress: 75,
           message: 'Using AI to extract and structure the data...'
         });
 
@@ -204,11 +214,14 @@ export async function POST(request: NextRequest) {
 
         const processingTime = Math.round((Date.now() - startTime) / 1000);
 
+        // Estimate page count based on content length
+        const estimatedPages = Math.max(1, Math.ceil(allExtractedText.length / 2000));
+
         // Send final result
         const result = {
           id: `doc_${Date.now()}`,
           fileName: file.name,
-          totalPages,
+          totalPages: estimatedPages,
           extractedData,
           processingTime,
           createdAt: new Date().toISOString()
