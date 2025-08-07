@@ -13,10 +13,10 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       // This runs after upload is complete
       console.log("Upload complete for file:", file.name);
-      console.log("File URL:", file.url);
+      console.log("File URL:", file.ufsUrl);
       
       // We can trigger processing here or return the URL
-      return { uploadedBy: metadata.uploadedBy, fileUrl: file.url };
+      return { uploadedBy: metadata.uploadedBy, fileUrl: file.ufsUrl };
     }),
 } satisfies FileRouter;
 

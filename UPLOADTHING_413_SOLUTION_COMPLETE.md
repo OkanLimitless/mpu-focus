@@ -74,7 +74,7 @@ export const ourFileRouter = {
     })
     .onUploadComplete(async ({ metadata, file }) => {
       console.log("Upload complete:", file.name);
-      return { uploadedBy: metadata.uploadedBy, fileUrl: file.url };
+      return { uploadedBy: metadata.uploadedBy, fileUrl: file.ufsUrl };
     }),
 };
 ```

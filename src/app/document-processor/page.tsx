@@ -83,7 +83,7 @@ export default function DocumentProcessor() {
       }
 
       // Start processing from the uploaded file
-      await processFromUploadThing(uploadResult.url, uploadResult.name, uploadResult.key);
+              await processFromUploadThing(uploadResult.ufsUrl, uploadResult.name, uploadResult.key);
       
     } catch (error) {
       console.error('Upload error:', error);

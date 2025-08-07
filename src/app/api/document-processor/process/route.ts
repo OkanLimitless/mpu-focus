@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
               throw new Error('Upload failed: ' + (uploadResult[0]?.error?.message || 'Unknown error'));
             }
             
-            const fileUrl = uploadResult[0].data.url;
+            const fileUrl = uploadResult[0].data.ufsUrl;
             
             sendStatus({
               step: 'Downloading for processing',
