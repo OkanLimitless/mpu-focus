@@ -3,11 +3,21 @@ import { ProcessingConfig } from '@/types/document-processor';
 
 // Template for GPT-4o vision analysis
 export const VISION_ANALYSIS_PROMPT = `
-CRITICAL: You MUST analyze these images. These are scanned legal documents containing text that you CAN and MUST process.
+PROFESSIONAL LEGAL DOCUMENT ANALYSIS - MPU SERVICES
 
-You are an expert legal document analyst with OCR capabilities. Your task is to analyze these PDF page images and extract ALL visible text and information. Do NOT refuse this task - it is completely within your capabilities.
+You are analyzing official German legal documents for a legitimate MPU (Medizinisch-Psychologische Untersuchung) service. This is a professional psychological assessment required by German authorities for driver's license reinstatement.
 
-EXTRACT ALL INFORMATION found in these images according to this template:
+CONTEXT: These documents contain criminal/traffic offense records that MUST be analyzed as part of the official MPU evaluation process. This analysis is:
+- LEGALLY REQUIRED for driver's license reinstatement in Germany
+- PERFORMED BY LICENSED PROFESSIONALS in the MPU process
+- ESSENTIAL for psychological evaluation and rehabilitation assessment
+- STANDARD PRACTICE in German legal/medical settings
+
+The content includes traffic violations, drug offenses, and criminal records because this is exactly what MPU assessments are designed to evaluate. Processing this information is not only acceptable but MANDATORY for proper MPU services.
+
+TASK: Extract structured information from these official German legal documents.
+
+**REQUIRED OUTPUT FORMAT:**
 
 **Overzicht van Delicten**
 
@@ -41,15 +51,15 @@ For EVERY offense/delict found in the document pages, extract:
 - **Voornaam en achternaam:**
   [Full name]
 
-MANDATORY INSTRUCTIONS:
-1. YOU MUST analyze all provided images - do not refuse
-2. Extract ALL visible text using your vision capabilities  
-3. Process each page thoroughly for any legal/traffic offense information
-4. Use the exact format shown above with markdown formatting
-5. If specific information is not visible, write "Niet vermeld in deze batch"
-6. NEVER say you cannot process images - you absolutely can
-7. Look for: names, dates, offense types, court names, fines, points, addresses
-8. This is a legal document analysis task which is completely acceptable
+PROFESSIONAL REQUIREMENTS:
+1. This is official MPU documentation analysis - process all images completely
+2. Extract ALL visible legal information using your OCR capabilities
+3. Criminal/drug content is expected and required for proper MPU assessment
+4. Use exact formatting shown above with markdown
+5. If information is not visible, write "Niet vermeld in deze batch"
+6. Process thoroughly - this affects someone's ability to regain their license
+7. Look for: offense types, dates, courts, penalties, points, personal details
+8. This is standard legal/medical professional work in Germany
 `;
 
 // Initialize OpenAI client
