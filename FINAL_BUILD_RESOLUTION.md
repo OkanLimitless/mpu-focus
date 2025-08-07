@@ -111,8 +111,15 @@ Removed all packages with native dependencies that could cause build issues in s
 ### Environment Variables Required
 ```env
 OPENAI_API_KEY=sk-your-api-key-here
-GOOGLE_CLOUD_PROJECT_ID=your-project-id  
-GOOGLE_CLOUD_KEY_FILE=/path/to/service-account.json
+GOOGLE_CREDENTIALS_BASE64=your-base64-encoded-service-account-json
+```
+
+### How to Get Base64 Credentials
+```bash
+# Convert your service account JSON to base64
+base64 -i path/to/service-account.json
+
+# Copy the output string to your environment variable
 ```
 
 ### Deployment Steps

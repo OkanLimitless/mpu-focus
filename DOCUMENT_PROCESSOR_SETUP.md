@@ -58,27 +58,40 @@ Add these to your `.env.local` file:
 ```env
 # Document Processing APIs
 OPENAI_API_KEY=sk-your-openai-api-key-here
-GOOGLE_CLOUD_PROJECT_ID=your-google-cloud-project-id
-GOOGLE_CLOUD_KEY_FILE=/path/to/your/service-account.json
-
-# Alternative: Google Cloud credentials via JSON string
-# GOOGLE_APPLICATION_CREDENTIALS_JSON={"type":"service_account",...}
+GOOGLE_CREDENTIALS_BASE64=your-base64-encoded-service-account-json
 ```
+
+### How to Generate Base64 Credentials
+
+1. **Download your service account JSON file** from Google Cloud Console
+2. **Convert to base64**:
+   ```bash
+   # On macOS/Linux
+   base64 -i path/to/service-account.json
+   
+   # On Windows
+   certutil -encode path/to/service-account.json temp.txt && findstr /v /c:- temp.txt
+   ```
+3. **Copy the base64 string** (it will be very long)
+4. **Set as environment variable** in Vercel or your `.env.local`
 
 ### 4. Production Deployment
 
 For Vercel deployment:
 
-1. **Upload Service Account Key**:
+1. **Set Environment Variables in Vercel Dashboard**:
    - Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-   - Add the JSON content directly as `GOOGLE_APPLICATION_CREDENTIALS_JSON`
-   - Or upload the file and reference its path
+   - Add the following variables:
+   ```
+   OPENAI_API_KEY=sk-your-openai-api-key
+   GOOGLE_CREDENTIALS_BASE64=your-base64-encoded-json-string
+   ```
 
-2. **Set Environment Variables**:
-   ```
-   OPENAI_API_KEY=sk-...
-   GOOGLE_CLOUD_PROJECT_ID=your-project-id
-   ```
+2. **Benefits of Base64 Approach**:
+   - ✅ No file uploads needed
+   - ✅ Works perfectly with serverless
+   - ✅ Secure credential storage
+   - ✅ Easy environment variable management
 
 ## 🚀 Testing the Tool
 

@@ -4,14 +4,13 @@ import { ProcessingConfig, OCRPage } from '@/types/document-processor';
 
 // Initialize clients with environment variables
 export const createVisionClient = async () => {
-  if (!process.env.GOOGLE_CLOUD_PROJECT_ID) {
-    throw new Error('Google Cloud Project ID not configured');
-  }
+  const { parseGoogleCredentials } = await import('@/lib/google-credentials');
+  const credentials = parseGoogleCredentials();
   
   const { default: vision } = await import('@google-cloud/vision');
   return new vision.ImageAnnotatorClient({
-    keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
-    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    credentials,
+    projectId: credentials.project_id,
   });
 };
 

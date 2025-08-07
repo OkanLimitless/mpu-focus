@@ -8,9 +8,13 @@ import OpenAI from 'openai';
 // Initialize clients only when needed
 async function createVisionClient() {
   const { default: vision } = await import('@google-cloud/vision');
+  const { parseGoogleCredentials } = await import('@/lib/google-credentials');
+  
+  const credentials = parseGoogleCredentials();
+  
   return new vision.ImageAnnotatorClient({
-    keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
-    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    credentials,
+    projectId: credentials.project_id,
   });
 }
 
