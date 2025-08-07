@@ -1,322 +1,244 @@
-# MPU Focus - Enhanced Verification System
+# MPU Focus - Complete Learning Management Platform
 
-## Overview
-A comprehensive verification and learning platform with document preview, digital signatures, and email notifications. **Recently upgraded to UploadThing v7** for improved performance and reliability.
+A comprehensive learning management system built with Next.js 14, TypeScript, and MongoDB. Features include course management, video streaming, assessments, document processing, and administrative tools.
 
-## 📋 Table of Contents
-- [Features](#features)
-- [Document 404 Error Fix](#document-404-error-fix)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage Guide](#usage-guide)
-- [API Documentation](#api-documentation)
-- [Troubleshooting](#troubleshooting)
+## Features
 
-## ✨ Features
+### Core Learning Platform
+- **Course Management**: Create, edit, and organize courses with video content
+- **Video Streaming**: High-quality video streaming with Mux integration
+- **Progress Tracking**: Real-time progress tracking for students
+- **Assessment System**: Quizzes and evaluations with automatic grading
+- **User Management**: Student and instructor account management
+- **Document Management**: Upload and manage course materials
+- **Email Notifications**: Automated email system for important updates
 
-### Core Verification System
-- **Document Upload & Storage**: Secure document uploads via UploadThing v7
-- **Document Preview**: In-browser PDF and image viewing with zoom controls
-- **Digital Signatures**: Canvas-based signature capture for legal binding
-- **Email Notifications**: Automated approval/rejection notifications
-- **Resubmission Flow**: Allow document re-upload without contract re-signing
-- **Admin Dashboard**: Comprehensive verification management interface
+### Document Processor Tool 🆕
+- **PDF Processing**: Upload and process large PDF documents (100-200 pages)
+- **OCR Integration**: Extract text from scanned documents using Google Cloud Vision API
+- **AI-Powered Data Extraction**: Use GPT-4 to structure extracted data according to templates
+- **Progress Tracking**: Real-time processing status with progress indicators
+- **Template Support**: Pre-built templates for legal documents, invoices, and general documents
+- **Streaming Processing**: Server-sent events for real-time updates during processing
 
-### 🔧 Document 404 Error Fix
+## Technology Stack
 
-#### Problem Solved
-The system now automatically resolves "Document proxy error: Error: Failed to fetch file: 404" issues that occur when document URLs become inaccessible. **This was a key driver for migrating to UploadThing v7.**
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Node.js
+- **Database**: MongoDB with Mongoose
+- **Authentication**: NextAuth.js
+- **File Storage**: UploadThing
+- **Video Streaming**: Mux
+- **Email**: Nodemailer
+- **OCR**: Google Cloud Vision API
+- **AI/LLM**: OpenAI GPT-4
+- **PDF Processing**: pdf2pic
+- **UI Components**: Radix UI, Lucide React
 
-#### Root Causes Addressed
-1. **Filename Mismatch**: UploadThing sometimes modifies filenames during upload
-2. **Missing URL Storage**: Legacy documents uploaded before URL storage implementation  
-3. **File Deletion**: Documents removed from UploadThing storage
+## Getting Started
 
-#### Solution Features
-- **Automatic Detection**: Scans all documents and identifies broken URLs
-- **Auto-Fix Capability**: Updates database with working URLs when possible
-- **Comprehensive Reporting**: Shows which documents are missing vs. fixed
-- **Admin Tools**: One-click verification and repair system
+### Prerequisites
 
-#### Document Verifier Tool
-The admin panel now includes a **Document Verifier** tool that:
+- Node.js 18+ and npm
+- MongoDB instance
+- Google Cloud Platform account (for OCR)
+- OpenAI API account (for AI extraction)
 
-1. **Verifies All Documents**: Tests accessibility of every uploaded document
-2. **Auto-Fixes URLs**: Updates database with correct URLs when found
-3. **Reports Missing Files**: Lists documents that need user re-upload
-4. **Visual Dashboard**: Shows verification status with clear metrics
+### Installation
 
-**How to Use:**
-1. Go to Admin Panel → Verification Management
-2. Click on "Document Tools" tab
-3. Click "Verify All Documents"
-4. Review results and take action on missing documents
-
-#### API Endpoints for 404 Resolution
-
-**Document Verification API:**
+1. Clone the repository:
 ```bash
-# Verify all documents (Admin only)
-POST /api/admin/documents/verify
-
-# Check specific user's document
-GET /api/admin/documents/verify?userId=USER_ID
-```
-
-**Document Proxy API:**
-```bash
-# Access document through CORS-friendly proxy  
-GET /api/documents/proxy?url=ENCODED_UPLOADTHING_URL
-```
-
-#### Prevention Measures
-- **Enhanced Upload Process**: Stores both filename and full URL
-- **Upload Validation**: Verifies file accessibility after upload
-- **Better Error Handling**: Graceful degradation when files are missing
-- **Comprehensive Logging**: Detailed error tracking for debugging
-
-### User Experience Enhancements
-- **Smart Status Management**: Clear indication of verification progress
-- **Helpful Error Messages**: Actionable guidance when documents fail to load
-- **Resubmission Notices**: Clear instructions for users who need to re-upload
-
-## 🚀 Installation
-
-```bash
-# Clone repository
 git clone <repository-url>
 cd mpu-focus
+```
 
-# Install dependencies
+2. Install dependencies:
+```bash
 npm install
+```
 
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configuration
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-# Run development server
+4. Configure your environment variables in `.env.local`:
+
+#### Required for Document Processing:
+```env
+# OpenAI API for AI extraction
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Google Cloud Vision for OCR
+GOOGLE_CLOUD_PROJECT_ID=your-google-cloud-project-id
+GOOGLE_CLOUD_KEY_FILE=path/to/your/service-account.json
+```
+
+#### Other Required Variables:
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/mpu-focus
+
+# Authentication
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-nextauth-secret
+
+# File Upload
+UPLOADTHING_SECRET=your-uploadthing-secret
+UPLOADTHING_APP_ID=your-uploadthing-app-id
+```
+
+5. Set up Google Cloud Vision API:
+   - Create a Google Cloud Project
+   - Enable the Vision API
+   - Create a service account and download the JSON key file
+   - Set the path to the key file in `GOOGLE_CLOUD_KEY_FILE`
+
+6. Run the development server:
+```bash
 npm run dev
 ```
 
-## ⚙️ Configuration
+7. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Required Environment Variables
+## Document Processor Usage
 
-```env
-# Database
-MONGODB_URI=your_mongodb_connection_string
+### Accessing the Tool
+Navigate to `/document-processor` to access the document processing tool.
 
-# Authentication
-NEXTAUTH_SECRET=your_secret_key
-NEXTAUTH_URL=http://localhost:3000
+### Supported Features
+- **File Upload**: Drag and drop or select PDF files up to 50MB
+- **Real-time Processing**: Watch progress as your document is processed
+- **OCR Extraction**: Automatic text extraction from scanned pages
+- **AI Structuring**: Intelligent data extraction using customizable templates
+- **Results Export**: Copy extracted data or process multiple documents
 
-# File Upload (UploadThing v7)
-UPLOADTHING_TOKEN=your_uploadthing_v7_token
+### Processing Workflow
+1. **Upload PDF**: Select a PDF document (supports 100-200 pages)
+2. **Conversion**: PDF is converted to high-quality images
+3. **OCR Processing**: Each page is processed with Google Cloud Vision
+4. **AI Extraction**: GPT-4 analyzes and structures the extracted text
+5. **Results**: View and copy the structured data output
 
-# Email Service (for notifications)
-SMTP_HOST=your_smtp_host
-SMTP_PORT=587
-SMTP_USER=your_smtp_username
-SMTP_PASSWORD=your_smtp_password
-FROM_EMAIL=your_from_email
+### Template System
+The tool includes pre-built templates for:
+- **Legal Documents**: Extract offense details, dates, penalties, and personal information
+- **Invoices**: Extract billing information, line items, and totals
+- **General Documents**: Extract key information in a structured format
+
+## API Endpoints
+
+### Document Processing
+- `POST /api/document-processor/process` - Process a PDF document
+  - Accepts: `multipart/form-data` with PDF file
+  - Returns: Server-sent events stream with processing status and results
+
+### Core Platform APIs
+- `POST /api/auth/[...nextauth]` - Authentication endpoints
+- `GET/POST /api/courses` - Course management
+- `GET/POST /api/users` - User management
+- `POST /api/upload` - File upload handling
+- `GET/POST /api/videos` - Video management with Mux
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── document-processor/     # Document processing tool
+│   │   └── page.tsx           # Main processor interface
+│   ├── api/
+│   │   ├── document-processor/ # Processing API routes
+│   │   ├── auth/              # Authentication
+│   │   ├── courses/           # Course management
+│   │   └── users/             # User management
+│   ├── admin/                 # Admin dashboard
+│   ├── client/                # Client dashboard
+│   └── layout.tsx             # Root layout
+├── components/
+│   ├── ui/                    # Reusable UI components
+│   ├── forms/                 # Form components
+│   └── layout/                # Layout components
+├── lib/
+│   ├── document-processor.ts  # Document processing utilities
+│   ├── db.ts                  # Database connection
+│   ├── auth.ts                # Authentication config
+│   └── utils.ts               # Utility functions
+├── models/                    # MongoDB schemas
+├── types/
+│   ├── document-processor.ts  # Document processing types
+│   └── index.ts               # General types
+└── hooks/                     # Custom React hooks
 ```
 
-### UploadThing v7 Migration Note
+## Environment Configuration
 
-**Important**: We've updated to UploadThing v7 which uses a single `UPLOADTHING_TOKEN` instead of separate `UPLOADTHING_SECRET` and `UPLOADTHING_APP_ID` variables.
-
-To get your v7 token:
-1. Go to your [UploadThing Dashboard](https://uploadthing.com/dashboard)
-2. Navigate to "API Keys" 
-3. Select the "V7" tab
-4. Copy your token and set it as `UPLOADTHING_TOKEN`
-
-## 📖 Usage Guide
-
-### For Users
-
-#### Document Upload Process
-1. Access verification link from email
-2. Upload passport/ID document (PDF or image)
-3. Preview document before submission
-4. Sign contract (digital signature or checkbox)
-5. Wait for admin approval
-
-#### Resubmission Process
-1. Receive rejection email with resubmission link
-2. Upload new document (contract signature preserved)
-3. Wait for re-review
-
-### For Administrators
-
-#### Verification Management
-1. Go to Admin Panel → Verification Management
-2. Use filters to find specific users or statuses
-3. Click "Review" to examine documents and contracts
-4. Approve or reject with optional resubmission allowance
-
-#### Document Troubleshooting
-1. Go to "Document Tools" tab in Verification Management
-2. Run "Verify All Documents" to check all files
-3. Review results:
-   - **Verified**: Documents are accessible
-   - **Fixed**: URLs were corrected automatically
-   - **Missing**: Documents need user re-upload
-4. Set affected users to resubmission status if needed
-
-#### Handling Missing Documents
-When documents are missing:
-1. Use Document Verifier to identify affected users
-2. Set users to `resubmission_required` status
-3. System sends automatic resubmission emails
-4. Users can upload new documents without re-signing contracts
-
-## 🔧 API Documentation
-
-### Admin Document Verification
-
-#### Verify All Documents
-```http
-POST /api/admin/documents/verify
-Authorization: Bearer <admin-session>
-
-Response:
-{
-  "success": true,
-  "results": {
-    "total": 50,
-    "verified": 45,
-    "fixed": 3,
-    "missing": 2,
-    "errors": [...]
-  }
-}
+### Development
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript checks
 ```
 
-#### Check Specific Document
-```http
-GET /api/admin/documents/verify?userId=USER_ID
-Authorization: Bearer <admin-session>
+### Production Deployment
+The application is configured for deployment on Vercel with:
+- Automatic deployments from main branch
+- Environment variable management
+- Serverless function optimization
 
-Response:
-{
-  "success": true,
-  "document": {
-    "filename": "passport.pdf",
-    "currentUrl": "https://utfs.io/f/abc123",
-    "uploadedAt": "2024-01-01T00:00:00Z"
-  },
-  "testResults": [...]
-}
-```
+## Security Considerations
 
-### Document Proxy
+### Document Processing Security
+- File size limits (50MB max)
+- PDF file type validation
+- Temporary file cleanup
+- API rate limiting recommended
+- Secure credential management
 
-#### Access Document via Proxy
-```http
-GET /api/documents/proxy?url=ENCODED_URL
+### General Security
+- NextAuth.js for secure authentication
+- Environment variable protection
+- Input validation and sanitization
+- CORS configuration
+- File upload restrictions
 
-Response: Binary file data with CORS headers
-Headers:
-- Access-Control-Allow-Origin: *
-- Content-Type: application/pdf|image/*
-- Content-Disposition: inline
-```
+## Performance Optimization
 
-## 🐛 Troubleshooting
+### Document Processing
+- Streaming responses for large documents
+- Progressive image conversion
+- Parallel OCR processing
+- Efficient memory management
+- Automatic cleanup of temporary files
 
-### Common Issues
+### General Platform
+- Server-side rendering with Next.js
+- Image optimization
+- Lazy loading for components
+- Database query optimization
+- CDN integration with Vercel
 
-#### "Document proxy error: Failed to fetch file: 404"
-**Solution**: Use the Document Verifier tool in admin panel
-1. Go to Admin → Verification Management → Document Tools
-2. Click "Verify All Documents"
-3. System will auto-fix URLs where possible
-4. For missing files, set users to resubmission status
-
-#### Documents not displaying in admin panel
-**Check**: 
-1. Document URLs in database
-2. UploadThing file accessibility
-3. CORS proxy configuration
-4. Browser console for specific errors
-
-#### Users can't upload documents
-**Check**:
-1. UploadThing configuration
-2. File size limits
-3. Supported file types (PDF, JPG, PNG, WEBP)
-4. Network connectivity
-
-### Performance Optimization
-
-#### For Large Document Sets
-- Document Verifier processes in batches
-- Use pagination in admin panel
-- Monitor UploadThing bandwidth usage
-- Implement caching for frequently accessed documents
-
-### Browser Compatibility
-- **Chrome**: Full support ✅
-- **Firefox**: Full support ✅  
-- **Safari**: Full support ✅
-- **Edge**: Full support ✅
-- **Mobile**: Responsive design ✅
-
-## 🔒 Security Features
-
-- **Admin-only APIs**: Document verification requires admin authentication
-- **CORS Protection**: Proxy validates UploadThing domains only
-- **Secure File Access**: URLs are proxied through authenticated endpoints
-- **Audit Trail**: Comprehensive logging of document access and modifications
-
-## 📈 Monitoring
-
-### Key Metrics to Track
-- Document verification success rate
-- Missing document count
-- Resubmission frequency
-- Error rates in proxy endpoint
-- User completion rates
-
-### Health Checks
-The system provides:
-- Document accessibility monitoring
-- Automatic URL validation
-- Error rate tracking
-- Performance metrics
-
-## 🛠️ Future Enhancements
-
-### Planned Features
-- **Automated Health Monitoring**: Daily document accessibility checks
-- **Bulk Operations**: Mass user status updates
-- **Advanced Analytics**: Verification completion analytics
-- **Document Versioning**: Track document resubmission history
-- **Integration APIs**: Third-party verification services
-
-### Scalability Considerations
-- **CDN Integration**: Faster global document access
-- **Database Optimization**: Indexing for large user bases
-- **Background Processing**: Async document verification
-- **Microservices**: Separate document service
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create feature branch
-3. Implement changes with tests
-4. Update documentation
-5. Submit pull request
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
 
-## 📞 Support
+## License
 
-For technical issues:
-1. Check troubleshooting guide
-2. Review error logs
-3. Use Document Verifier tool for 404 errors
-4. Contact support with specific error details
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support and questions:
+- Create an issue in the repository
+- Check the documentation in the `/docs` folder
+- Review environment configuration in `.env.example`
 
 ---
 
-**Latest Update**: Added comprehensive 404 document error resolution system with automatic detection, repair, and admin tools for managing document accessibility issues.
+**Note**: The document processor requires valid API keys for Google Cloud Vision and OpenAI. Make sure to set up these services before using the document processing features.
