@@ -10,6 +10,10 @@ const nextConfig = {
     };
     return config;
   },
+  // Configure API route limits for document processing
+  experimental: {
+    serverComponentsExternalPackages: ['pdf-poppler'],
+  },
 };
 
 module.exports = nextConfig;

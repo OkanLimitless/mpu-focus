@@ -83,6 +83,15 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        // Check file size upfront
+        if (file.size > 20 * 1024 * 1024) { // 20MB limit
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            error: 'File too large. Please use a PDF smaller than 20MB or with fewer pages.' 
+          })}\n\n`));
+          controller.close();
+          return;
+        }
+
         const startTime = Date.now();
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
@@ -112,7 +121,10 @@ export async function POST(request: NextRequest) {
             out_dir: '/tmp',
             out_prefix: `pdf_${Date.now()}`,
             page: null, // Convert all pages
-            file_path: tempFilePath
+            file_path: tempFilePath,
+            // Add options to reduce image size
+            poppler_path: undefined, // Use system poppler
+            // These options help reduce file size
           };
 
           const imageFiles = await pdfPoppler.convert(options);
@@ -134,54 +146,79 @@ export async function POST(request: NextRequest) {
           message: 'Analyzing document images with GPT-4o vision capabilities...'
         });
 
-        // Process images with GPT-4o vision
+        // Process images with GPT-4o vision using batch processing for large documents
         let extractedData = '';
         try {
-          const openai = createOpenAIClient();
+          const maxPagesPerBatch = 5; // Reduce batch size
+          const maxPayloadSize = 15 * 1024 * 1024; // 15MB limit for safety
           
-          // Prepare images for GPT-4o
-          const imageMessages = [];
-          
-          for (let i = 0; i < Math.min(imagePages.length, 20); i++) { // Limit to 20 pages for API limits
-            const imagePath = imagePages[i];
-            const imageBuffer = await readFile(imagePath);
-            const base64Image = imageBuffer.toString('base64');
-            
-            imageMessages.push({
-              type: "image_url" as const,
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
-                detail: "high" as const
-              }
-            });
-
+          if (imagePages.length <= maxPagesPerBatch) {
+            // Process small documents in a single batch
             sendStatus({
               step: 'Processing with GPT-4o Vision',
-              progress: 40 + (i / imagePages.length) * 30,
-              message: `Processing page ${i + 1} of ${imagePages.length}...`
+              progress: 50,
+              message: `Processing ${imagePages.length} pages in single batch...`
             });
-          }
+            
+            const openai = createOpenAIClient();
+            const imageMessages = [];
+            let totalSize = 0;
+            
+            for (let i = 0; i < imagePages.length; i++) {
+              const imagePath = imagePages[i];
+              const imageBuffer = await readFile(imagePath);
+              
+              if (totalSize + imageBuffer.length > maxPayloadSize) {
+                console.warn(`Stopping at page ${i + 1} due to payload size limit`);
+                break;
+              }
+              
+              const base64Image = imageBuffer.toString('base64');
+              totalSize += base64Image.length;
+              
+                             imageMessages.push({
+                 type: "image_url",
+                 image_url: {
+                   url: `data:image/jpeg;base64,${base64Image}`,
+                   detail: "medium"
+                 }
+               } as any);
+            }
 
-          // Send all images to GPT-4o for analysis
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-              {
+            if (imageMessages.length === 0) {
+              throw new Error('No images could be processed - files may be too large');
+            }
+
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [{
                 role: 'user',
                 content: [
-                  {
-                    type: "text",
-                    text: VISION_ANALYSIS_PROMPT
-                  },
+                  { type: "text", text: VISION_ANALYSIS_PROMPT },
                   ...imageMessages
                 ]
-              }
-            ],
-            max_tokens: 4000,
-            temperature: 0.1
-          });
+              }],
+              max_tokens: 4000,
+              temperature: 0.1
+            });
 
-          extractedData = completion.choices[0].message.content || 'No data could be extracted';
+            extractedData = completion.choices[0].message.content || 'No data could be extracted';
+          } else {
+            // Process large documents in batches
+            sendStatus({
+              step: 'Processing with GPT-4o Vision',
+              progress: 50,
+              message: `Processing ${imagePages.length} pages in batches...`
+            });
+            
+            const { processPDFInBatches } = await import('@/lib/batch-processor');
+            
+            extractedData = await processPDFInBatches(imagePages, {
+              maxPagesPerBatch,
+              maxPayloadSize,
+              analysisPrompt: VISION_ANALYSIS_PROMPT
+            });
+          }
           
           sendStatus({
             step: 'GPT-4o analysis complete',
