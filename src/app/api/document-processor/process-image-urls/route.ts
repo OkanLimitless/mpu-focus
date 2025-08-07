@@ -1,0 +1,161 @@
+import { NextRequest } from 'next/server';
+import { VISION_ANALYSIS_PROMPT } from '@/lib/document-processor';
+
+export async function POST(request: NextRequest) {
+  const encoder = new TextEncoder();
+  
+  // Create a readable stream for Server-Sent Events
+  const stream = new ReadableStream({
+    start(controller) {
+      const sendStatus = (data: any) => {
+        const message = `data: ${JSON.stringify(data)}\n\n`;
+        controller.enqueue(encoder.encode(message));
+      };
+
+      const processImageUrls = async () => {
+        try {
+          const { imageUrls, fileName } = await request.json();
+          
+          if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
+            throw new Error('No image URLs provided');
+          }
+
+          sendStatus({
+            step: 'Processing images',
+            progress: 0,
+            message: `Analyzing ${imageUrls.length} pages with AI...`
+          });
+
+          // Process with GPT-4o Vision
+          const { default: OpenAI } = await import('openai');
+          
+          const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+          });
+
+          let allExtractedData = '';
+          
+          // Use smaller batches since we're now using URLs (much smaller payload)
+          const maxPagesPerBatch = imageUrls.length > 20 ? 5 : 8;
+
+          if (imageUrls.length <= maxPagesPerBatch) {
+            // Process all images at once for smaller documents
+            sendStatus({
+              step: 'AI Analysis',
+              progress: 20,
+              message: `Analyzing all ${imageUrls.length} pages...`
+            });
+
+            const imageMessages = imageUrls.map((imageUrl) => ({
+              type: "image_url" as const,
+              image_url: { url: imageUrl, detail: "medium" as const }
+            } as any));
+
+            const completion = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "text", text: VISION_ANALYSIS_PROMPT },
+                    ...imageMessages
+                  ],
+                },
+              ],
+              max_tokens: 4000,
+            });
+
+            allExtractedData = completion.choices[0]?.message?.content || '';
+
+          } else {
+            // Process in batches for large documents
+            const totalBatches = Math.ceil(imageUrls.length / maxPagesPerBatch);
+            
+            for (let i = 0; i < imageUrls.length; i += maxPagesPerBatch) {
+              const batch = imageUrls.slice(i, i + maxPagesPerBatch);
+              const batchNumber = Math.floor(i / maxPagesPerBatch) + 1;
+              
+              sendStatus({
+                step: 'AI Analysis',
+                progress: 10 + (batchNumber / totalBatches) * 70,
+                message: `Processing batch ${batchNumber}/${totalBatches} (${batch.length} pages)...`
+              });
+
+              const imageMessages = batch.map((imageUrl) => ({
+                type: "image_url" as const,
+                image_url: { url: imageUrl, detail: "medium" as const }
+              } as any));
+
+              const completion = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      { 
+                        type: "text", 
+                        text: `${VISION_ANALYSIS_PROMPT}\n\nThis is batch ${batchNumber} of ${totalBatches}. Focus on extracting any relevant data from these pages.` 
+                      },
+                      ...imageMessages
+                    ],
+                  },
+                ],
+                max_tokens: 4000,
+              });
+
+              const batchResult = completion.choices[0]?.message?.content || '';
+              allExtractedData += `\n\n--- Batch ${batchNumber} Results ---\n${batchResult}`;
+
+              // Small delay between batches to avoid rate limits
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+
+          sendStatus({
+            step: 'Finalizing',
+            progress: 90,
+            message: 'Organizing extracted data...'
+          });
+
+          // Structure the final result
+          const result = {
+            fileName: fileName || 'document.pdf',
+            totalPages: imageUrls.length,
+            extractedData: allExtractedData,
+            processingMethod: 'UploadThing + GPT-4o Vision',
+            timestamp: new Date().toISOString()
+          };
+
+          sendStatus({
+            step: 'Complete',
+            progress: 100,
+            message: 'Document processing completed successfully!',
+            result
+          });
+
+          controller.close();
+          
+        } catch (error) {
+          console.error('Processing error:', error);
+          sendStatus({
+            step: 'Error',
+            progress: 0,
+            message: error instanceof Error ? error.message : 'Processing failed',
+            error: true
+          });
+          controller.close();
+        }
+      };
+
+      processImageUrls();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}

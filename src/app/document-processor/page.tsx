@@ -174,19 +174,61 @@ export default function DocumentProcessor() {
         throw new Error('No images were extracted from the PDF');
       }
 
-      // Now send images to the server for AI processing
+      // Upload images to UploadThing to bypass Vercel limits
       setProcessingStatus({
         step: 'Uploading images',
         progress: 40,
-        message: `Sending ${images.length} converted pages for AI analysis...`
+        message: `Uploading ${images.length} converted pages to cloud storage...`
       });
 
-      const formData = new FormData();
-      formData.append('images', JSON.stringify(images));
+      // Convert base64 images to File objects for UploadThing
+      const imageFiles: File[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const base64Data = images[i].split(',')[1]; // Remove data:image/png;base64, prefix
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let j = 0; j < byteCharacters.length; j++) {
+          byteNumbers[j] = byteCharacters.charCodeAt(j);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'image/png' });
+        const imageFile = new File([blob], `page-${i + 1}.png`, { type: 'image/png' });
+        imageFiles.push(imageFile);
+      }
 
-      const response = await fetch('/api/document-processor/process-images', {
+      // Upload all images to UploadThing
+      const { uploadImagesToUploadThing } = await import('@/lib/uploadthing-upload');
+      
+      const uploadedImages = await uploadImagesToUploadThing(imageFiles, {
+        onProgress: (progress) => {
+          setProcessingStatus({
+            step: 'Uploading images',
+            progress: 40 + Math.round(progress * 0.3), // 30% of progress for uploads
+            message: `Uploading to cloud storage... ${Math.round(progress)}%`
+          });
+        }
+      });
+
+      if (!uploadedImages || uploadedImages.length === 0) {
+        throw new Error('Failed to upload images to cloud storage');
+      }
+
+      // Now send just the image URLs to the server for AI processing
+      setProcessingStatus({
+        step: 'AI Analysis',
+        progress: 70,
+        message: `Starting AI analysis of ${uploadedImages.length} pages...`
+      });
+
+      const response = await fetch('/api/document-processor/process-image-urls', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrls: uploadedImages.map(img => img.serverData?.fileUrl || img.url),
+          fileName: file.name
+        }),
       });
 
       if (!response.ok) {
@@ -213,8 +255,8 @@ export default function DocumentProcessor() {
                   throw new Error(data.message || 'Processing failed');
                 }
                 
-                // Adjust progress to account for client-side conversion
-                const adjustedProgress = 40 + (data.progress || 0) * 0.6;
+                // Adjust progress to account for client-side conversion and upload
+                const adjustedProgress = 70 + (data.progress || 0) * 0.3;
                 
                 const status = {
                   step: data.step || 'Processing',
