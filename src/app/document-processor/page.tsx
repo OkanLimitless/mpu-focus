@@ -158,10 +158,37 @@ export default function DocumentProcessor() {
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // First, convert PDF to images on the client side
+      setProcessingStatus({ step: 'Converting PDF', progress: 0, message: 'Converting PDF to images...' });
+      
+      const { convertPdfToImages } = await import('@/lib/pdf-to-images-client');
+      
+      const images = await convertPdfToImages(file, {
+        scale: file.size > 15 * 1024 * 1024 ? 1.2 : 1.5, // Lower scale for larger files
+        onProgress: (progress, message) => {
+          setProcessingStatus({
+            step: 'Converting PDF',
+            progress: Math.round(progress * 0.4), // Use 40% of progress for conversion
+            message
+          });
+        }
+      });
 
-      const response = await fetch('/api/document-processor/process', {
+      if (images.length === 0) {
+        throw new Error('No images were extracted from the PDF');
+      }
+
+      // Now send images to the server for AI processing
+      setProcessingStatus({
+        step: 'Uploading images',
+        progress: 40,
+        message: `Sending ${images.length} converted pages for AI analysis...`
+      });
+
+      const formData = new FormData();
+      formData.append('images', JSON.stringify(images));
+
+      const response = await fetch('/api/document-processor/process-images', {
         method: 'POST',
         body: formData,
       });
@@ -185,13 +212,25 @@ export default function DocumentProcessor() {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.status) {
-                  setProcessingStatus(data.status);
-                } else if (data.result) {
+                
+                if (data.error) {
+                  throw new Error(data.message || 'Processing failed');
+                }
+                
+                // Adjust progress to account for client-side conversion
+                const adjustedProgress = 40 + (data.progress || 0) * 0.6;
+                
+                const status = {
+                  step: data.step || 'Processing',
+                  progress: Math.round(adjustedProgress),
+                  message: data.message || 'Processing...'
+                };
+                
+                setProcessingStatus(status);
+
+                if (data.result) {
                   setResult(data.result);
                   setIsProcessing(false);
-                } else if (data.error) {
-                  throw new Error(data.error);
                 }
               } catch (e) {
                 // Ignore JSON parse errors for incomplete chunks
