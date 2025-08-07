@@ -5,7 +5,7 @@ const f = createUploadthing();
 
 // File router for document processing
 export const ourFileRouter = {
-  pdfUploader: f({ pdf: { maxFileSize: "100MB" } })
+  pdfUploader: f({ pdf: { maxFileSize: "64MB" } })
     .middleware(async ({ req }) => {
       // Optional: Add authentication here
       return { uploadedBy: "user" };

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { UploadButton } from '@/lib/uploadthing-helpers';
 
 interface ProcessingStatus {
   step: string;
@@ -28,6 +29,7 @@ export default function DocumentProcessor() {
   const [processingStatus, setProcessingStatus] = useState<ProcessingStatus | null>(null);
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadMethod, setUploadMethod] = useState<'direct' | 'uploadthing'>('direct');
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -40,8 +42,74 @@ export default function DocumentProcessor() {
         setError('File size must be less than 100MB. Large files will be processed with adaptive quality.');
         return;
       }
+      
+      // Determine upload method based on file size
+      if (selectedFile.size > 4 * 1024 * 1024) { // >4MB
+        setUploadMethod('uploadthing');
+      } else {
+        setUploadMethod('direct');
+      }
+      
       setFile(selectedFile);
       setError(null);
+    }
+  };
+
+  const processFromUploadThing = async (fileUrl: string, fileName: string, fileKey: string) => {
+    setIsProcessing(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await fetch('/api/document-processor/process-from-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileUrl,
+          fileName,
+          fileKey
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process document');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.status) {
+                  setProcessingStatus(data.status);
+                } else if (data.result) {
+                  setResult(data.result);
+                  setIsProcessing(false);
+                } else if (data.error) {
+                  throw new Error(data.error);
+                }
+              } catch (e) {
+                // Ignore JSON parse errors for incomplete chunks
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setIsProcessing(false);
     }
   };
 
@@ -130,52 +198,100 @@ export default function DocumentProcessor() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* File Upload */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <input
-                type="file"
-                accept=".pdf"
-                onChange={handleFileSelect}
-                className="hidden"
-                id="file-upload"
-                disabled={isProcessing}
-              />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-medium mb-2">
-                  {file ? file.name : 'Choose PDF file or drag and drop'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Supports PDF files up to 100MB (adaptive quality for large files)
-                </p>
-              </label>
-            </div>
-
-            {file && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{file.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handleProcessDocument}
+            {/* Smart File Upload - detect file size and route accordingly */}
+            {!file ? (
+              <>
+                {/* File Selection */}
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="file-upload"
                     disabled={isProcessing}
-                    className="flex items-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      'Process Document'
-                    )}
-                  </Button>
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-lg font-medium mb-2">
+                      Choose PDF file or drag and drop
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Supports PDF files up to 100MB (auto-optimized upload)
+                    </p>
+                  </label>
                 </div>
-              </div>
+              </>
+            ) : uploadMethod === 'direct' ? (
+              <>
+                {/* Small File - Direct Upload */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-green-800">{file.name}</p>
+                      <p className="text-sm text-green-600">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB - Direct processing
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleProcessDocument}
+                      disabled={isProcessing}
+                      className="flex items-center gap-2"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        'Process Document'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Large File - UploadThing Upload */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-medium text-blue-800">{file.name}</p>
+                      <p className="text-sm text-blue-600">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB - Large file detected, using optimized upload
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <UploadButton
+                        endpoint="pdfUploader"
+                        onClientUploadComplete={(res) => {
+                          if (res && res[0]) {
+                            processFromUploadThing(res[0].url, res[0].name, res[0].key);
+                          }
+                        }}
+                        onUploadError={(error: Error) => {
+                          setError(`Upload failed: ${error.message}`);
+                        }}
+                        appearance={{
+                          button: "ut-ready:bg-blue-600 ut-ready:hover:bg-blue-700 ut-uploading:bg-blue-400",
+                          allowedContent: "text-blue-600"
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setFile(null);
+                          setUploadMethod('direct');
+                        }}
+                        className="text-sm"
+                      >
+                        Choose Different File
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             {/* Processing Status */}
