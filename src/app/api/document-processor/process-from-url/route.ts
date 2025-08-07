@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         
         let imagePages: string[] = [];
         try {
-          const { convertPdfToImages } = await import('@/lib/pdf-to-images-api');
+          const { convertPdfToImages } = await import('@/lib/pdf-to-images-serverless');
           
           // Adaptive quality based on file size
           const getConversionSettings = (fileSize: number) => {

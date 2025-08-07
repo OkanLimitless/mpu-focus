@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         try {
                     let imagePages: string[] = [];
           try {
-            const { convertPdfToImages } = await import('@/lib/pdf-to-images-api');
+            const { convertPdfToImages } = await import('@/lib/pdf-to-images-serverless');
             
             sendStatus({
               step: 'Converting PDF to images',
