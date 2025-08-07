@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UploadButton } from '@/lib/uploadthing-helpers';
+import { uploadToUploadThing } from '@/lib/uploadthing-upload';
 
 interface ProcessingStatus {
   step: string;
@@ -52,6 +52,43 @@ export default function DocumentProcessor() {
       
       setFile(selectedFile);
       setError(null);
+    }
+  };
+
+  const handleUploadAndProcess = async () => {
+    if (!file) return;
+    
+    setIsProcessing(true);
+    setError(null);
+    setResult(null);
+    setProcessingStatus({ step: 'Uploading to UploadThing...', progress: 10, message: 'Preparing secure upload...' });
+
+    try {
+      // Upload to UploadThing
+      const uploadResult = await uploadToUploadThing(file, {
+        onUploadBegin: () => {
+          setProcessingStatus({ step: 'Uploading file...', progress: 20, message: 'Uploading to secure storage...' });
+        },
+        onUploadProgress: ({ progress }) => {
+          setProcessingStatus({ 
+            step: 'Uploading file...', 
+            progress: 20 + (progress * 0.3), // 20-50% for upload
+            message: `Uploading... ${Math.round(progress)}%` 
+          });
+        }
+      });
+
+      if (!uploadResult) {
+        throw new Error('Upload failed - no response received');
+      }
+
+      // Start processing from the uploaded file
+      await processFromUploadThing(uploadResult.url, uploadResult.name, uploadResult.key);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError(error instanceof Error ? error.message : 'Upload failed');
+      setIsProcessing(false);
     }
   };
 
@@ -263,21 +300,20 @@ export default function DocumentProcessor() {
                     </div>
                     
                     <div className="flex flex-col gap-3">
-                      <UploadButton
-                        endpoint="pdfUploader"
-                        onClientUploadComplete={(res) => {
-                          if (res && res[0]) {
-                            processFromUploadThing(res[0].url, res[0].name, res[0].key);
-                          }
-                        }}
-                        onUploadError={(error: Error) => {
-                          setError(`Upload failed: ${error.message}`);
-                        }}
-                        appearance={{
-                          button: "ut-ready:bg-blue-600 ut-ready:hover:bg-blue-700 ut-uploading:bg-blue-400",
-                          allowedContent: "text-blue-600"
-                        }}
-                      />
+                      <Button
+                        onClick={handleUploadAndProcess}
+                        disabled={isProcessing}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {processingStatus?.step || 'Processing...'}
+                          </>
+                        ) : (
+                          'Upload & Process Document'
+                        )}
+                      </Button>
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -285,6 +321,7 @@ export default function DocumentProcessor() {
                           setUploadMethod('direct');
                         }}
                         className="text-sm"
+                        disabled={isProcessing}
                       >
                         Choose Different File
                       </Button>
