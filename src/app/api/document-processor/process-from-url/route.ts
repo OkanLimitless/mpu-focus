@@ -64,31 +64,39 @@ export async function POST(request: NextRequest) {
           message: `Downloaded ${Math.round(fileSize / 1024 / 1024)}MB PDF file`
         });
         
-        // Convert PDF to base64 for direct GPT-4o processing
+        // Extract text from PDF using pdf-parse
         sendStatus({
-          step: 'Preparing PDF for analysis',
+          step: 'Extracting text from PDF',
           progress: 25,
-          message: `Preparing ${Math.round(fileSize / 1024 / 1024)}MB PDF for AI analysis...`
+          message: `Extracting text from ${Math.round(fileSize / 1024 / 1024)}MB PDF...`
         });
         
         const fs = await import('fs');
         const pdfBuffer = fs.readFileSync(tempFilePath);
-        const base64Pdf = pdfBuffer.toString('base64');
-        const pdfDataUrl = `data:application/pdf;base64,${base64Pdf}`;
         
-        sendStatus({
-          step: 'PDF prepared for analysis',
-          progress: 40,
-          message: 'PDF converted to format compatible with AI analysis...'
-        });
+        let extractedText = '';
+        try {
+          const pdfParse = await import('pdf-parse');
+          const pdfData = await pdfParse.default(pdfBuffer);
+          extractedText = pdfData.text;
+          
+          sendStatus({
+            step: 'Text extraction complete',
+            progress: 40,
+            message: `Extracted text from ${pdfData.numpages} pages`
+          });
+        } catch (parseError) {
+          console.error('PDF text extraction failed:', parseError);
+          throw new Error(`Failed to extract text from PDF: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+        }
         
-        // Process PDF directly with GPT-4o vision
+        // Process extracted text with GPT-4o
         let extractedData = '';
         try {
           sendStatus({
-            step: 'Processing with GPT-4o Vision',
+            step: 'Processing with GPT-4o',
             progress: 50,
-            message: 'Analyzing PDF content with AI...'
+            message: 'Analyzing extracted text with AI...'
           });
 
           const { createOpenAIClient, VISION_ANALYSIS_PROMPT } = await import('@/lib/document-processor');
@@ -99,22 +107,16 @@ export async function POST(request: NextRequest) {
             messages: [
               {
                 role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: VISION_ANALYSIS_PROMPT
-                  },
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: pdfDataUrl,
-                      detail: "high" // Use high detail for PDF analysis
-                    } as any
-                  }
-                ]
+                content: `${VISION_ANALYSIS_PROMPT}
+
+DOCUMENT TEXT TO ANALYZE:
+${extractedText}
+
+Please analyze the above document text and extract the required information according to the template provided.`
               }
             ],
             max_tokens: 4000,
+            temperature: 0.1
           });
 
           extractedData = completion.choices[0]?.message?.content || '';
