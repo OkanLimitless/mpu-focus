@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
 
           let allExtractedData = '';
           
-          // Use larger batches for faster processing - GPT-4o can handle this easily
-          const maxPagesPerBatch = imageUrls.length > 50 ? 12 : 15; // Much larger batches for speed
+          // Use very large batches for ultra-fast processing - GPT-4o can handle this easily
+          const maxPagesPerBatch = imageUrls.length > 100 ? 20 : 25; // Ultra-large batches for speed
 
           if (imageUrls.length <= maxPagesPerBatch) {
             // Process all images at once for smaller documents
@@ -134,8 +134,8 @@ export async function POST(request: NextRequest) {
 
               allExtractedData += `\n\n--- Batch ${batchNumber} Results ---\n${batchResult}`;
 
-                              // Minimal delay between batches for faster processing
-                await new Promise(resolve => setTimeout(resolve, 500));
+                              // No delay between batches for maximum speed
+                // await new Promise(resolve => setTimeout(resolve, 500));
             }
           }
 
