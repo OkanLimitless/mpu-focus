@@ -12,8 +12,8 @@ export async function convertPdfToImages(
     // Dynamic import to avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist');
     
-    // Disable worker for maximum compatibility - PDF.js will run on main thread
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    // Use reliable CDN for PDF.js worker (you can replace with your Cloudflare Worker)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@latest/build/pdf.worker.min.js';
     
     onProgress?.(10, 'Loading PDF document...');
     
