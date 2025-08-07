@@ -127,9 +127,9 @@ export async function POST(request: NextRequest) {
 
         // Convert PDF pages to images for GPT-4o Vision
         try {
-          let imagePages: string[] = [];
+                    let imagePages: string[] = [];
           try {
-            const pdf2pic = await import('pdf2pic');
+            const { convertPdfToImages } = await import('@/lib/pdf-to-images-api');
             
             sendStatus({
               step: 'Converting PDF to images',
@@ -140,47 +140,30 @@ export async function POST(request: NextRequest) {
             // Adaptive quality based on file size
             const getConversionSettings = (fileSize: number) => {
               if (fileSize < 15 * 1024 * 1024) { // < 15MB
-                return { density: 300, quality: 100, format: 'jpg' as const };
+                return { density: 150, quality: 85, format: 'jpg' as const };
               } else if (fileSize < 35 * 1024 * 1024) { // 15-35MB
-                return { density: 200, quality: 80, format: 'jpg' as const };
+                return { density: 120, quality: 75, format: 'jpg' as const };
               } else if (fileSize < 60 * 1024 * 1024) { // 35-60MB
-                return { density: 150, quality: 70, format: 'jpg' as const };
+                return { density: 100, quality: 65, format: 'jpg' as const };
               } else {
-                return { density: 100, quality: 60, format: 'jpg' as const };
+                return { density: 80, quality: 60, format: 'jpg' as const };
               }
             };
             
             const conversionSettings = getConversionSettings(file.size);
             
-            const convert = pdf2pic.fromPath(tempFilePath, {
-              density: conversionSettings.density,
-              saveFilename: "page",
-              savePath: "/tmp",
-              format: conversionSettings.format,
-              quality: conversionSettings.quality
+            // Read PDF buffer
+            const fs = await import('fs');
+            const pdfBuffer = fs.readFileSync(tempFilePath);
+            
+            // Convert PDF to images using PDF.js + Canvas
+            imagePages = await convertPdfToImages(pdfBuffer, conversionSettings);
+            
+            sendStatus({
+              step: 'Images converted',
+              progress: 40,
+              message: `Converted ${imagePages.length} pages to images`
             });
-            
-            // Convert all pages
-            const convertResult = await convert.bulk(-1);
-            
-                         // Convert images to base64
-             const fs = await import('fs');
-             imagePages = convertResult.map((result, index) => {
-               try {
-                 if (!result.path) {
-                   console.warn(`Page ${index + 1} has no path`);
-                   return null;
-                 }
-                 const imageBuffer = fs.readFileSync(result.path);
-                 const base64Image = imageBuffer.toString('base64');
-                 // Clean up individual image files
-                 fs.unlinkSync(result.path);
-                 return `data:image/jpeg;base64,${base64Image}`;
-               } catch (error) {
-                 console.warn(`Failed to process page ${index + 1}:`, error);
-                 return null;
-               }
-             }).filter(Boolean) as string[];
             
           } catch (conversionError) {
             console.error('PDF to image conversion failed:', conversionError);
