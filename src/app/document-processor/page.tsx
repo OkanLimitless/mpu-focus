@@ -191,8 +191,8 @@ export default function DocumentProcessor() {
           byteNumbers[j] = byteCharacters.charCodeAt(j);
         }
         const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/png' });
-        const imageFile = new File([blob], `page-${i + 1}.png`, { type: 'image/png' });
+        const blob = new Blob([byteArray], { type: 'image/jpeg' });
+        const imageFile = new File([blob], `page-${i + 1}.jpg`, { type: 'image/jpeg' });
         imageFiles.push(imageFile);
       }
 

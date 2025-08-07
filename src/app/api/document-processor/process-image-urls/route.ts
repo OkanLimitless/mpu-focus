@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
 
           let allExtractedData = '';
           
-          // Use smaller batches since we're now using URLs (much smaller payload)
-          const maxPagesPerBatch = imageUrls.length > 20 ? 5 : 8;
+          // Use very small batches to avoid timeout issues
+          const maxPagesPerBatch = 3; // Conservative batch size to prevent timeouts
 
           if (imageUrls.length <= maxPagesPerBatch) {
             // Process all images at once for smaller documents
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
             const imageMessages = imageUrls.map((imageUrl) => ({
               type: "image_url" as const,
-              image_url: { url: imageUrl, detail: "high" as const }
+              image_url: { url: imageUrl, detail: "low" as const } // Use "low" to reduce download time
             } as any));
 
             const completion = await openai.chat.completions.create({
@@ -83,31 +83,59 @@ export async function POST(request: NextRequest) {
 
               const imageMessages = batch.map((imageUrl) => ({
                 type: "image_url" as const,
-                image_url: { url: imageUrl, detail: "high" as const }
+                image_url: { url: imageUrl, detail: "low" as const } // Use "low" to reduce download time
               } as any));
 
-              const completion = await openai.chat.completions.create({
-                model: "gpt-4o",
-                messages: [
-                  {
-                    role: "user",
-                    content: [
-                      { 
-                        type: "text", 
-                        text: `${VISION_ANALYSIS_PROMPT}\n\nThis is batch ${batchNumber} of ${totalBatches}. Focus on extracting any relevant data from these pages.` 
-                      },
-                      ...imageMessages
-                    ],
-                  },
-                ],
-                max_tokens: 4000,
-              });
+              // Retry logic for failed requests
+              let batchResult = '';
+              let retryCount = 0;
+              const maxRetries = 2;
 
-              const batchResult = completion.choices[0]?.message?.content || '';
+              while (retryCount <= maxRetries) {
+                try {
+                  const completion = await openai.chat.completions.create({
+                    model: "gpt-4o",
+                    messages: [
+                      {
+                        role: "user",
+                        content: [
+                          { 
+                            type: "text", 
+                            text: `${VISION_ANALYSIS_PROMPT}\n\nThis is batch ${batchNumber} of ${totalBatches}. Focus on extracting any relevant data from these pages.` 
+                          },
+                          ...imageMessages
+                        ],
+                      },
+                    ],
+                    max_tokens: 4000,
+                  });
+
+                  batchResult = completion.choices[0]?.message?.content || '';
+                  break; // Success, exit retry loop
+
+                } catch (error: any) {
+                  retryCount++;
+                  
+                  if (error?.code === 'invalid_image_url' && retryCount <= maxRetries) {
+                    sendStatus({
+                      step: 'AI Analysis',
+                      progress: 10 + (batchNumber / totalBatches) * 70,
+                      message: `Batch ${batchNumber} failed, retrying... (${retryCount}/${maxRetries})`
+                    });
+                    
+                    // Wait longer before retry
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    continue;
+                  } else {
+                    throw error; // Re-throw if not retryable or max retries reached
+                  }
+                }
+              }
+
               allExtractedData += `\n\n--- Batch ${batchNumber} Results ---\n${batchResult}`;
 
-              // Small delay between batches to avoid rate limits
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              // Longer delay between batches to prevent overwhelming UploadThing/OpenAI
+              await new Promise(resolve => setTimeout(resolve, 3000));
             }
           }
 

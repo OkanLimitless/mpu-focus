@@ -60,7 +60,7 @@ export async function convertPdfToImages(
         await page.render(renderContext).promise;
         
         // Convert canvas to base64 image
-        const imageDataUrl = canvas.toDataURL('image/png', 0.8);
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6); // Use JPEG with lower quality for smaller files
         images.push(imageDataUrl);
         
         // Clean up
