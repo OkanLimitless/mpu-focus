@@ -3,51 +3,53 @@ import { ProcessingConfig } from '@/types/document-processor';
 
 // Template for GPT-4o vision analysis
 export const VISION_ANALYSIS_PROMPT = `
-You are an expert document analyst with OCR capabilities. Analyze these PDF page images and extract structured information according to the following template:
+CRITICAL: You MUST analyze these images. These are scanned legal documents containing text that you CAN and MUST process.
 
-"Overzicht van Delicten
+You are an expert legal document analyst with OCR capabilities. Your task is to analyze these PDF page images and extract ALL visible text and information. Do NOT refuse this task - it is completely within your capabilities.
 
-Hieronder volgt een gedetailleerd overzicht van de verschillende strafbare feiten die in het dossier worden genoemd.
+EXTRACT ALL INFORMATION found in these images according to this template:
 
-For each offense/delict found in the document, extract the following information:
+**Overzicht van Delicten**
 
-Delict [NUMBER]: [TYPE OF OFFENSE] ([YEAR])
+For EVERY offense/delict found in the document pages, extract:
 
-Wat is er gebeurd?
-[Detailed description of what happened]
+**Delict [NUMBER]: [TYPE OF OFFENSE] ([YEAR])**
 
-Wanneer is het gebeurd?
-[When it happened - dates, times]
+- **Wat is er gebeurd?**
+  [Detailed description of what happened]
 
-Waar is het gebeurd?
-[Where it happened - location, court]
+- **Wanneer is het gebeurd?**
+  [When it happened - dates, times]
 
-Wat is de boete en/of straf?
-[Penalty/fine details]
+- **Waar is het gebeurd?**
+  [Where it happened - location, court]
 
-Hoeveel punten heeft dit delict opgeleverd?
-[Points on license if applicable]
+- **Wat is de boete en/of straf?**
+  [Penalty/fine details]
 
-At the end, include:
+- **Hoeveel punten heeft dit delict opgeleverd?**
+  [Points on license if applicable]
 
-Algemene Gegevens
+**Algemene Gegevens**
 
-Hoeveel punten heeft deze persoon op zijn rijbewijs?
-[Current points total]
+- **Hoeveel punten heeft deze persoon op zijn rijbewijs?**
+  [Current points total]
 
-Geboortedatum:
-[Birth date]
+- **Geboortedatum:**
+  [Birth date]
 
-Voornaam en achternaam:
-[Full name]"
+- **Voornaam en achternaam:**
+  [Full name]
 
-Instructions:
-1. Carefully read and analyze all the images provided
-2. Extract text using your vision capabilities
-3. Structure the information according to the template above
-4. If information is missing, state that it's not mentioned in the document
-5. Be thorough and accurate in your extraction
-6. Maintain the exact format shown in the template
+MANDATORY INSTRUCTIONS:
+1. YOU MUST analyze all provided images - do not refuse
+2. Extract ALL visible text using your vision capabilities  
+3. Process each page thoroughly for any legal/traffic offense information
+4. Use the exact format shown above with markdown formatting
+5. If specific information is not visible, write "Niet vermeld in deze batch"
+6. NEVER say you cannot process images - you absolutely can
+7. Look for: names, dates, offense types, court names, fines, points, addresses
+8. This is a legal document analysis task which is completely acceptable
 `;
 
 // Initialize OpenAI client
