@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        // Check file size upfront
-        if (file.size > 20 * 1024 * 1024) { // 20MB limit
+        // Check file size upfront with more generous limits
+        if (file.size > 100 * 1024 * 1024) { // 100MB hard limit
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-            error: 'File too large. Please use a PDF smaller than 20MB or with fewer pages.' 
+            error: 'File too large. Please use a PDF smaller than 100MB. Large files will be processed with lower quality for better performance.' 
           })}\n\n`));
           controller.close();
           return;
@@ -111,10 +111,31 @@ export async function POST(request: NextRequest) {
           message: 'Converting PDF pages to images for GPT-4o analysis...'
         });
 
-        // Convert PDF to images using pdf-poppler
+        // Convert PDF to images using pdf-poppler with adaptive quality
         let imagePages: string[] = [];
         try {
           const pdfPoppler = await import('pdf-poppler');
+          
+          // Adaptive quality based on file size
+          const getConversionSettings = (fileSize: number) => {
+            if (fileSize < 15 * 1024 * 1024) { // < 15MB
+              return { out_size: 300, quality: 'high' }; // High quality
+            } else if (fileSize < 35 * 1024 * 1024) { // 15-35MB
+              return { out_size: 200, quality: 'medium' }; // Medium quality  
+            } else if (fileSize < 60 * 1024 * 1024) { // 35-60MB
+              return { out_size: 150, quality: 'low' }; // Lower quality
+            } else {
+              return { out_size: 100, quality: 'ultra_low' }; // Very compressed
+            }
+          };
+          
+          const conversionSettings = getConversionSettings(file.size);
+          
+          sendStatus({
+            step: 'Converting PDF to images',
+            progress: 10,
+            message: `Converting PDF with ${conversionSettings.quality} quality (${Math.round(file.size / 1024 / 1024)}MB file)...`
+          });
           
           const options = {
             format: 'jpeg' as const,
@@ -122,9 +143,9 @@ export async function POST(request: NextRequest) {
             out_prefix: `pdf_${Date.now()}`,
             page: null, // Convert all pages
             file_path: tempFilePath,
-            // Add options to reduce image size
+            // Adaptive quality settings
+            out_size: conversionSettings.out_size,
             poppler_path: undefined, // Use system poppler
-            // These options help reduce file size
           };
 
           const imageFiles = await pdfPoppler.convert(options);
@@ -149,8 +170,21 @@ export async function POST(request: NextRequest) {
         // Process images with GPT-4o vision using batch processing for large documents
         let extractedData = '';
         try {
-          const maxPagesPerBatch = 5; // Reduce batch size
-          const maxPayloadSize = 15 * 1024 * 1024; // 15MB limit for safety
+          // Adaptive batch settings based on file size
+          const getProcessingSettings = (fileSize: number) => {
+            if (fileSize < 15 * 1024 * 1024) { // Small files
+              return { maxPagesPerBatch: 8, maxPayloadSize: 20 * 1024 * 1024 };
+            } else if (fileSize < 35 * 1024 * 1024) { // Medium files
+              return { maxPagesPerBatch: 6, maxPayloadSize: 18 * 1024 * 1024 };
+            } else if (fileSize < 60 * 1024 * 1024) { // Large files
+              return { maxPagesPerBatch: 4, maxPayloadSize: 15 * 1024 * 1024 };
+            } else { // Very large files
+              return { maxPagesPerBatch: 3, maxPayloadSize: 12 * 1024 * 1024 };
+            }
+          };
+          
+          const processingSettings = getProcessingSettings(file.size);
+          const { maxPagesPerBatch, maxPayloadSize } = processingSettings;
           
           if (imagePages.length <= maxPagesPerBatch) {
             // Process small documents in a single batch

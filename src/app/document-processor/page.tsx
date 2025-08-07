@@ -36,8 +36,8 @@ export default function DocumentProcessor() {
         setError('Please select a PDF file');
         return;
       }
-      if (selectedFile.size > 20 * 1024 * 1024) { // 20MB limit
-        setError('File size must be less than 20MB');
+      if (selectedFile.size > 100 * 1024 * 1024) { // 100MB limit
+        setError('File size must be less than 100MB. Large files will be processed with adaptive quality.');
         return;
       }
       setFile(selectedFile);
@@ -126,7 +126,7 @@ export default function DocumentProcessor() {
               Upload Document
             </CardTitle>
             <CardDescription>
-              Select a PDF document (up to 20MB, up to 50 pages) for processing
+              Select a PDF document (up to 100MB) - large files processed with adaptive quality
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -146,7 +146,7 @@ export default function DocumentProcessor() {
                   {file ? file.name : 'Choose PDF file or drag and drop'}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Supports PDF files up to 20MB
+                  Supports PDF files up to 100MB (adaptive quality for large files)
                 </p>
               </label>
             </div>
