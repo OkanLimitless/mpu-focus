@@ -31,6 +31,7 @@ export default function DocumentProcessor() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadMethod, setUploadMethod] = useState<'direct' | 'uploadthing'>('direct');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -314,6 +315,7 @@ export default function DocumentProcessor() {
   const handleGeneratePDF = async (extractedData: string, fileName: string) => {
     try {
       setError(null);
+      setIsGeneratingPDF(true);
       
       // Get GPT-generated HTML
       const response = await fetch('/api/document-processor/generate-pdf', {
@@ -338,30 +340,38 @@ export default function DocumentProcessor() {
         throw new Error('Invalid response from PDF generation service');
       }
 
-      // Create a new window/tab with the HTML content for PDF generation
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        throw new Error('Popup blocked. Please allow popups and try again.');
-      }
-
-      // Write the GPT-generated HTML to the new window
-      printWindow.document.write(data.htmlContent);
-      printWindow.document.close();
-
-      // Wait for content to load, then trigger print dialog
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-          // Close the window after printing (user can cancel)
-          printWindow.onafterprint = () => {
-            printWindow.close();
-          };
-        }, 500);
+      // Generate PDF directly using html2pdf
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      // Configure PDF options
+      const options = {
+        margin: [10, 10],
+        filename: `MPU_Report_${fileName.replace('.pdf', '')}_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
+
+      // Create a temporary div to hold the HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = data.htmlContent;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      try {
+        // Generate and download PDF
+        await html2pdf().set(options).from(tempDiv).save();
+      } finally {
+        // Clean up temporary element
+        document.body.removeChild(tempDiv);
+      }
 
     } catch (error) {
       console.error('PDF generation failed:', error);
       setError(`Failed to generate PDF report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -539,20 +549,35 @@ export default function DocumentProcessor() {
               </div>
             </div>
 
-            {/* GPT-Powered PDF Generation Section */}
+            {/* PDF Generation Section */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h3 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                🤖 AI-Generated Professional Report
-              </h3>
-              <p className="text-sm text-blue-700 mb-3">
-                Let GPT create a perfectly formatted, professional HTML report with proper German legal structure. Opens in print dialog for easy PDF saving.
-              </p>
-              <Button
-                onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                📄 Generate & Print Professional Report
-              </Button>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-blue-800">Professional PDF Report</h3>
+                <Button
+                  onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
+                  disabled={isGeneratingPDF}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isGeneratingPDF ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    'Download PDF Report'
+                  )}
+                </Button>
+              </div>
+              {isGeneratingPDF && (
+                <div className="mt-3">
+                  <div className="flex items-center space-x-2 text-sm text-blue-600">
+                    <div className="flex-1 bg-blue-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                    </div>
+                    <span>Processing...</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
