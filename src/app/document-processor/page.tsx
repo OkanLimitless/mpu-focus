@@ -245,7 +245,6 @@ export default function DocumentProcessor() {
           imageUrls: uploadedImages.map(img => {
             // Handle different UploadThing response formats
             const url = img.serverData?.fileUrl || img.url;
-            console.log('Image URL:', url, 'Full object:', img);
             return url;
           }).filter(Boolean), // Remove any undefined URLs
           fileName: file.name
