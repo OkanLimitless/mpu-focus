@@ -192,7 +192,8 @@ export default function RestrictedMuxVideoPlayer({
               video_title: video.title,
               video_id: video._id,
             }}
-            style={{ height: '400px', width: '100%' }}
+            className="w-full"
+            style={{ aspectRatio: '16 / 9', width: '100%', ['--media-object-fit' as any]: 'cover' }}
             onPlay={handlePlay}
             onPause={handlePause}
             onTimeUpdate={handleTimeUpdate}
@@ -201,14 +202,6 @@ export default function RestrictedMuxVideoPlayer({
             onSeeked={handleSeeked}
             startTime={0} // Always start from beginning to prevent seeking on load
           />
-          
-          {/* Progress indicator */}
-          <div className="absolute top-4 right-4">
-            <div className="bg-black/70 text-white px-3 py-1 rounded-lg text-sm">
-              {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / 
-              {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')} ({progressPercentage}%)
-            </div>
-          </div>
         </div>
         
         {video.description && (
@@ -217,12 +210,6 @@ export default function RestrictedMuxVideoPlayer({
             <p className="text-sm text-gray-600">{video.description}</p>
           </div>
         )}
-        
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Seeking (skipping) is disabled. Please watch the video completely to proceed to the next chapter.
-          </p>
-        </div>
       </CardContent>
     </Card>
   )
