@@ -6,41 +6,38 @@ const PDF_GENERATION_PROMPT = `
 You are a professional document formatter specializing in German legal and MPU (Medizinisch-Psychologische Untersuchung) documentation. Your task is to convert extracted MPU document data into a beautifully formatted HTML template that will be converted to PDF.
 
 CRITICAL REQUIREMENTS:
-1. Output ONLY valid HTML (no markdown, no explanations)
-2. Use professional German legal document styling
-3. Include proper CSS for print media
-4. Structure the document with clear sections and hierarchy
+1. Output ONLY valid HTML (no markdown, no explanations, no backticks)
+2. Use INLINE STYLES for all formatting (no external CSS)
+3. Create a complete HTML document with <!DOCTYPE html>, <html>, <head>, and <body>
+4. Use black text on white background for PDF compatibility
 5. Handle missing or incomplete data gracefully
-6. Use appropriate German legal terminology and formatting
 
-HTML TEMPLATE STRUCTURE:
-- Professional header with document title and generation date
-- Clean typography optimized for PDF output
-- Proper section divisions with clear hierarchy
-- Responsive layout that works well in PDF format
-- German date formatting and legal document conventions
+HTML STRUCTURE REQUIREMENTS:
+- Start with: <!DOCTYPE html><html><head><title>MPU Report</title></head><body>
+- Use inline styles only (style="..." attributes)
+- Use standard fonts: Arial, Helvetica, sans-serif
+- Use absolute units (px, pt) not relative units (em, rem, %)
+- End with: </body></html>
 
-CSS REQUIREMENTS:
-- Include all CSS inline or in <style> tags
-- Use professional fonts (Arial, Helvetica as fallbacks)
-- Proper margins and spacing for legal documents
-- Page break considerations
-- Print-friendly colors and layout
+STYLING REQUIREMENTS:
+- Body: style="font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;"
+- Headers: style="color: #000; margin: 20px 0 10px 0; font-weight: bold;"
+- Sections: style="margin: 15px 0; padding: 10px; border: 1px solid #ccc;"
+- Text: style="color: #000; margin: 5px 0;"
 
 CONTENT STRUCTURE:
-1. Document Header (Title, Generation Date, Client Info)
-2. Algemene Gegevens (General Information)
-3. Overzicht van Delicten (Overview of Offenses) - with each delict clearly separated
-4. Additional Information (if available)
-5. Document Footer
+1. Document Header (Title, Generation Date)
+2. Personal Information Section
+3. Offenses Overview - each offense in separate div
+4. Summary section
 
 DATA HANDLING:
-- If data is missing, display "Nicht angegeben" or "Niet vermeld"
-- Format dates in German standard (DD.MM.YYYY)
-- Ensure all legal terminology is accurate
-- Maintain professional tone throughout
+- If data is missing, display "Niet vermeld"
+- Use clear, readable formatting
+- Separate each offense clearly
+- Use proper German/Dutch terminology
 
-Generate a complete HTML document that will create a professional, print-ready PDF report.
+Generate a complete, self-contained HTML document that will render properly when converted to PDF.
 `;
 
 export async function POST(request: NextRequest) {
@@ -93,11 +90,28 @@ Please generate a complete, professional HTML document that will create a beauti
     }
 
     // Clean up the HTML (remove any markdown artifacts)
-    const cleanHtml = htmlContent
+    let cleanHtml = htmlContent
       .replace(/```html\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
 
+    // Ensure we have a complete HTML document
+    if (!cleanHtml.includes('<!DOCTYPE html>')) {
+      console.warn('GPT did not generate complete HTML, wrapping content...');
+      cleanHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>MPU Report</title>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;">
+    ${cleanHtml}
+</body>
+</html>`;
+    }
+
+    console.log('Generated HTML length:', cleanHtml.length);
+    console.log('HTML preview:', cleanHtml.substring(0, 300) + '...');
     console.log('Returning GPT-generated HTML for client-side PDF conversion...');
 
     // Return the HTML content for client-side PDF generation
