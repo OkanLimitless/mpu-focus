@@ -19,7 +19,7 @@ import {
   FileText
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -120,6 +120,10 @@ export default function DashboardPage() {
 
   const uploadDocumentInApp = async () => {
     if (!selectedFile || !verificationToken) return
+    // Only allow upload when pending or (resubmission_required with allowResubmission)
+    const canUpload = userDetails?.verificationStatus === 'pending' ||
+      (userDetails?.verificationStatus === 'resubmission_required' && userDetails?.passportDocument?.allowResubmission)
+    if (!canUpload) return
     try {
       setIsSubmitting(true)
       const formData = new FormData()
@@ -128,6 +132,11 @@ export default function DashboardPage() {
       const response = await fetch('/api/verification/upload-document', { method: 'POST', body: formData })
       if (response.ok) {
         await fetchUserDetails()
+        setSelectedFile(null)
+      } else {
+        // Surface server error in console for now
+        const data = await response.json().catch(() => ({}))
+        console.error('Upload error:', data)
       }
     } finally {
       setIsSubmitting(false)
@@ -136,6 +145,8 @@ export default function DashboardPage() {
 
   const signContractInApp = async () => {
     if (!verificationToken) return
+    // Only allow sign when documents_uploaded
+    if (userDetails?.verificationStatus !== 'documents_uploaded') return
     try {
       setIsSubmitting(true)
       const response = await fetch('/api/verification/sign-contract', {
@@ -145,6 +156,9 @@ export default function DashboardPage() {
       })
       if (response.ok) {
         await fetchUserDetails()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        console.error('Sign error:', data)
       }
     } finally {
       setIsSubmitting(false)
@@ -461,20 +475,41 @@ export default function DashboardPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Complete Your Verification</DialogTitle>
+            <DialogDescription>
+              Follow these steps to activate your account. After submission, an admin will review your documents.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
+            <div className="text-sm">
+              <span className="font-medium">Current status:</span>{' '}
+              {userDetails ? getVerificationBadge(userDetails.verificationStatus) : '...'}
+            </div>
+
             <div className="space-y-2">
               <Label className="text-sm font-medium">Step 1: Upload Identity Document</Label>
               <Input type="file" accept="image/*,.pdf" onChange={handleFileSelect} />
-              <Button onClick={uploadDocumentInApp} disabled={!selectedFile || isSubmitting || !verificationToken} className="w-full">
+              <Button 
+                onClick={uploadDocumentInApp} 
+                disabled={
+                  !selectedFile || 
+                  isSubmitting || 
+                  !verificationToken || 
+                  !(userDetails?.verificationStatus === 'pending' || (userDetails?.verificationStatus === 'resubmission_required' && userDetails?.passportDocument?.allowResubmission))
+                } 
+                className="w-full"
+              >
                 {isSubmitting ? 'Uploading...' : 'Upload Document'}
               </Button>
             </div>
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">Step 2: Sign Service Agreement</Label>
-              <div className="text-xs text-gray-600">By clicking sign, you confirm agreement with the service terms.</div>
-              <Button onClick={signContractInApp} disabled={isSubmitting || !verificationToken} className="w-full">
+              <div className="text-xs text-gray-600">You can sign after your document is uploaded.</div>
+              <Button 
+                onClick={signContractInApp} 
+                disabled={isSubmitting || !verificationToken || userDetails?.verificationStatus !== 'documents_uploaded'} 
+                className="w-full"
+              >
                 {isSubmitting ? 'Signing...' : 'Sign Agreement'}
               </Button>
             </div>
