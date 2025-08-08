@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           sendStatus({
             step: 'AI Analysis',
             progress: 20,
-            message: `Analyzing complete document: ${imageUrls.length} pages with GPT-5 (400k context)...`
+            message: `Analyzing complete document: ${imageUrls.length} pages with GPT-5 Mini (200k TPM)...`
           });
 
           // Prepare all images for single request
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
             image_url: { url: imageUrl, detail: "high" as const }
           } as any));
 
-          // Single comprehensive analysis of the entire document using GPT-5
+          // Single comprehensive analysis of the entire document using GPT-5 Mini
           const completion = await openai.chat.completions.create({
-            model: "gpt-5", // Latest GPT-5 model with 400k context window
+            model: "gpt-5-mini", // GPT-5 Mini with 200k TPM - perfect for large document processing
             messages: [
               {
                 role: "user",
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
             fileName: fileName || 'document.pdf',
             totalPages: imageUrls.length,
             extractedData: allExtractedData,
-            processingMethod: 'UploadThing + GPT-5 Single Request Analysis',
+            processingMethod: 'UploadThing + GPT-5 Mini Single Request Analysis',
             timestamp: new Date().toISOString(),
             processingNotes: 'Complete document analyzed in single request for unified results'
           };
