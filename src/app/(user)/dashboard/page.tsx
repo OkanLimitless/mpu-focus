@@ -63,20 +63,28 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!userDetails) return
-    // Open verification dialog automatically for non-verified users
+    // Redirect unverified users to dedicated verification page
     if (userDetails.verificationStatus && userDetails.verificationStatus !== 'verified') {
-      setShowVerificationDialog(true)
-      // Fetch or create verification token for in-dashboard flow
-      fetch('/api/user/verification-link').then(async (res) => {
-        if (res.ok) {
-          const data = await res.json()
-          setVerificationToken(data.token)
-        }
-      }).catch(() => {})
+      // Fetch or create verification token and redirect
+      fetch('/api/user/verification-link')
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json()
+            if (data?.token) {
+              router.push(`/verification/${data.token}`)
+              return
+            }
+          }
+          // If token retrieval fails, keep fallback dialog available
+          setShowVerificationDialog(true)
+        })
+        .catch(() => {
+          setShowVerificationDialog(true)
+        })
     } else {
       setShowVerificationDialog(false)
     }
-  }, [userDetails])
+  }, [userDetails, router])
 
   const fetchUserProgress = async () => {
     try {

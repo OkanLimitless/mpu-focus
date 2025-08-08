@@ -151,7 +151,7 @@ export default function LeadManagement() {
   }
 
   const handleConvertToUser = async () => {
-    if (!selectedLead || !newPassword) return
+    if (!selectedLead) return
 
     try {
       setIsSubmitting(true)
@@ -162,7 +162,7 @@ export default function LeadManagement() {
         },
         body: JSON.stringify({
           action: 'convert-to-user',
-          password: newPassword
+          password: newPassword || undefined
         }),
       })
 
@@ -172,22 +172,24 @@ export default function LeadManagement() {
           lead._id === selectedLead._id ? data.lead : lead
         ))
         setSelectedLead(data.lead)
-        setIsConvertDialogOpen(false)
-        setNewPassword('')
+        // If password was auto-generated, surface it and keep for email
+        if (data.password) {
+          setNewPassword(data.password)
+        }
         toast({
           title: "Success",
           description: "Lead converted to user successfully",
         })
         fetchLeads() // Refresh to update stats
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to convert lead')
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to convert lead')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error converting lead:', error)
       toast({
         title: "Error",
-        description: error.message || "Failed to convert lead to user",
+        description: (error as any).message || "Failed to convert lead to user",
         variant: "destructive",
       })
     } finally {
@@ -552,7 +554,28 @@ export default function LeadManagement() {
                       Send an email invitation for document upload and contract signing.
                     </p>
                     <Button
-                      onClick={() => handleSendVerificationEmail(selectedLead._id)}
+                      onClick={async () => {
+                        if (!selectedLead) return
+                        try {
+                          setIsSendingEmail(true)
+                          const res = await fetch(`/api/leads/${selectedLead._id}/send-verification`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            // Pass password so email can include it
+                            body: JSON.stringify({ password: newPassword || undefined })
+                          })
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({}))
+                            throw new Error(err.error || 'Failed to send verification email')
+                          }
+                          toast({ title: 'Success', description: 'Verification email sent with login details' })
+                        } catch (e) {
+                          console.error(e)
+                          toast({ title: 'Error', description: (e as any).message || 'Failed to send email', variant: 'destructive' })
+                        } finally {
+                          setIsSendingEmail(false)
+                        }
+                      }}
                       disabled={isSendingEmail}
                       className="w-full"
                       variant="outline"
@@ -592,10 +615,10 @@ export default function LeadManagement() {
                 <Label htmlFor="newPassword">Set Password for User</Label>
                 <Input
                   id="newPassword"
-                  type="password"
+                  type="text"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter password (min 6 characters)"
+                  placeholder="Leave empty to auto-generate"
                   className="mt-1"
                 />
               </div>
@@ -610,7 +633,7 @@ export default function LeadManagement() {
                 </Button>
                 <Button
                   onClick={handleConvertToUser}
-                  disabled={isSubmitting || !newPassword || newPassword.length < 6}
+                  disabled={isSubmitting}
                   className="flex-1"
                 >
                   {isSubmitting ? 'Creating...' : 'Create User Account'}

@@ -149,16 +149,20 @@ export async function POST(
     }
 
     if (!password || password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters long' },
-        { status: 400 }
-      )
+      // Auto-generate a strong temporary password if not provided
+      const gen = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*'
+        let p = ''
+        for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)]
+        return p
+      }
+      body.password = gen()
     }
 
     // Create user account
     const newUser = new User({
       email: lead.email,
-      password: password, // Will be hashed by the User model pre-save hook
+      password: body.password, // Will be hashed by the User model pre-save hook
       firstName: lead.firstName,
       lastName: lead.lastName,
       role: 'user',
@@ -188,7 +192,9 @@ export async function POST(
         email: newUser.email,
         firstName: newUser.firstName,
         lastName: newUser.lastName
-      }
+      },
+      // Return the generated or provided plaintext password for follow-up email
+      password: body.password
     })
 
   } catch (error) {
