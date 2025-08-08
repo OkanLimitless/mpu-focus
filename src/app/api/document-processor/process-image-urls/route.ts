@@ -31,7 +31,7 @@ async function retryOpenAICall(
             ],
           },
         ],
-        max_tokens: 16000, // Maximized for GPT-5 Mini's comprehensive analysis capabilities
+        max_completion_tokens: 16000, // Maximized for GPT-5 Mini's comprehensive analysis capabilities
       });
 
       return completion.choices[0]?.message?.content || '';
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 ],
-                max_tokens: 16000,
+                                 max_completion_tokens: 16000,
               });
 
               allExtractedData = completion.choices[0]?.message?.content || '';
