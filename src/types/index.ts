@@ -95,6 +95,18 @@ export interface UserDocument extends Document {
   updatedAt: Date
 }
 
+export interface UserProcessedDocument extends Document {
+  _id: string
+  userId: Types.ObjectId | string
+  fileName: string
+  totalPages?: number
+  extractedData: string
+  processingMethod?: string
+  processingNotes?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface DashboardStats {
   totalUsers: number
   activeUsers: number

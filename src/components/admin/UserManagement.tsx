@@ -66,6 +66,15 @@ export default function UserManagement() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const { toast } = useToast()
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  const [userDocuments, setUserDocuments] = useState<any[]>([])
+  const [processedDocuments, setProcessedDocuments] = useState<any[]>([])
+  const [attachLoading, setAttachLoading] = useState(false)
+  const [attachFileName, setAttachFileName] = useState('processed-document.pdf')
+  const [attachTotalPages, setAttachTotalPages] = useState<string>('')
+  const [attachMethod, setAttachMethod] = useState<string>('Document Processor (AI)')
+  const [attachNotes, setAttachNotes] = useState<string>('')
+  const [attachExtractedData, setAttachExtractedData] = useState<string>('')
 
   // Helper function to get verification status badge
   const getVerificationStatusBadge = (status?: string) => {
@@ -177,6 +186,66 @@ export default function UserManagement() {
     setSelectedUser(user)
     await fetchUserProgress(user._id)
     setProgressDialogOpen(true)
+  }
+
+  const openUserDetails = async (user: User) => {
+    setSelectedUser(user)
+    setDetailsDialogOpen(true)
+    await Promise.all([
+      fetchUserProgress(user._id),
+      fetchUserDocuments(user._id),
+      fetchProcessedDocuments(user._id),
+    ])
+  }
+
+  const fetchUserDocuments = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/documents`)
+      if (response.ok) {
+        const data = await response.json()
+        setUserDocuments(data.documents)
+      }
+    } catch (e) {
+      console.error('Failed to fetch documents', e)
+    }
+  }
+
+  const fetchProcessedDocuments = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/processed-documents`)
+      if (response.ok) {
+        const data = await response.json()
+        setProcessedDocuments(data.documents)
+      }
+    } catch (e) {
+      console.error('Failed to fetch processed documents', e)
+    }
+  }
+
+  const attachProcessedDataToUser = async (payload: { fileName: string; extractedData: string; totalPages?: number; processingMethod?: string; processingNotes?: string }) => {
+    if (!selectedUser) return
+    try {
+      setAttachLoading(true)
+      const res = await fetch(`/api/admin/users/${selectedUser._id}/processed-documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setProcessedDocuments((prev) => [data.document, ...prev])
+        // reset inputs
+        setAttachFileName('processed-document.pdf')
+        setAttachTotalPages('')
+        setAttachMethod('Document Processor (AI)')
+        setAttachNotes('')
+        setAttachExtractedData('')
+      }
+    } catch (e) {
+      console.error('Failed to attach processed doc', e)
+    } finally {
+      setAttachLoading(false)
+    }
   }
 
   const filteredUsers = users.filter(user => {
@@ -455,6 +524,10 @@ export default function UserManagement() {
                       <BarChart3 className="w-4 h-4 mr-1" />
                       View Progress
                     </Button>
+                    <Button size="sm" onClick={() => openUserDetails(user)}>
+                      <Eye className="w-4 h-4 mr-1" />
+                      View Details
+                    </Button>
                     
                     {user.role !== 'admin' && (
                       <Button
@@ -566,6 +639,139 @@ export default function UserManagement() {
             <Button variant="outline" onClick={() => setProgressDialogOpen(false)}>
               Close
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Details - {selectedUser?.firstName} {selectedUser?.lastName}</DialogTitle>
+            <DialogDescription>Profile, progress, and documents</DialogDescription>
+          </DialogHeader>
+
+          {selectedUser && (
+            <div className="space-y-6 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="md:col-span-1">
+                  <CardHeader>
+                    <CardTitle>Profile</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2"><span className="text-muted-foreground">Name:</span> {selectedUser.firstName} {selectedUser.lastName}</div>
+                    <div className="flex items-center gap-2"><Mail className="w-4 h-4" /> {selectedUser.email}</div>
+                    <div className="flex items-center gap-2">Role: {selectedUser.role}</div>
+                    <div className="flex items-center gap-2">Status: {getUserStatusBadge(selectedUser)}</div>
+                    <div className="flex items-center gap-2">Verification: {getVerificationStatusBadge(selectedUser.verificationStatus)}</div>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Progress Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-muted-foreground">Open the Progress Details to see chapter-wise breakdown.</div>
+                    <div className="mt-2"><Button variant="outline" size="sm" onClick={() => viewUserProgress(selectedUser)}>Open Progress Details</Button></div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" /> Uploaded Documents</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {userDocuments.length === 0 ? (
+                      <div className="text-muted-foreground">No uploaded documents</div>
+                    ) : (
+                      userDocuments.map((d) => (
+                        <div key={d._id} className="border rounded p-2">
+                          <div className="font-medium">{d.originalName}</div>
+                          <div className="text-xs text-muted-foreground">{d.mimeType} • {(d.fileSize / (1024*1024)).toFixed(2)} MB</div>
+                          <div className="text-xs">Status: {d.status}</div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" /> Processed Documents</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="text-xs text-muted-foreground">These are AI-processed results attached to this user.</div>
+                    <div className="border rounded p-3 space-y-2">
+                      <div className="font-medium">Attach new processed data</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <Label>File name</Label>
+                          <Input value={attachFileName} onChange={(e) => setAttachFileName(e.target.value)} placeholder="document.pdf" />
+                        </div>
+                        <div>
+                          <Label>Total pages (optional)</Label>
+                          <Input value={attachTotalPages} onChange={(e) => setAttachTotalPages(e.target.value)} placeholder="e.g. 12" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div>
+                          <Label>Method (optional)</Label>
+                          <Input value={attachMethod} onChange={(e) => setAttachMethod(e.target.value)} placeholder="e.g. GPT Vision" />
+                        </div>
+                        <div>
+                          <Label>Notes (optional)</Label>
+                          <Input value={attachNotes} onChange={(e) => setAttachNotes(e.target.value)} placeholder="Any notes" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Extracted data</Label>
+                        <textarea className="w-full border rounded p-2 text-xs h-32" value={attachExtractedData} onChange={(e) => setAttachExtractedData(e.target.value)} placeholder="Paste extracted data here" />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => attachProcessedDataToUser({
+                            fileName: attachFileName || 'document.pdf',
+                            extractedData: attachExtractedData,
+                            totalPages: attachTotalPages ? Number(attachTotalPages) : undefined,
+                            processingMethod: attachMethod || undefined,
+                            processingNotes: attachNotes || undefined,
+                          })}
+                          disabled={attachLoading || !attachExtractedData}
+                        >
+                          {attachLoading ? 'Attaching...' : 'Attach to user'}
+                        </Button>
+                      </div>
+                    </div>
+                    {processedDocuments.length === 0 ? (
+                      <div className="text-muted-foreground">No processed documents yet</div>
+                    ) : (
+                      processedDocuments.map((d) => (
+                        <div key={d._id} className="border rounded p-2">
+                          <div className="flex items-center justify-between">
+                            <div className="font-medium">{d.fileName}</div>
+                            <div className="text-xs text-muted-foreground">{d.totalPages ? `${d.totalPages} pages` : ''}</div>
+                          </div>
+                          <div className="mt-1">
+                            <details>
+                              <summary className="cursor-pointer text-xs text-blue-600">View extracted data</summary>
+                              <pre className="mt-2 whitespace-pre-wrap max-h-56 overflow-y-auto bg-gray-50 p-2 rounded">{d.extractedData}</pre>
+                            </details>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
