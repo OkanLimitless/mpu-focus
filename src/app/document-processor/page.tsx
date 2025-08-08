@@ -340,26 +340,57 @@ export default function DocumentProcessor() {
         throw new Error('Invalid response from PDF generation service');
       }
 
+      // Debug: Check if we have valid HTML content
+      console.log('HTML content received:', data.htmlContent?.substring(0, 200) + '...');
+      
+      if (!data.htmlContent || data.htmlContent.trim().length === 0) {
+        throw new Error('Received empty HTML content from server');
+      }
+
       // Generate PDF directly using html2pdf
       const html2pdf = (await import('html2pdf.js')).default;
       
-      // Configure PDF options
+      // Configure PDF options with better settings for GPT-generated content
       const options = {
-        margin: [10, 10],
+        margin: [15, 15, 15, 15],
         filename: `MPU_Report_${fileName.replace('.pdf', '')}_${new Date().toISOString().split('T')[0]}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          letterRendering: true,
+          allowTaint: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait',
+          compress: true
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
       // Create a temporary div to hold the HTML content
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = data.htmlContent;
+      
+      // Ensure the content is visible and styled properly
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '0';
+      tempDiv.style.width = '210mm'; // A4 width
+      tempDiv.style.fontFamily = 'Arial, sans-serif';
+      tempDiv.style.fontSize = '12px';
+      tempDiv.style.lineHeight = '1.4';
+      tempDiv.style.color = '#000';
+      tempDiv.style.backgroundColor = '#fff';
+      
       document.body.appendChild(tempDiv);
 
       try {
+        // Add a small delay to ensure content is rendered
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Generate and download PDF
         await html2pdf().set(options).from(tempDiv).save();
       } finally {
