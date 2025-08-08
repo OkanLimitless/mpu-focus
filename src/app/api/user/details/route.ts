@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         isActive: user.isActive,
         verificationStatus: user.verificationStatus,
         passportDocument: user.passportDocument,
-        contractSigned: user.contractSigned,
+        contractSigned: user.contractSigned?.signedAt ? user.contractSigned : undefined,
         verifiedAt: user.verifiedAt,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt

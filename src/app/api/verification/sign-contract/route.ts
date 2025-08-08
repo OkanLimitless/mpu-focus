@@ -23,8 +23,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Only allow digital signature method
+    if (signatureMethod !== 'digital_signature') {
+      return NextResponse.json(
+        { error: 'Only digital signature method is allowed' },
+        { status: 400 }
+      )
+    }
     // For digital signatures, signature data is required
-    if (signatureMethod === 'digital_signature' && !signatureData) {
+    if (!signatureData) {
       return NextResponse.json(
         { error: 'Digital signature is required' },
         { status: 400 }

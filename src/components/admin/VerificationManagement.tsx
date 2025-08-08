@@ -365,7 +365,7 @@ export default function VerificationManagement() {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 mb-1">Contract</p>
                       <div className="text-sm">
-                        {user.contractSigned ? (
+                        {user.contractSigned?.signedAt ? (
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-green-600" />
                             <span>Signed</span>

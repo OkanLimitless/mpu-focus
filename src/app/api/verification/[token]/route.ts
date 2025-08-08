@@ -35,7 +35,7 @@ export async function GET(
         email: user.email,
         verificationStatus: user.verificationStatus,
         passportDocument: user.passportDocument,
-        contractSigned: user.contractSigned,
+        contractSigned: user.contractSigned?.signedAt ? user.contractSigned : undefined,
         verifiedAt: user.verifiedAt
       }
     })

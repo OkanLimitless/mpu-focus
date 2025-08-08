@@ -312,16 +312,6 @@ export default function DashboardPage() {
               </Card>
 
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Videos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{loading ? '...' : `${userProgress.completedVideos}/${userProgress.totalVideos}`}</div>
-                  <p className="text-xs text-muted-foreground">Completed</p>
-                </CardContent>
-              </Card>
-
-              <Card>
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-medium">Account</CardTitle>
                 </CardHeader>
@@ -467,14 +457,14 @@ export default function DashboardPage() {
 
                           {/* Contract Status */}
                           <div className="flex items-center space-x-3">
-                            {userDetails.contractSigned ? (
+                            {userDetails.contractSigned?.signedAt ? (
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
                             ) : (
                               <AlertCircle className="h-5 w-5 text-gray-400" />
                             )}
                             <div className="flex-1">
                               <p className="text-sm font-medium">Service Agreement</p>
-                              <p className="text-xs text-gray-600">{userDetails.contractSigned ? 'Signed' : 'Not signed'}</p>
+                              <p className="text-xs text-gray-600">{userDetails.contractSigned?.signedAt ? 'Signed' : 'Not signed'}</p>
                             </div>
                           </div>
 

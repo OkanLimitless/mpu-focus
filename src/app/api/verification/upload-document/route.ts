@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       }
 
       // If this is a resubmission and user has already signed contract, set them directly to contract_signed
-      if (isResubmission && user.contractSigned) {
+      if (isResubmission && user.contractSigned?.signedAt) {
         user.verificationStatus = 'contract_signed'
       } else {
         user.verificationStatus = 'documents_uploaded'
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
           url: uploadedFile.url
         },
         isResubmission: isResubmission,
-        nextStep: user.contractSigned ? 'review' : 'contract_signing'
+        nextStep: user.contractSigned?.signedAt ? 'review' : 'contract_signing'
       })
 
     } catch (uploadError: any) {
