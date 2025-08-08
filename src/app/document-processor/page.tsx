@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadToUploadThing } from '@/lib/uploadthing-upload';
-import { generateAndDownloadMPUReport } from '@/lib/pdf-generator';
+// Removed client-side PDF generator - now using GPT-powered server-side generation
 
 interface ProcessingStatus {
   step: string;
@@ -313,12 +313,47 @@ export default function DocumentProcessor() {
 
   const handleGeneratePDF = async (extractedData: string, fileName: string) => {
     try {
-      // Generate and download the professional PDF report
-      const baseName = fileName.replace('.pdf', '');
-      generateAndDownloadMPUReport(extractedData, `MPU_Report_${baseName}_${new Date().toISOString().split('T')[0]}.pdf`);
+      setError(null);
+      
+      // Show loading state
+      const response = await fetch('/api/document-processor/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          extractedData,
+          fileName
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'PDF generation failed');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Extract filename from response headers or create default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const fileNameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+      const downloadFileName = fileNameMatch ? fileNameMatch[1] : `MPU_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = downloadFileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
     } catch (error) {
       console.error('PDF generation failed:', error);
-      setError('Failed to generate PDF report. Please try again.');
+      setError(`Failed to generate PDF report: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -496,19 +531,19 @@ export default function DocumentProcessor() {
               </div>
             </div>
 
-            {/* PDF Generation Section */}
+            {/* GPT-Powered PDF Generation Section */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                📄 Professional PDF Report
+                🤖 GPT-Powered Professional PDF Report
               </h3>
               <p className="text-sm text-blue-700 mb-3">
-                Generate a structured, professional PDF report with properly formatted sections and styling.
+                Generate a perfectly structured, professional PDF report using AI. GPT analyzes your data and creates a beautifully formatted document with proper sections, styling, and German legal formatting.
               </p>
               <Button
                 onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                📥 Download PDF Report
+                🚀 Generate AI-Powered PDF Report
               </Button>
             </div>
 
