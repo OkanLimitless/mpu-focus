@@ -176,27 +176,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-purple-500">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Course Chapters</CardTitle>
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{loading ? '...' : stats.totalCourses}</div>
-                  <p className="text-xs text-muted-foreground">Available chapters</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-l-4 border-l-orange-500">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{loading ? '...' : stats.averageProgress}%</div>
-                  <p className="text-xs text-muted-foreground">User completion</p>
-                </CardContent>
-              </Card>
+              {/* Removed: Course Chapters and Avg Progress cards */}
             </div>
 
             {/* Action Items */}
@@ -233,21 +213,7 @@ export default function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setActiveSection('videos')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Play className="h-5 w-5 text-purple-500" />
-                    Videos Completed
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-purple-600">{loading ? '...' : stats.completedVideos}</div>
-                  <p className="text-sm text-muted-foreground">Total video completions</p>
-                  <Button className="mt-3 w-full" variant="outline">
-                    Manage Videos
-                  </Button>
-                </CardContent>
-              </Card>
+              {/* Removed: Videos Completed action card */}
             </div>
           </div>
         )
