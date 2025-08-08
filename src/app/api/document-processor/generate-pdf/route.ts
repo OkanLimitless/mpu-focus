@@ -98,55 +98,14 @@ Please generate a complete, professional HTML document that will create a beauti
       .replace(/```\n?/g, '')
       .trim();
 
-    console.log('Converting HTML to PDF...');
+    console.log('Returning GPT-generated HTML for client-side PDF conversion...');
 
-    // Configure Chromium for Vercel
-    const executablePath = await chromium.executablePath();
-    
-    // Launch Puppeteer with Chromium
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      headless: chromium.headless,
-    });
-
-    let pdfBuffer: Buffer;
-    try {
-      const page = await browser.newPage();
-      
-      // Set content and wait for it to load
-      await page.setContent(cleanHtml, { waitUntil: 'networkidle0' });
-      
-      // Generate PDF
-      pdfBuffer = await page.pdf({
-        format: 'A4',
-        printBackground: true,
-        margin: {
-          top: '20mm',
-          bottom: '20mm',
-          left: '15mm',
-          right: '15mm'
-        },
-        timeout: 30000
-      });
-    } finally {
-      await browser.close();
-    }
-
-    // Generate filename
-    const timestamp = new Date().toISOString().split('T')[0];
-    const baseFileName = fileName ? fileName.replace('.pdf', '') : 'MPU_Document';
-    const pdfFileName = `MPU_Report_${baseFileName}_${timestamp}.pdf`;
-
-    // Return PDF as response
-    return new NextResponse(pdfBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${pdfFileName}"`,
-        'Content-Length': pdfBuffer.length.toString(),
-      },
+    // Return the HTML content for client-side PDF generation
+    return NextResponse.json({
+      success: true,
+      htmlContent: cleanHtml,
+      fileName: fileName || 'MPU_Document',
+      generatedAt: new Date().toISOString()
     });
 
   } catch (error) {

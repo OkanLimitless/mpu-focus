@@ -315,7 +315,7 @@ export default function DocumentProcessor() {
     try {
       setError(null);
       
-      // Show loading state
+      // Get GPT-generated HTML
       const response = await fetch('/api/document-processor/generate-pdf', {
         method: 'POST',
         headers: {
@@ -332,24 +332,32 @@ export default function DocumentProcessor() {
         throw new Error(errorData.details || 'PDF generation failed');
       }
 
-      // Get the PDF blob
-      const blob = await response.blob();
+      const data = await response.json();
       
-      // Extract filename from response headers or create default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      const fileNameMatch = contentDisposition?.match(/filename="([^"]+)"/);
-      const downloadFileName = fileNameMatch ? fileNameMatch[1] : `MPU_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      if (!data.success || !data.htmlContent) {
+        throw new Error('Invalid response from PDF generation service');
+      }
 
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = downloadFileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // Create a new window/tab with the HTML content for PDF generation
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked. Please allow popups and try again.');
+      }
+
+      // Write the GPT-generated HTML to the new window
+      printWindow.document.write(data.htmlContent);
+      printWindow.document.close();
+
+      // Wait for content to load, then trigger print dialog
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          // Close the window after printing (user can cancel)
+          printWindow.onafterprint = () => {
+            printWindow.close();
+          };
+        }, 500);
+      };
 
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -534,16 +542,16 @@ export default function DocumentProcessor() {
             {/* GPT-Powered PDF Generation Section */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                🤖 GPT-Powered Professional PDF Report
+                🤖 AI-Generated Professional Report
               </h3>
               <p className="text-sm text-blue-700 mb-3">
-                Generate a perfectly structured, professional PDF report using AI. GPT analyzes your data and creates a beautifully formatted document with proper sections, styling, and German legal formatting.
+                Let GPT create a perfectly formatted, professional HTML report with proper German legal structure. Opens in print dialog for easy PDF saving.
               </p>
               <Button
                 onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                🚀 Generate AI-Powered PDF Report
+                📄 Generate & Print Professional Report
               </Button>
             </div>
 
