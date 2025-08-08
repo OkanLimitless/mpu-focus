@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import connectDB from '@/lib/mongodb'
 import Lead from '@/models/Lead'
 import User from '@/models/User'
-import { sendVerificationInvitation } from '@/lib/email'
+import { getWelcomeLoginAndVerificationEmailTemplate, getLoginVerificationReminderTemplate } from '@/lib/email-templates'
+import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 
 export async function POST(
@@ -64,25 +65,68 @@ export async function POST(
       )
     }
 
-    // Generate verification token if not exists
+    // Ensure verification token exists
     if (!user.verificationToken) {
       user.verificationToken = crypto.randomBytes(32).toString('hex')
       await user.save()
     }
 
-    // Send verification email
-    const emailResult = await sendVerificationInvitation({
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      verificationToken: user.verificationToken
+    // Prepare transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+      tls: { rejectUnauthorized: false }
     })
 
-    if (!emailResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to send verification email: ' + emailResult.error },
-        { status: 500 }
-      )
+    // If the convert-to-user flow provided a password, include it in the email.
+    // We do not store plaintext password on the User model, so we accept optional password via request body.
+    // This endpoint can be called right after conversion from the admin UI, passing the same password.
+    let passwordFromRequest: string | undefined
+    try {
+      const body = await request.json()
+      passwordFromRequest = body?.password
+    } catch {}
+
+    const from = `"MPU-Focus Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`
+
+    if (passwordFromRequest) {
+      const template = getWelcomeLoginAndVerificationEmailTemplate({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        verificationToken: user.verificationToken,
+        password: passwordFromRequest
+      })
+
+      const info = await transporter.sendMail({
+        from,
+        to: user.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      })
+      console.log('Sent welcome+login email:', info.messageId)
+    } else {
+      const template = getLoginVerificationReminderTemplate({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        verificationToken: user.verificationToken
+      })
+
+      const info = await transporter.sendMail({
+        from,
+        to: user.email,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      })
+      console.log('Sent login reminder email:', info.messageId)
     }
 
     return NextResponse.json({
