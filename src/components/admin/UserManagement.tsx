@@ -79,8 +79,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [verificationFilter, setVerificationFilter] = useState<string>('all')
+  // Removed: statusFilter and verificationFilter; we now only show verified users in this view
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = useState(false)
@@ -418,13 +417,9 @@ export default function UserManagement() {
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && user.isActive) || 
-      (statusFilter === 'inactive' && !user.isActive)
-    
-    const matchesVerification = verificationFilter === 'all' || user.verificationStatus === verificationFilter
+    const isVerified = user.verificationStatus === 'verified'
 
-    return matchesSearch && matchesRole && matchesStatus && matchesVerification
+    return matchesSearch && matchesRole && isVerified
   })
 
   const getUserStatusBadge = (user: User) => {
@@ -499,51 +494,10 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="status-filter">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger id="status-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="verification-filter">Verification</Label>
-              <Select value={verificationFilter} onValueChange={setVerificationFilter}>
-                <SelectTrigger id="verification-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Verification</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
-                  <SelectItem value="contract_signed">Contract Signed</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           {/* User Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Users</p>
-                    <p className="text-2xl font-bold">{users.length}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -559,21 +513,10 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Pending Verification</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'pending' || u.verificationStatus === 'documents_uploaded' || u.verificationStatus === 'contract_signed').length}</p>
+                    <p className="text-sm text-muted-foreground">Docs Processed</p>
+                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified' && u.documentProcessing).length}</p>
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Rejected/Resubmission</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'rejected' || u.verificationStatus === 'resubmission_required').length}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-orange-500" />
+                  <FileText className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -611,18 +554,15 @@ export default function UserManagement() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{user.firstName} {user.lastName}</span>
-                            {getUserStatusBadge(user)}
+                            {/* No Active/Inactive or Verification badges here */}
                           </div>
                           <p className="text-xs text-muted-foreground truncate flex items-center gap-2 mt-0.5">
                             <Mail className="h-3 w-3" /> {user.email}
                           </p>
                         </div>
-                        {user.role === 'user' && (
+                        {user.role === 'user' && user.progress && (
                           <div className="flex flex-col items-end gap-1">
-                            {getVerificationStatusBadge(user.verificationStatus)}
-                            {user.progress && (
-                              <span className="text-xs text-muted-foreground">{user.progress.averageProgress}%</span>
-                            )}
+                            <span className="text-xs text-muted-foreground">{user.progress.averageProgress}%</span>
                           </div>
                         )}
                       </div>
@@ -643,8 +583,7 @@ export default function UserManagement() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</h3>
-                          {getUserStatusBadge(selectedUser)}
-                          {selectedUser.role === 'user' && getVerificationStatusBadge(selectedUser.verificationStatus)}
+                          {/* Removed Active/Inactive and Verification badges in detail header */}
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center gap-2">
                           <Mail className="h-4 w-4" /> {selectedUser.email}
@@ -784,37 +723,12 @@ export default function UserManagement() {
                     {/* Verification Status Detail */}
                     {selectedUser.role === 'user' && (
                       <div className="space-y-2">
-                        {selectedUser.verificationStatus && selectedUser.verificationStatus !== 'pending' && (
+                        {selectedUser.verifiedAt && (
                           <div className="text-xs text-muted-foreground space-y-1">
-                            {selectedUser.passportDocument?.uploadedAt && (
-                              <p className="flex items-center gap-1">
-                                <FileText className="w-3 h-3" />
-                                Document: {formatDate(new Date(selectedUser.passportDocument.uploadedAt))}
-                              </p>
-                            )}
-                            {selectedUser.contractSigned?.signedAt && (
-                              <p className="flex items-center gap-1">
-                                <Shield className="w-3 h-3" />
-                                Contract: {formatDate(new Date(selectedUser.contractSigned.signedAt))} 
-                                {selectedUser.contractSigned.signatureMethod && (
-                                  <span className="ml-1 text-gray-500">
-                                    ({selectedUser.contractSigned.signatureMethod})
-                                  </span>
-                                )}
-                              </p>
-                            )}
-                            {selectedUser.verifiedAt && (
-                              <p className="flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                Verified: {formatDate(new Date(selectedUser.verifiedAt))}
-                              </p>
-                            )}
-                            {selectedUser.passportDocument?.rejectionReason && (
-                              <p className="flex items-center gap-1 text-red-600">
-                                <XCircle className="w-3 h-3" />
-                                Reason: {selectedUser.passportDocument.rejectionReason}
-                              </p>
-                            )}
+                            <p className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Verified: {formatDate(new Date(selectedUser.verifiedAt))}
+                            </p>
                           </div>
                         )}
                       </div>
