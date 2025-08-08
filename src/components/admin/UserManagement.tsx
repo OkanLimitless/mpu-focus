@@ -12,6 +12,9 @@ import { formatDate } from '@/lib/utils'
 import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import dynamic from 'next/dynamic'
+
+const UserDocumentProcessor = dynamic(() => import('@/components/admin/UserDocumentProcessor'), { ssr: false })
 
 interface User {
   _id: string
@@ -679,6 +682,9 @@ export default function UserManagement() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <UserDocumentProcessor userId={selectedUser._id} onAttached={(doc) => setProcessedDocuments((prev) => [doc, ...prev])} />
+                </div>
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><FileText className="w-4 h-4" /> Uploaded Documents</CardTitle>
