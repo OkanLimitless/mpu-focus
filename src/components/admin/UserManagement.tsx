@@ -79,8 +79,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [verificationFilter, setVerificationFilter] = useState<string>('all')
+  // Removed: statusFilter and verificationFilter; we now only show verified users in this view
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [progressDialogOpen, setProgressDialogOpen] = useState(false)
@@ -98,17 +97,17 @@ export default function UserManagement() {
   const getVerificationStatusBadge = (status?: string) => {
     switch (status) {
       case 'verified':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>
+        return <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>
       case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
+        return <Badge variant="warning"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
       case 'documents_uploaded':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><FileText className="w-3 h-3 mr-1" />Documents Uploaded</Badge>
+        return <Badge variant="info"><FileText className="w-3 h-3 mr-1" />Documents Uploaded</Badge>
       case 'contract_signed':
-        return <Badge variant="secondary" className="bg-purple-100 text-purple-800"><Shield className="w-3 h-3 mr-1" />Contract Signed</Badge>
+        return <Badge variant="purple"><Shield className="w-3 h-3 mr-1" />Contract Signed</Badge>
       case 'rejected':
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>
       case 'resubmission_required':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800"><AlertTriangle className="w-3 h-3 mr-1" />Resubmission Required</Badge>
+        return <Badge variant="orange"><AlertTriangle className="w-3 h-3 mr-1" />Resubmission Required</Badge>
       default:
         return <Badge variant="outline">No Status</Badge>
     }
@@ -120,6 +119,13 @@ export default function UserManagement() {
     fetchUsers()
     fetchChapters()
   }, [])
+
+  // Auto-select the first user in filtered list if none selected
+  useEffect(() => {
+    if (!selectedUser && users.length > 0) {
+      setSelectedUser(users[0])
+    }
+  }, [users, selectedUser])
 
   // Function to view document processing data
   const viewDocumentData = (user: User) => {
@@ -377,6 +383,9 @@ export default function UserManagement() {
           description: 'User deleted successfully',
         })
         fetchUsers()
+        if (selectedUser && selectedUser._id === userId) {
+          setSelectedUser(null)
+        }
       } else {
         toast({
           title: 'Error',
@@ -408,23 +417,19 @@ export default function UserManagement() {
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesRole = roleFilter === 'all' || user.role === roleFilter
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && user.isActive) || 
-      (statusFilter === 'inactive' && !user.isActive)
-    
-    const matchesVerification = verificationFilter === 'all' || user.verificationStatus === verificationFilter
+    const isVerified = user.verificationStatus === 'verified'
 
-    return matchesSearch && matchesRole && matchesStatus && matchesVerification
+    return matchesSearch && matchesRole && isVerified
   })
 
   const getUserStatusBadge = (user: User) => {
     if (!user.isActive) {
-      return <Badge variant="secondary" className="bg-red-100 text-red-800">Inactive</Badge>
+      return <Badge variant="destructive">Inactive</Badge>
     }
     if (user.role === 'admin') {
-      return <Badge variant="default" className="bg-purple-100 text-purple-800">Admin</Badge>
+      return <Badge variant="purple">Admin</Badge>
     }
-    return <Badge variant="outline" className="bg-green-100 text-green-800">Active</Badge>
+    return <Badge variant="success">Active</Badge>
   }
 
   const getProgressColor = (percentage: number) => {
@@ -489,51 +494,10 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="status-filter">Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger id="status-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="verification-filter">Verification</Label>
-              <Select value={verificationFilter} onValueChange={setVerificationFilter}>
-                <SelectTrigger id="verification-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Verification</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
-                  <SelectItem value="contract_signed">Contract Signed</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           {/* User Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Users</p>
-                    <p className="text-2xl font-bold">{users.length}</p>
-                  </div>
-                  <Users className="h-8 w-8 text-muted-foreground" />
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -549,21 +513,10 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Pending Verification</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'pending' || u.verificationStatus === 'documents_uploaded' || u.verificationStatus === 'contract_signed').length}</p>
+                    <p className="text-sm text-muted-foreground">Docs Processed</p>
+                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified' && u.documentProcessing).length}</p>
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Rejected/Resubmission</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'rejected' || u.verificationStatus === 'resubmission_required').length}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-orange-500" />
+                  <FileText className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -580,100 +533,89 @@ export default function UserManagement() {
             </Card>
           </div>
 
-          {/* Users List */}
+          {/* Master-Detail Layout */}
           {filteredUsers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No users found matching your criteria
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredUsers.map((user) => (
-                <div key={user._id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium">
-                          {user.firstName} {user.lastName}
-                        </h3>
-                        {getUserStatusBadge(user)}
-                      </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        {user.email}
-                      </p>
-                      <div className="text-xs text-muted-foreground">
-                        <p>Created: {formatDate(new Date(user.createdAt))}</p>
-                        {user.lastLoginAt && (
-                          <p>Last Login: {formatDate(new Date(user.lastLoginAt))}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* User List */}
+              <div className="space-y-2 lg:col-span-1">
+                {filteredUsers.map((user) => {
+                  const isSelected = selectedUser?._id === user._id
+                  return (
+                    <button
+                      key={user._id}
+                      onClick={() => setSelectedUser(user)}
+                      className={`w-full text-left p-3 border rounded-lg transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{user.firstName} {user.lastName}</span>
+                            {/* No Active/Inactive or Verification badges here */}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-2 mt-0.5">
+                            <Mail className="h-3 w-3" /> {user.email}
+                          </p>
+                        </div>
+                        {user.role === 'user' && user.progress && (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-xs text-muted-foreground">{user.progress.averageProgress}%</span>
+                          </div>
                         )}
                       </div>
-                      
-                      {/* Verification Status Information */}
-                      {user.role === 'user' && (
-                        <div className="space-y-2 pt-2 border-t">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium">Verification:</span>
-                            {getVerificationStatusBadge(user.verificationStatus)}
-                          </div>
-                          
-                          {user.verificationStatus && user.verificationStatus !== 'pending' && (
-                            <div className="text-xs text-muted-foreground space-y-1">
-                              {user.passportDocument?.uploadedAt && (
-                                <p className="flex items-center gap-1">
-                                  <FileText className="w-3 h-3" />
-                                  Document: {formatDate(new Date(user.passportDocument.uploadedAt))}
-                                </p>
-                              )}
-                              {user.contractSigned?.signedAt && (
-                                <p className="flex items-center gap-1">
-                                  <Shield className="w-3 h-3" />
-                                  Contract: {formatDate(new Date(user.contractSigned.signedAt))} 
-                                  {user.contractSigned.signatureMethod && (
-                                    <span className="ml-1 text-gray-500">
-                                      ({user.contractSigned.signatureMethod})
-                                    </span>
-                                  )}
-                                </p>
-                              )}
-                              {user.verifiedAt && (
-                                <p className="flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Verified: {formatDate(new Date(user.verifiedAt))}
-                                </p>
-                              )}
-                              {user.passportDocument?.rejectionReason && (
-                                <p className="flex items-center gap-1 text-red-600">
-                                  <XCircle className="w-3 h-3" />
-                                  Reason: {user.passportDocument.rejectionReason}
-                                </p>
-                              )}
-                            </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Detail Panel */}
+              <div className="lg:col-span-2">
+                {!selectedUser ? (
+                  <div className="border rounded-lg p-6 text-center text-muted-foreground">
+                    Select a user to view details
+                  </div>
+                ) : (
+                  <div className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</h3>
+                          {/* Removed Active/Inactive and Verification badges in detail header */}
+                        </div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                          <Mail className="h-4 w-4" /> {selectedUser.email}
+                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          <p>Created: {formatDate(new Date(selectedUser.createdAt))}</p>
+                          {selectedUser.lastLoginAt && (
+                            <p>Last Login: {formatDate(new Date(selectedUser.lastLoginAt))}</p>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                    
-                    {/* Progress Bar for Users */}
-                    {user.role === 'user' && user.progress && (
-                      <div className="w-48 space-y-2">
+
+                    {selectedUser.role === 'user' && selectedUser.progress && (
+                      <div className="space-y-2">
                         <div className="flex justify-between text-xs">
                           <span>Progress</span>
-                          <span>{user.progress.averageProgress}%</span>
+                          <span>{selectedUser.progress.averageProgress}%</span>
                         </div>
-                        <Progress value={user.progress.averageProgress} className="h-2" />
+                        <Progress value={selectedUser.progress.averageProgress} className="h-2" />
                         <div className="text-xs text-muted-foreground">
-                          {user.progress.completedChapters}/{user.progress.totalChapters} chapters completed
+                          {selectedUser.progress.completedChapters}/{selectedUser.progress.totalChapters} chapters completed
                         </div>
                       </div>
                     )}
 
-                    {/* Document Processing Status */}
-                    {user.role === 'user' && (
-                      <div className="space-y-2 pt-2 border-t">
+                    {selectedUser.role === 'user' && (
+                      <div className="space-y-3 pt-2 border-t">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium">Document Processing:</span>
-                          {user.documentProcessing ? (
-                            <Badge variant="default" className="bg-green-100 text-green-800">
+                          {selectedUser.documentProcessing ? (
+                            <Badge variant="success">
                               <FileText className="w-3 h-3 mr-1" />
                               Processed
                             </Badge>
@@ -681,109 +623,119 @@ export default function UserManagement() {
                             <Badge variant="outline">No Data</Badge>
                           )}
                         </div>
-                        
-                        {user.documentProcessing && (
-                          <div className="text-xs text-muted-foreground space-y-1">
+
+                        {selectedUser.documentProcessing && (
+                          <div className="text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-1">
                             <p className="flex items-center gap-1">
                               <FileText className="w-3 h-3" />
-                              File: {user.documentProcessing.fileName}
+                              File: {selectedUser.documentProcessing.fileName}
                             </p>
                             <p className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              Processed: {formatDate(new Date(user.documentProcessing.processedAt))}
+                              Processed: {formatDate(new Date(selectedUser.documentProcessing.processedAt))}
                             </p>
                             <p className="flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              Pages: {user.documentProcessing.totalPages}
+                              Pages: {selectedUser.documentProcessing.totalPages}
                             </p>
                           </div>
                         )}
 
-                        {/* Admin Notes Count */}
-                        {user.adminNotes && user.adminNotes.length > 0 && (
+                        {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <StickyNote className="w-3 h-3" />
-                            {user.adminNotes.length} admin note{user.adminNotes.length !== 1 ? 's' : ''}
+                            {selectedUser.adminNotes.length} admin note{selectedUser.adminNotes.length !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <Button size="sm" variant="outline" onClick={() => viewUserProgress(selectedUser)}>
+                        <BarChart3 className="w-4 h-4 mr-1" />
+                        Progress
+                      </Button>
+
+                      {selectedUser.role === 'user' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => viewDocumentData(selectedUser)}
+                            className="bg-blue-50 hover:bg-blue-100"
+                          >
+                            <FileText className="w-4 h-4 mr-1" />
+                            Documents
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openDocumentProcessor(selectedUser)}
+                            className="bg-purple-50 hover:bg-purple-100"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            Process
+                          </Button>
+
+                          {selectedUser.documentProcessing?.extractedData && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => generatePDFFromData(selectedUser)}
+                              disabled={isGeneratingPDF}
+                              className="bg-green-50 hover:bg-green-100"
+                            >
+                              <Download className="w-4 h-4 mr-1" />
+                              PDF
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => viewNotes(selectedUser)}
+                            className="bg-yellow-50 hover:bg-yellow-100"
+                          >
+                            <StickyNote className="w-4 h-4 mr-1" />
+                            Notes
+                          </Button>
+                        </>
+                      )}
+
+                      {selectedUser.role !== 'admin' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setUserToDelete(selectedUser);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Verification Status Detail */}
+                    {selectedUser.role === 'user' && (
+                      <div className="space-y-2">
+                        {selectedUser.verifiedAt && (
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Verified: {formatDate(new Date(selectedUser.verifiedAt))}
+                            </p>
                           </div>
                         )}
                       </div>
                     )}
                   </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => viewUserProgress(user)}
-                    >
-                      <BarChart3 className="w-4 h-4 mr-1" />
-                      Progress
-                    </Button>
-
-                    {user.role === 'user' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewDocumentData(user)}
-                          className="bg-blue-50 hover:bg-blue-100"
-                        >
-                          <FileText className="w-4 h-4 mr-1" />
-                          Documents
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openDocumentProcessor(user)}
-                          className="bg-purple-50 hover:bg-purple-100"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-1" />
-                          Process
-                        </Button>
-
-                        {user.documentProcessing?.extractedData && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => generatePDFFromData(user)}
-                            disabled={isGeneratingPDF}
-                            className="bg-green-50 hover:bg-green-100"
-                          >
-                            <Download className="w-4 h-4 mr-1" />
-                            PDF
-                          </Button>
-                        )}
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewNotes(user)}
-                          className="bg-yellow-50 hover:bg-yellow-100"
-                        >
-                          <StickyNote className="w-4 h-4 mr-1" />
-                          Notes
-                        </Button>
-                      </>
-                    )}
-                    
-                    {user.role !== 'admin' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setUserToDelete(user);
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={actionLoading}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Delete
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -1072,7 +1024,7 @@ export default function UserManagement() {
                                 {note.createdBy.firstName} {note.createdBy.lastName}
                               </span>
                               {note.isPrivate && (
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="muted" className="text-xs">
                                   Private
                                 </Badge>
                               )}
