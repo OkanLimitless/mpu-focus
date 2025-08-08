@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           sendStatus({
             step: 'AI Analysis',
             progress: 20,
-            message: `Analyzing complete document: ${imageUrls.length} pages with latest AI model...`
+            message: `Analyzing complete document: ${imageUrls.length} pages with GPT-5 (400k context)...`
           });
 
           // Prepare all images for single request
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
             image_url: { url: imageUrl, detail: "high" as const }
           } as any));
 
-          // Single comprehensive analysis of the entire document
+          // Single comprehensive analysis of the entire document using GPT-5
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o", // Will upgrade to newer models as available
+            model: "gpt-5", // Latest GPT-5 model with 400k context window
             messages: [
               {
                 role: "user",
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
                 ],
               },
             ],
-            max_tokens: 8000, // Increased for comprehensive analysis
+            max_tokens: 16000, // Maximized for GPT-5's comprehensive analysis capabilities
           });
 
           const allExtractedData = completion.choices[0]?.message?.content || '';
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
             fileName: fileName || 'document.pdf',
             totalPages: imageUrls.length,
             extractedData: allExtractedData,
-            processingMethod: 'UploadThing + GPT-4o Single Request Analysis',
+            processingMethod: 'UploadThing + GPT-5 Single Request Analysis',
             timestamp: new Date().toISOString(),
             processingNotes: 'Complete document analyzed in single request for unified results'
           };
