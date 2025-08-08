@@ -157,7 +157,8 @@ export async function POST(request: NextRequest) {
             extractedData: allExtractedData,
             processingMethod: 'UploadThing + GPT-5 Mini Single Request Analysis',
             timestamp: new Date().toISOString(),
-            processingNotes: 'Complete document analyzed in single request for unified results'
+            processingNotes: 'Complete document analyzed in single request for unified results',
+            supportsPDFGeneration: true // Flag to indicate PDF generation is available
           };
 
           // Clean up uploaded images from UploadThing after successful processing

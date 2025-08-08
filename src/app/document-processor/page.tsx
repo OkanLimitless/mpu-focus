@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadToUploadThing } from '@/lib/uploadthing-upload';
+import { generateAndDownloadMPUReport } from '@/lib/pdf-generator';
 
 interface ProcessingStatus {
   step: string;
@@ -310,6 +311,17 @@ export default function DocumentProcessor() {
     setIsProcessing(false);
   };
 
+  const handleGeneratePDF = async (extractedData: string, fileName: string) => {
+    try {
+      // Generate and download the professional PDF report
+      const baseName = fileName.replace('.pdf', '');
+      generateAndDownloadMPUReport(extractedData, `MPU_Report_${baseName}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      setError('Failed to generate PDF report. Please try again.');
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
@@ -482,6 +494,22 @@ export default function DocumentProcessor() {
               <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
                 <pre className="whitespace-pre-wrap text-sm">{result.extractedData}</pre>
               </div>
+            </div>
+
+            {/* PDF Generation Section */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                📄 Professional PDF Report
+              </h3>
+              <p className="text-sm text-blue-700 mb-3">
+                Generate a structured, professional PDF report with properly formatted sections and styling.
+              </p>
+              <Button
+                onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                📥 Download PDF Report
+              </Button>
             </div>
 
             <div className="flex gap-2">
