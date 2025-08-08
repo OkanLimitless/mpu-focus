@@ -67,6 +67,22 @@ const UserSchema = new Schema<User>({
   verifiedAt: { type: Date },
   verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   verificationToken: { type: String },
+  // Document processing results from MPU documents
+  documentProcessing: {
+    extractedData: { type: String }, // The extracted text data from GPT analysis
+    fileName: { type: String }, // Original filename of processed document
+    totalPages: { type: Number }, // Number of pages processed
+    processedAt: { type: Date }, // When the document was processed
+    processingMethod: { type: String }, // Method used for processing (e.g., "GPT-5 Mini")
+    processingNotes: { type: String } // Additional processing metadata
+  },
+  // Admin notes for this user
+  adminNotes: [{
+    note: { type: String, required: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    createdAt: { type: Date, default: Date.now },
+    isPrivate: { type: Boolean, default: false } // Whether note is visible to user
+  }],
 }, {
   timestamps: true,
   toJSON: {

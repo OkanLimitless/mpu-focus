@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
 
     // Get all users with their basic info and verification status
     const users = await User.find({})
-      .select('email firstName lastName role isActive createdAt lastLoginAt verificationStatus passportDocument contractSigned verifiedAt verifiedBy')
+      .select('email firstName lastName role isActive createdAt lastLoginAt verificationStatus passportDocument contractSigned verifiedAt verifiedBy documentProcessing adminNotes')
+      .populate('adminNotes.createdBy', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .lean()
 
