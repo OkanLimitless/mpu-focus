@@ -340,63 +340,29 @@ export default function DocumentProcessor() {
         throw new Error('Invalid response from PDF generation service');
       }
 
-      // Debug: Check if we have valid HTML content
-      console.log('HTML content received:', data.htmlContent?.substring(0, 200) + '...');
-      
-      if (!data.htmlContent || data.htmlContent.trim().length === 0) {
-        throw new Error('Received empty HTML content from server');
+      // Create a new window with the HTML content for PDF generation
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        throw new Error('Popup blocked. Please allow popups and try again.');
       }
 
-      // Generate PDF directly using html2pdf
-      const html2pdf = (await import('html2pdf.js')).default;
-      
-      // Configure PDF options with better settings for GPT-generated content
-      const options = {
-        margin: [15, 15, 15, 15],
-        filename: `MPU_Report_${fileName.replace('.pdf', '')}_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          allowTaint: true
-        },
-        jsPDF: { 
-          unit: 'mm', 
-          format: 'a4', 
-          orientation: 'portrait',
-          compress: true
-        },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      // Write the GPT-generated HTML to the new window
+      printWindow.document.write(data.htmlContent);
+      printWindow.document.close();
+
+      // Wait for content to load, then automatically trigger save as PDF
+      printWindow.onload = () => {
+        setTimeout(() => {
+          // Focus the window and trigger print (which can be saved as PDF)
+          printWindow.focus();
+          printWindow.print();
+          
+          // Close the window after a delay
+          setTimeout(() => {
+            printWindow.close();
+          }, 1000);
+        }, 500);
       };
-
-      // Create a temporary div to hold the HTML content
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = data.htmlContent;
-      
-      // Ensure the content is visible and styled properly
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.style.width = '210mm'; // A4 width
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.4';
-      tempDiv.style.color = '#000';
-      tempDiv.style.backgroundColor = '#fff';
-      
-      document.body.appendChild(tempDiv);
-
-      try {
-        // Add a small delay to ensure content is rendered
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Generate and download PDF
-        await html2pdf().set(options).from(tempDiv).save();
-      } finally {
-        // Clean up temporary element
-        document.body.removeChild(tempDiv);
-      }
 
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -589,14 +555,14 @@ export default function DocumentProcessor() {
                   disabled={isGeneratingPDF}
                   className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isGeneratingPDF ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating PDF...
-                    </>
-                  ) : (
-                    'Download PDF Report'
-                  )}
+                                     {isGeneratingPDF ? (
+                     <>
+                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                       Generating PDF...
+                     </>
+                   ) : (
+                     'Generate PDF Report'
+                   )}
                 </Button>
               </div>
               {isGeneratingPDF && (
