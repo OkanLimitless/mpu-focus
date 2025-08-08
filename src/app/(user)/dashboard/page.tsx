@@ -69,28 +69,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!userDetails) return
-    // Redirect unverified users to dedicated verification page
+    // Do not auto-redirect or auto-open dialog; allow the user to initiate verification from the dashboard UI
     if (userDetails.verificationStatus && userDetails.verificationStatus !== 'verified') {
-      // Fetch or create verification token and redirect
-      fetch('/api/user/verification-link')
-        .then(async (res) => {
-          if (res.ok) {
-            const data = await res.json()
-            if (data?.token) {
-              router.push(`/verification/${data.token}`)
-              return
-            }
-          }
-          // If token retrieval fails, keep fallback dialog available
-          setShowVerificationDialog(true)
-        })
-        .catch(() => {
-          setShowVerificationDialog(true)
-        })
-    } else {
       setShowVerificationDialog(false)
     }
-  }, [userDetails, router])
+  }, [userDetails])
 
   // Ensure in-dashboard verification flow has a token available when dialog opens
   useEffect(() => {

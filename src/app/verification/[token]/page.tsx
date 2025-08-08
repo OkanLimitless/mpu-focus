@@ -305,10 +305,18 @@ export default function VerificationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying your link...</p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
+          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+            <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
+            <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-12 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Verifying your link...</p>
+          </div>
         </div>
       </div>
     )
@@ -316,38 +324,42 @@ export default function VerificationPage() {
 
   if (!verificationData?.valid) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <CardTitle>Invalid Link</CardTitle>
-            <CardDescription>
-              This verification link is invalid or has expired.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={() => router.push('/login')} 
-              className="w-full"
-            >
-              Go to Login
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gray-50">
+        <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
+          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+            <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
+            <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+          </div>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 py-12 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <CardTitle>Invalid Link</CardTitle>
+              <CardDescription>This verification link is invalid or has expired.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => router.push('/login')} className="w-full">Go to Login</Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-2xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Bar */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
+          <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+        </div>
+      </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Account Verification
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Welcome {verificationData.user.firstName}! Complete these steps to access your account.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">Account Verification</h1>
+          <p className="text-gray-600 mt-2">Welcome {verificationData.user.firstName}! Complete these steps to access your account.</p>
         </div>
 
         {/* Progress Bar */}
