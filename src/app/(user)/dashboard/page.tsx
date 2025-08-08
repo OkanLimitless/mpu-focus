@@ -540,55 +540,29 @@ export default function DashboardPage() {
       </div>
 
       {/* In-dashboard Verification Dialog */}
-      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
-        <DialogContent className="max-w-xl">
+      <Dialog open={showVerificationDialog} onOpenChange={(open) => { setShowVerificationDialog(open); if (!open) { setVerificationToken(null); fetchUserDetails(); } }}>
+        <DialogContent className="max-w-4xl w-[95vw]">
           <DialogHeader>
             <DialogTitle>Complete Your Verification</DialogTitle>
             <DialogDescription>
-              Follow these steps to activate your account. After submission, an admin will review your documents.
+              This opens the full verification flow in-place. You can also
+              {verificationToken ? (
+                <Button variant="link" className="px-1" onClick={() => window.open(`/verification/${verificationToken}`, '_blank')}>open it in a new tab</Button>
+              ) : null}
+              .
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="text-sm">
-              <span className="font-medium">Current status:</span>{' '}
-              {userDetails ? getVerificationBadge(userDetails.verificationStatus) : '...'}
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Step 1: Upload Identity Document</Label>
-              <Input type="file" accept="image/*,.pdf" onChange={handleFileSelect} />
-              <Button
-                onClick={uploadDocumentInApp}
-                disabled={
-                  !selectedFile ||
-                  isSubmitting ||
-                  !verificationToken ||
-                  !(
-                    userDetails?.verificationStatus === 'pending' ||
-                    (userDetails?.verificationStatus === 'resubmission_required' && userDetails?.passportDocument?.allowResubmission)
-                  )
-                }
-                className="w-full"
-              >
-                {isSubmitting ? 'Uploading...' : 'Upload Document'}
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Step 2: Sign Service Agreement</Label>
-              <div className="text-xs text-gray-600">You can sign after your document is uploaded.</div>
-              <Button
-                onClick={signContractInApp}
-                disabled={isSubmitting || !verificationToken || userDetails?.verificationStatus !== 'documents_uploaded'}
-                className="w-full"
-              >
-                {isSubmitting ? 'Signing...' : 'Sign Agreement'}
-              </Button>
-            </div>
-
-            <div className="text-xs text-gray-500">
-              After you complete these steps, an admin will review your submission. You’ll be notified when your account is activated.
-            </div>
+          <div className="w-full">
+            {verificationToken ? (
+              <iframe
+                src={`/verification/${verificationToken}`}
+                className="w-full h-[75vh] rounded-md border"
+              />
+            ) : (
+              <div className="h-[75vh] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
