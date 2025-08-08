@@ -228,6 +228,22 @@ export default function DashboardPage() {
     return null
   }
 
+  // New: helper to open the dedicated verification page
+  const startVerification = async () => {
+    try {
+      const res = await fetch('/api/user/verification-link')
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.token) {
+          router.push(`/verification/${data.token}`)
+          return
+        }
+      }
+    } catch (e) {
+      console.error('Unable to start verification', e)
+    }
+  }
+
   const userInitials = `${session.user.firstName?.[0] || ''}${session.user.lastName?.[0] || ''}`.toUpperCase()
 
   return (
@@ -365,7 +381,7 @@ export default function DashboardPage() {
                         <li>We will review within 1–2 business days</li>
                       </ul>
                       <div className="mt-4 flex gap-2 flex-wrap">
-                        <Button onClick={() => setShowVerificationDialog(true)}>
+                        <Button onClick={startVerification}>
                           <Upload className="h-4 w-4 mr-2" /> Start Verification Now
                         </Button>
                         {userDetails.verificationStatus === 'resubmission_required' && (
@@ -429,7 +445,7 @@ export default function DashboardPage() {
                         <h4 className="font-medium text-gray-900 mb-2">Course Access Locked</h4>
                         <p className="text-sm text-gray-600">Complete your account verification to access the full course.</p>
                         <div className="mt-4">
-                          <Button size="sm" onClick={() => setShowVerificationDialog(true)}>
+                          <Button size="sm" onClick={startVerification}>
                             <Play className="h-4 w-4 mr-2" /> Start Verification
                           </Button>
                         </div>
@@ -538,34 +554,6 @@ export default function DashboardPage() {
           </main>
         </div>
       </div>
-
-      {/* In-dashboard Verification Dialog */}
-      <Dialog open={showVerificationDialog} onOpenChange={(open) => { setShowVerificationDialog(open); if (!open) { setVerificationToken(null); fetchUserDetails(); } }}>
-        <DialogContent className="max-w-4xl w-[95vw]">
-          <DialogHeader>
-            <DialogTitle>Complete Your Verification</DialogTitle>
-            <DialogDescription>
-              This opens the full verification flow in-place. You can also
-              {verificationToken ? (
-                <Button variant="link" className="px-1" onClick={() => window.open(`/verification/${verificationToken}`, '_blank')}>open it in a new tab</Button>
-              ) : null}
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <div className="w-full">
-            {verificationToken ? (
-              <iframe
-                src={`/verification/${verificationToken}`}
-                className="w-full h-[75vh] rounded-md border"
-              />
-            ) : (
-              <div className="h-[75vh] flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
