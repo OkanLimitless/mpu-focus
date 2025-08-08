@@ -131,6 +131,15 @@ export async function POST(request: NextRequest) {
 
               allExtractedData = completion.choices[0]?.message?.content || '';
             } catch (fallbackError: any) {
+              // Try to clean up files even if processing fails
+              try {
+                const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
+                await deleteUploadThingFiles(imageUrls);
+                console.log('Cleaned up temporary files after processing failure');
+              } catch (cleanupError) {
+                console.error('Failed to cleanup files after processing failure:', cleanupError);
+              }
+              
               throw new Error(`AI processing failed: ${fallbackError.message}. Try uploading a smaller document or check your internet connection.`);
             }
           }
@@ -151,6 +160,28 @@ export async function POST(request: NextRequest) {
             processingNotes: 'Complete document analyzed in single request for unified results'
           };
 
+          // Clean up uploaded images from UploadThing after successful processing
+          sendStatus({
+            step: 'Cleanup',
+            progress: 95,
+            message: 'Cleaning up temporary files...'
+          });
+
+          try {
+            // Import cleanup function
+            const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
+            const cleanupResult = await deleteUploadThingFiles(imageUrls);
+            
+            if (cleanupResult.success) {
+              console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
+            } else {
+              console.warn(`Cleanup partial: ${cleanupResult.deletedCount} deleted, errors:`, cleanupResult.errors);
+            }
+          } catch (cleanupError) {
+            // Don't fail the whole process if cleanup fails
+            console.error('Cleanup failed (non-critical):', cleanupError);
+          }
+
           sendStatus({
             step: 'Complete',
             progress: 100,
@@ -162,6 +193,19 @@ export async function POST(request: NextRequest) {
 
         } catch (error) {
           console.error('Processing error:', error);
+          
+          // Try to clean up files even on error
+          try {
+            const { imageUrls: urlsToClean } = await request.clone().json();
+            if (urlsToClean && Array.isArray(urlsToClean) && urlsToClean.length > 0) {
+              const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
+              await deleteUploadThingFiles(urlsToClean);
+              console.log('Cleaned up temporary files after error');
+            }
+          } catch (cleanupError) {
+            console.error('Failed to cleanup files after error:', cleanupError);
+          }
+
           sendStatus({
             step: 'Error',
             progress: 0,

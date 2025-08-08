@@ -43,3 +43,42 @@ export async function uploadImagesToUploadThing(
     throw new Error(`Image upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
+
+// Server-side function to delete files from UploadThing after processing
+export async function deleteUploadThingFiles(fileUrls: string[]): Promise<{ success: boolean; deletedCount: number; errors: string[] }> {
+  try {
+    // Extract file keys from URLs
+    const fileKeys = fileUrls.map(url => {
+      // UploadThing URLs format: https://utfs.io/f/{fileKey} or https://{subdomain}.ufs.sh/f/{fileKey}
+      const match = url.match(/\/f\/([^/?]+)/);
+      return match ? match[1] : null;
+    }).filter(Boolean) as string[];
+
+    if (fileKeys.length === 0) {
+      return { success: false, deletedCount: 0, errors: ['No valid file keys found in URLs'] };
+    }
+
+    // Make request to our deletion API
+    const response = await fetch('/api/uploadthing-delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileKeys }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Deletion request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error deleting UploadThing files:', error);
+    return { 
+      success: false, 
+      deletedCount: 0, 
+      errors: [error instanceof Error ? error.message : 'Unknown deletion error'] 
+    };
+  }
+}
