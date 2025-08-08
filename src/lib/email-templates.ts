@@ -294,8 +294,9 @@ export function getWelcomeLoginAndVerificationEmailTemplate(user: User & { passw
             <div class="panel" style="margin: 16px 0;">
               <h3 style="margin-top: 0;">Your login</h3>
               <p><strong>Username (Email):</strong> ${user.email}<br>
-              <strong>Password:</strong> <span class="code">${user.password}</span></p>
-              <div style="margin-top: 8px;">
+              <strong>Password:</strong></p>
+              <div class="code" style="user-select: all; -webkit-user-select: all; display: inline-block;">${user.password}</div>
+              <div style="margin-top: 12px;">
                 <a href="${loginUrl}" class="button">Log in</a>
               </div>
             </div>
@@ -311,10 +312,6 @@ export function getWelcomeLoginAndVerificationEmailTemplate(user: User & { passw
               <li>Our team will review your submission (typically 1–2 business days).</li>
               <li>Once approved, your dashboard will unlock all course content.</li>
             </ol>
-
-            <div style="margin-top: 16px;">
-              <a href="${verificationUrl}" class="button secondary">Go to Verification (alt)</a>
-            </div>
 
             <p style="margin-top: 16px; font-size: 14px; color: #374151;">Tip: For security, you can change your password after your first login from your account settings.</p>
           </div>
@@ -344,8 +341,6 @@ Next steps:
 2) On first login, follow the verification dialog (upload ID, sign agreement)
 3) We review your submission (1–2 business days)
 4) Your dashboard unlocks after approval
-
-Alternate verification link: ${verificationUrl}
 
 For security, change your password after first login from your account settings.
     `
@@ -389,10 +384,6 @@ export function getLoginVerificationReminderTemplate(user: User) {
             <div>
               <a href="${loginUrl}" class="button">Log in</a>
             </div>
-            <p style="margin-top: 8px;">Alternatively, you can access your verification page directly here:</p>
-            <div>
-              <a href="${verificationUrl}" class="button" style="background:#111827;">Go to Verification</a>
-            </div>
             <p style="margin-top: 12px; font-size: 14px; color: #374151;">If you need to reset your password, please use the password reset option on the login page or contact support.</p>
           </div>
           <div class="footer">
@@ -412,8 +403,6 @@ Please log in to MPU-Focus and complete the verification steps shown in your das
 
 Login with your email address: ${user.email}
 Login: ${loginUrl}
-
-Alternate verification link: ${verificationUrl}
 
 If you need to reset your password, please use the password reset option on the login page or contact support.
     `

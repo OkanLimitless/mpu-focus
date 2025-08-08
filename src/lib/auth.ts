@@ -20,8 +20,11 @@ export const authOptions: NextAuthOptions = {
         try {
           await connectDB()
           
+          const emailNormalized = credentials.email.trim().toLowerCase()
+          const passwordNormalized = credentials.password.trim()
+          
           const user = await User.findOne({ 
-            email: credentials.email,
+            email: emailNormalized,
             isActive: true 
           }).select('+password')
 
@@ -29,7 +32,7 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Ungültige Anmeldedaten')
           }
 
-          const isPasswordValid = await user.comparePassword(credentials.password)
+          const isPasswordValid = await user.comparePassword(passwordNormalized)
           
           if (!isPasswordValid) {
             throw new Error('Ungültige Anmeldedaten')
