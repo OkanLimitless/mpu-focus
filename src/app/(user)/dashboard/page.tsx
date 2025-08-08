@@ -16,11 +16,6 @@ import {
   Play,
   Upload,
   LogOut,
-  FileText,
-  Home,
-  BarChart3,
-  HelpCircle,
-  Settings,
   Search,
   User
 } from 'lucide-react'
@@ -276,34 +271,7 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[16rem_1fr] gap-6">
-          {/* Sidebar */}
-          <aside className="hidden lg:block">
-            <Card className="sticky top-[5.5rem]">
-              <CardHeader>
-                <CardTitle className="text-sm">Navigation</CardTitle>
-                <CardDescription>Quick links</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/dashboard')}>
-                  <Home className="h-4 w-4 mr-2" /> Dashboard
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/course')}>
-                  <BookOpen className="h-4 w-4 mr-2" /> Course
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/beratung')}>
-                  <HelpCircle className="h-4 w-4 mr-2" /> Support
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/dashboard')}>
-                  <BarChart3 className="h-4 w-4 mr-2" /> Progress
-                </Button>
-                <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/dashboard')}>
-                  <Settings className="h-4 w-4 mr-2" /> Settings
-                </Button>
-              </CardContent>
-            </Card>
-          </aside>
-
+        <div className="grid grid-cols-1 gap-6">
           {/* Main Content */}
           <main className="space-y-6">
             {/* Welcome Section */}
@@ -455,31 +423,9 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>Most-used actions for your study</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Button variant="outline" className="justify-start" onClick={() => router.push('/course')}>
-                    <Play className="h-4 w-4 mr-2" /> Continue Course
-                  </Button>
-                  <Button variant="outline" className="justify-start" onClick={() => router.push('/course')}>
-                    <FileText className="h-4 w-4 mr-2" /> View Chapters
-                  </Button>
-                  <Button variant="outline" className="justify-start" onClick={() => router.push('/beratung')}>
-                    <HelpCircle className="h-4 w-4 mr-2" /> Contact Support
-                  </Button>
-                  <Button variant="outline" className="justify-start" onClick={() => router.push('/dashboard')}>
-                    <BarChart3 className="h-4 w-4 mr-2" /> View Progress
-                  </Button>
-                </CardContent>
-              </Card>
-
               {/* Verification Status Details - hide when verified */}
               {userDetails?.verificationStatus !== 'verified' && (
-                <Card className="lg:col-span-2">
+                <Card className="lg:col-span-1">
                   <CardHeader>
                     <CardTitle>Verification Status</CardTitle>
                     <CardDescription>Your account verification progress</CardDescription>
