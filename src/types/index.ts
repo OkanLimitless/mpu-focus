@@ -24,6 +24,22 @@ export interface User extends Document {
   verifiedAt?: Date
   verifiedBy?: Types.ObjectId | string
   verificationToken?: string // For email verification links
+  // Document processing results from MPU documents
+  documentProcessing?: {
+    extractedData: string
+    fileName: string
+    totalPages: number
+    processedAt: Date
+    processingMethod: string
+    processingNotes: string
+  }
+  // Admin notes for this user
+  adminNotes?: Array<{
+    note: string
+    createdBy: Types.ObjectId | string
+    createdAt: Date
+    isPrivate: boolean
+  }>
   createdAt: Date
   updatedAt: Date
 }

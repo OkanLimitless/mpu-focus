@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { formatDate } from '@/lib/utils'
-import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar } from 'lucide-react'
+import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar, Download, Plus, StickyNote, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 
@@ -35,6 +37,26 @@ interface User {
   }
   verifiedAt?: string
   verifiedBy?: string
+  documentProcessing?: {
+    extractedData: string
+    fileName: string
+    totalPages: number
+    processedAt: string
+    processingMethod: string
+    processingNotes: string
+  }
+  adminNotes?: Array<{
+    _id: string
+    note: string
+    createdBy: {
+      _id: string
+      firstName: string
+      lastName: string
+      email: string
+    }
+    createdAt: string
+    isPrivate: boolean
+  }>
   progress?: {
     totalVideos: number
     completedVideos: number
@@ -65,6 +87,11 @@ export default function UserManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false)
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false)
+  const [newNote, setNewNote] = useState('')
+  const [isPrivateNote, setIsPrivateNote] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const { toast } = useToast()
 
   // Helper function to get verification status badge
@@ -93,6 +120,201 @@ export default function UserManagement() {
     fetchUsers()
     fetchChapters()
   }, [])
+
+  // Function to view document processing data
+  const viewDocumentData = (user: User) => {
+    setSelectedUser(user)
+    setDocumentDialogOpen(true)
+  }
+
+  // Function to open document processor for user
+  const openDocumentProcessor = (user: User) => {
+    const processorUrl = `/document-processor?userId=${user._id}&userName=${encodeURIComponent(user.firstName + ' ' + user.lastName)}`
+    window.open(processorUrl, '_blank')
+  }
+
+  // Function to generate PDF from stored data
+  const generatePDFFromData = async (user: User) => {
+    if (!user.documentProcessing?.extractedData) {
+      toast({
+        title: "No Data Available",
+        description: "This user has no extracted document data to generate a PDF from.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      setIsGeneratingPDF(true)
+      
+      const response = await fetch(`/api/admin/users/${user._id}/generate-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.details || 'PDF generation failed')
+      }
+
+      const data = await response.json()
+      
+      if (!data.success || !data.htmlContent) {
+        throw new Error('Invalid response from PDF generation service')
+      }
+
+      // Create a new window with the HTML content for PDF generation
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        throw new Error('Popup blocked. Please allow popups and try again.')
+      }
+
+      // Write the GPT-generated HTML to the new window
+      printWindow.document.write(data.htmlContent)
+      printWindow.document.close()
+
+      // Wait for content to load, then automatically trigger save as PDF
+      printWindow.onload = () => {
+        setTimeout(() => {
+          // Focus the window and trigger print (which can be saved as PDF)
+          printWindow.focus()
+          printWindow.print()
+          
+          // Close the window after a delay
+          setTimeout(() => {
+            printWindow.close()
+          }, 1000)
+        }, 500)
+      }
+
+      toast({
+        title: "PDF Generated",
+        description: `PDF generated successfully for ${user.firstName} ${user.lastName}`,
+      })
+
+    } catch (error) {
+      console.error('PDF generation failed:', error)
+      toast({
+        title: "PDF Generation Failed",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive"
+      })
+    } finally {
+      setIsGeneratingPDF(false)
+    }
+  }
+
+  // Function to view/manage notes
+  const viewNotes = (user: User) => {
+    setSelectedUser(user)
+    setNotesDialogOpen(true)
+    setNewNote('')
+    setIsPrivateNote(false)
+  }
+
+  // Function to add a note
+  const addNote = async () => {
+    if (!selectedUser || !newNote.trim()) return
+
+    try {
+      setActionLoading(true)
+      
+      const response = await fetch(`/api/admin/users/${selectedUser._id}/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          note: newNote.trim(),
+          isPrivate: isPrivateNote
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add note')
+      }
+
+      const data = await response.json()
+      
+      // Update the user in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user._id === selectedUser._id 
+            ? { ...user, adminNotes: data.adminNotes }
+            : user
+        )
+      )
+
+      // Update selected user
+      setSelectedUser(prev => prev ? { ...prev, adminNotes: data.adminNotes } : null)
+      
+      setNewNote('')
+      setIsPrivateNote(false)
+      
+      toast({
+        title: "Note Added",
+        description: "Admin note has been added successfully.",
+      })
+
+    } catch (error) {
+      console.error('Error adding note:', error)
+      toast({
+        title: "Error",
+        description: "Failed to add note. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Function to delete a note
+  const deleteNote = async (noteId: string) => {
+    if (!selectedUser) return
+
+    try {
+      setActionLoading(true)
+      
+      const response = await fetch(`/api/admin/users/${selectedUser._id}/notes?noteId=${noteId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete note')
+      }
+
+      const data = await response.json()
+      
+      // Update the user in the local state
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user._id === selectedUser._id 
+            ? { ...user, adminNotes: data.adminNotes }
+            : user
+        )
+      )
+
+      // Update selected user
+      setSelectedUser(prev => prev ? { ...prev, adminNotes: data.adminNotes } : null)
+      
+      toast({
+        title: "Note Deleted",
+        description: "Admin note has been deleted successfully.",
+      })
+
+    } catch (error) {
+      console.error('Error deleting note:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete note. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const fetchUsers = async () => {
     try {
@@ -444,17 +666,106 @@ export default function UserManagement() {
                         </div>
                       </div>
                     )}
+
+                    {/* Document Processing Status */}
+                    {user.role === 'user' && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium">Document Processing:</span>
+                          {user.documentProcessing ? (
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              <FileText className="w-3 h-3 mr-1" />
+                              Processed
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">No Data</Badge>
+                          )}
+                        </div>
+                        
+                        {user.documentProcessing && (
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p className="flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              File: {user.documentProcessing.fileName}
+                            </p>
+                            <p className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Processed: {formatDate(new Date(user.documentProcessing.processedAt))}
+                            </p>
+                            <p className="flex items-center gap-1">
+                              <BookOpen className="w-3 h-3" />
+                              Pages: {user.documentProcessing.totalPages}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Admin Notes Count */}
+                        {user.adminNotes && user.adminNotes.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <StickyNote className="w-3 h-3" />
+                            {user.adminNotes.length} admin note{user.adminNotes.length !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-2">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => viewUserProgress(user)}
                     >
                       <BarChart3 className="w-4 h-4 mr-1" />
-                      View Progress
+                      Progress
                     </Button>
+
+                    {user.role === 'user' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => viewDocumentData(user)}
+                          className="bg-blue-50 hover:bg-blue-100"
+                        >
+                          <FileText className="w-4 h-4 mr-1" />
+                          Documents
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDocumentProcessor(user)}
+                          className="bg-purple-50 hover:bg-purple-100"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                          Process
+                        </Button>
+
+                        {user.documentProcessing?.extractedData && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => generatePDFFromData(user)}
+                            disabled={isGeneratingPDF}
+                            className="bg-green-50 hover:bg-green-100"
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            PDF
+                          </Button>
+                        )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => viewNotes(user)}
+                          className="bg-yellow-50 hover:bg-yellow-100"
+                        >
+                          <StickyNote className="w-4 h-4 mr-1" />
+                          Notes
+                        </Button>
+                      </>
+                    )}
                     
                     {user.role !== 'admin' && (
                       <Button
@@ -594,6 +905,211 @@ export default function UserManagement() {
               disabled={actionLoading}
             >
               {actionLoading ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Processing Data Dialog */}
+      <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Document Processing Data - {selectedUser?.firstName} {selectedUser?.lastName}
+            </DialogTitle>
+            <DialogDescription>
+              View extracted document data and processing details
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <div className="space-y-6 py-4">
+              {selectedUser.documentProcessing ? (
+                <>
+                  {/* Processing Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Processing Details</h4>
+                          <div className="text-sm space-y-1">
+                            <p><span className="font-medium">File:</span> {selectedUser.documentProcessing.fileName}</p>
+                            <p><span className="font-medium">Pages:</span> {selectedUser.documentProcessing.totalPages}</p>
+                            <p><span className="font-medium">Method:</span> {selectedUser.documentProcessing.processingMethod}</p>
+                            <p><span className="font-medium">Processed:</span> {formatDate(new Date(selectedUser.documentProcessing.processedAt))}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Actions</h4>
+                          <div className="space-y-2">
+                            <Button
+                              size="sm"
+                              onClick={() => generatePDFFromData(selectedUser)}
+                              disabled={isGeneratingPDF}
+                              className="w-full"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              {isGeneratingPDF ? 'Generating...' : 'Generate PDF Report'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDocumentProcessor(selectedUser)}
+                              className="w-full"
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Process New Document
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Extracted Data */}
+                  <div>
+                    <h4 className="font-medium mb-4">Extracted Data</h4>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                          <pre className="whitespace-pre-wrap text-sm font-mono">
+                            {selectedUser.documentProcessing.extractedData}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h4 className="text-lg font-medium mb-2">No Document Data</h4>
+                  <p className="text-gray-600 mb-4">This user hasn't processed any documents yet.</p>
+                  <Button
+                    onClick={() => openDocumentProcessor(selectedUser)}
+                    className="mx-auto"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Process Document
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDocumentDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Notes Management Dialog */}
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Admin Notes - {selectedUser?.firstName} {selectedUser?.lastName}
+            </DialogTitle>
+            <DialogDescription>
+              Manage administrative notes for this user
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <div className="space-y-6 py-4">
+              {/* Add New Note */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Add New Note</h4>
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="note">Note Content</Label>
+                    <Textarea
+                      id="note"
+                      placeholder="Enter admin note..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="private"
+                      checked={isPrivateNote}
+                      onCheckedChange={(checked) => setIsPrivateNote(Boolean(checked))}
+                    />
+                    <Label htmlFor="private" className="text-sm">
+                      Private note (not visible to user)
+                    </Label>
+                  </div>
+                  <Button
+                    onClick={addNote}
+                    disabled={!newNote.trim() || actionLoading}
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Note
+                  </Button>
+                </div>
+              </div>
+
+              {/* Existing Notes */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Existing Notes ({selectedUser.adminNotes?.length || 0})</h4>
+                {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedUser.adminNotes.map((note) => (
+                      <Card key={note._id} className="relative">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {note.createdBy.firstName} {note.createdBy.lastName}
+                              </span>
+                              {note.isPrivate && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Private
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(new Date(note.createdAt))}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteNote(note._id)}
+                                disabled={actionLoading}
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{note.note}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No notes yet for this user</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

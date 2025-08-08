@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ interface ExtractionResult {
   extractedData: string;
   processingTime: number;
   createdAt: string;
+  processingMethod?: string;
+  processingNotes?: string;
 }
 
 export default function DocumentProcessor() {
@@ -32,6 +34,49 @@ export default function DocumentProcessor() {
   const [error, setError] = useState<string | null>(null);
   const [uploadMethod, setUploadMethod] = useState<'direct' | 'uploadthing'>('direct');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  
+  // Check if we're processing for a specific user (from URL params)
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUserName, setTargetUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check URL parameters for user ID and name
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+    const userName = urlParams.get('userName');
+    
+    if (userId) {
+      setTargetUserId(userId);
+      setTargetUserName(userName);
+    }
+  }, []);
+
+  // Function to save processing results to user account
+  const saveResultsToUser = async (result: ExtractionResult) => {
+    try {
+      const response = await fetch(`/api/admin/users/${targetUserId}/document-processing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          extractedData: result.extractedData,
+          fileName: result.fileName,
+          totalPages: result.totalPages,
+          processingMethod: result.processingMethod || 'Document Processor Tool',
+          processingNotes: result.processingNotes || 'Processed via admin panel'
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Results saved to user account successfully');
+      } else {
+        console.error('Failed to save results to user account');
+      }
+    } catch (error) {
+      console.error('Error saving results to user account:', error);
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -289,6 +334,11 @@ export default function DocumentProcessor() {
                 if (data.result) {
                   setResult(data.result);
                   setIsProcessing(false);
+                  
+                  // If processing for a specific user, save the results to their account
+                  if (targetUserId && data.result.extractedData) {
+                    saveResultsToUser(data.result);
+                  }
                 }
               } catch (e) {
                 // Ignore JSON parse errors for incomplete chunks
@@ -378,6 +428,16 @@ export default function DocumentProcessor() {
         <p className="text-gray-600">
           Upload large PDF documents to extract structured data using OCR and AI analysis
         </p>
+        {targetUserId && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800 font-medium">
+              🎯 Processing for user: {targetUserName || 'Unknown User'}
+            </p>
+            <p className="text-blue-600 text-sm">
+              Results will be automatically saved to this user's account
+            </p>
+          </div>
+        )}
       </div>
 
       {!result ? (
