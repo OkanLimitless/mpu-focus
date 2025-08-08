@@ -36,7 +36,13 @@ const VerificationManagement = dynamic(() => import('@/components/admin/Verifica
   loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
 })
 
-type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters' | 'videos'
+// Add: Document Processor dynamic import
+const DocumentProcessor = dynamic(() => import('@/app/document-processor/page'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+})
+
+type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters' | 'videos' | 'document-processor'
 
 const navigationItems = [
   {
@@ -74,6 +80,12 @@ const navigationItems = [
     name: 'Videos',
     icon: Video,
     description: 'Manage course videos'
+  },
+  {
+    id: 'document-processor' as AdminSection,
+    name: 'Document Processor',
+    icon: FileText,
+    description: 'Process PDFs using AI'
   }
 ]
 
@@ -261,6 +273,8 @@ export default function AdminDashboardPage() {
         return <ChapterManagement />
       case 'videos':
         return <VideoManagement />
+      case 'document-processor':
+        return <DocumentProcessor />
       default:
         return null
     }
