@@ -12,7 +12,6 @@ import {
   AlertCircle, 
   Clock, 
   XCircle, 
-  Mail, 
   BookOpen, 
   Play,
   Upload,
@@ -20,6 +19,9 @@ import {
   FileText
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -33,6 +35,13 @@ export default function DashboardPage() {
   })
   const [userDetails, setUserDetails] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false)
+  const [verificationToken, setVerificationToken] = useState<string | null>(null)
+  const [agreeTerms, setAgreeTerms] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [signatureData, setSignatureData] = useState<string | null>(null)
+  const [signatureMethod, setSignatureMethod] = useState<'checkbox' | 'digital_signature' | 'qes'>('checkbox')
 
   useEffect(() => {
     if (status === 'loading') return
@@ -51,6 +60,23 @@ export default function DashboardPage() {
     fetchUserProgress()
     fetchUserDetails()
   }, [session, status, router])
+
+  useEffect(() => {
+    if (!userDetails) return
+    // Open verification dialog automatically for non-verified users
+    if (userDetails.verificationStatus && userDetails.verificationStatus !== 'verified') {
+      setShowVerificationDialog(true)
+      // Fetch or create verification token for in-dashboard flow
+      fetch('/api/user/verification-link').then(async (res) => {
+        if (res.ok) {
+          const data = await res.json()
+          setVerificationToken(data.token)
+        }
+      }).catch(() => {})
+    } else {
+      setShowVerificationDialog(false)
+    }
+  }, [userDetails])
 
   const fetchUserProgress = async () => {
     try {
@@ -87,6 +113,44 @@ export default function DashboardPage() {
     signOut({ callbackUrl: '/login' })
   }
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) setSelectedFile(file)
+  }
+
+  const uploadDocumentInApp = async () => {
+    if (!selectedFile || !verificationToken) return
+    try {
+      setIsSubmitting(true)
+      const formData = new FormData()
+      formData.append('document', selectedFile)
+      formData.append('token', verificationToken)
+      const response = await fetch('/api/verification/upload-document', { method: 'POST', body: formData })
+      if (response.ok) {
+        await fetchUserDetails()
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const signContractInApp = async () => {
+    if (!verificationToken) return
+    try {
+      setIsSubmitting(true)
+      const response = await fetch('/api/verification/sign-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: verificationToken, agreed: true, signatureData, signatureMethod })
+      })
+      if (response.ok) {
+        await fetchUserDetails()
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const getVerificationBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -109,7 +173,7 @@ export default function DashboardPage() {
   const getVerificationMessage = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Please check your email for a verification link to upload your documents and sign the service agreement.'
+        return 'Please complete verification steps below to upload your documents and sign the service agreement.'
       case 'documents_uploaded':
         return 'Your documents have been uploaded. Please complete the contract signing process.'
       case 'contract_signed':
@@ -171,7 +235,7 @@ export default function DashboardPage() {
                   Track your progress and access your course materials.
                 </p>
               </div>
-              {userDetails && (
+              {userDetails && userDetails.verificationStatus !== 'verified' && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Account Status:</span>
                   {getVerificationBadge(userDetails.verificationStatus)}
@@ -187,22 +251,16 @@ export default function DashboardPage() {
                 <div className="flex items-start space-x-4">
                   <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="font-medium text-orange-800">
-                      Account Verification Required
-                    </h3>
+                    <h3 className="font-medium text-orange-800">Account Verification Required</h3>
                     <p className="text-sm text-orange-700 mt-1">
                       {getVerificationMessage(userDetails.verificationStatus)}
                     </p>
-                    {userDetails.verificationStatus === 'pending' && (
-                      <div className="mt-3">
-                        <Button size="sm" variant="outline">
-                          <Mail className="h-4 w-4 mr-2" />
-                          Contact Support for Verification Link
-                        </Button>
-                      </div>
-                    )}
-                    {userDetails.verificationStatus === 'resubmission_required' && (
-                      <div className="mt-3">
+                    <div className="mt-3 flex gap-2 flex-wrap">
+                      <Button size="sm" onClick={() => setShowVerificationDialog(true)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Start Verification Now
+                      </Button>
+                      {userDetails.verificationStatus === 'resubmission_required' && (
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -210,29 +268,18 @@ export default function DashboardPage() {
                             try {
                               const response = await fetch('/api/user/resubmission-link')
                               const data = await response.json()
-                              
                               if (data.success && data.resubmissionUrl) {
                                 window.open(data.resubmissionUrl, '_blank')
-                              } else {
-                                // Fallback to dashboard if API fails
-                                window.open('/dashboard', '_blank')
                               }
-                            } catch (error) {
-                              console.error('Failed to get resubmission link:', error)
-                              // Fallback to dashboard
-                              window.open('/dashboard', '_blank')
-                            }
+                            } catch {}
                           }}
                           className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           Upload New Documents
                         </Button>
-                        <p className="text-xs text-orange-600 mt-2">
-                          Your contract signature remains valid - just upload new documents.
-                        </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -282,8 +329,7 @@ export default function DashboardPage() {
                 <CardDescription>
                   {userDetails?.verificationStatus === 'verified' 
                     ? 'Continue your training progress'
-                    : 'Course access pending verification'
-                  }
+                    : 'Course access pending verification'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -312,99 +358,133 @@ export default function DashboardPage() {
                         <BookOpen className="h-8 w-8 text-gray-400" />
                       </div>
                       <h4 className="font-medium text-gray-900 mb-2">Course Access Locked</h4>
-                      <p className="text-sm text-gray-600">
-                        Complete your account verification to access the full course.
-                      </p>
+                      <p className="text-sm text-gray-600">Complete your account verification to access the full course.</p>
+                      <div className="mt-4">
+                        <Button size="sm" onClick={() => setShowVerificationDialog(true)}>
+                          <Play className="h-4 w-4 mr-2" />
+                          Start Verification
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Verification Status Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Verification Status</CardTitle>
-                <CardDescription>
-                  Your account verification progress
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {loading || !userDetails ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {/* Document Upload Status */}
-                      <div className="flex items-center space-x-3">
-                        {userDetails.passportDocument ? (
-                          userDetails.passportDocument.status === 'approved' ? (
+            {/* Verification Status Details - hide when verified */}
+            {userDetails?.verificationStatus !== 'verified' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Verification Status</CardTitle>
+                  <CardDescription>Your account verification progress</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {loading || !userDetails ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Document Upload Status */}
+                        <div className="flex items-center space-x-3">
+                          {userDetails.passportDocument ? (
+                            userDetails.passportDocument.status === 'approved' ? (
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            ) : userDetails.passportDocument.status === 'rejected' ? (
+                              <XCircle className="h-5 w-5 text-red-600" />
+                            ) : (
+                              <Clock className="h-5 w-5 text-yellow-600" />
+                            )
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-gray-400" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Identity Document</p>
+                            <p className="text-xs text-gray-600">
+                              {userDetails.passportDocument 
+                                ? userDetails.passportDocument.status === 'approved'
+                                  ? 'Approved'
+                                  : userDetails.passportDocument.status === 'rejected'
+                                  ? 'Rejected - Please resubmit'
+                                  : 'Under review'
+                                : 'Not uploaded'
+                              }
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Contract Status */}
+                        <div className="flex items-center space-x-3">
+                          {userDetails.contractSigned ? (
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          ) : userDetails.passportDocument.status === 'rejected' ? (
-                            <XCircle className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-gray-400" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Service Agreement</p>
+                            <p className="text-xs text-gray-600">
+                              {userDetails.contractSigned ? 'Signed' : 'Not signed'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Verification Status */}
+                        <div className="flex items-center space-x-3">
+                          {userDetails.verificationStatus === 'verified' ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
                           ) : (
                             <Clock className="h-5 w-5 text-yellow-600" />
-                          )
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-gray-400" />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">Identity Document</p>
-                          <p className="text-xs text-gray-600">
-                            {userDetails.passportDocument 
-                              ? userDetails.passportDocument.status === 'approved'
-                                ? 'Approved'
-                                : userDetails.passportDocument.status === 'rejected'
-                                ? 'Rejected - Please resubmit'
-                                : 'Under review'
-                              : 'Not uploaded'
-                            }
-                          </p>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">Account Verification</p>
+                            <p className="text-xs text-gray-600">
+                              {userDetails.verificationStatus === 'verified' 
+                                ? 'Complete' 
+                                : 'In progress'
+                              }
+                            </p>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Contract Status */}
-                      <div className="flex items-center space-x-3">
-                        {userDetails.contractSigned ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-gray-400" />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">Service Agreement</p>
-                          <p className="text-xs text-gray-600">
-                            {userDetails.contractSigned ? 'Signed' : 'Not signed'}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Verification Status */}
-                      <div className="flex items-center space-x-3">
-                        {userDetails.verificationStatus === 'verified' ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        ) : (
-                          <Clock className="h-5 w-5 text-yellow-600" />
-                        )}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">Account Verification</p>
-                          <p className="text-xs text-gray-600">
-                            {userDetails.verificationStatus === 'verified' 
-                              ? 'Complete' 
-                              : 'In progress'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>
+
+      {/* In-dashboard Verification Dialog */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Complete Your Verification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Step 1: Upload Identity Document</Label>
+              <Input type="file" accept="image/*,.pdf" onChange={handleFileSelect} />
+              <Button onClick={uploadDocumentInApp} disabled={!selectedFile || isSubmitting || !verificationToken} className="w-full">
+                {isSubmitting ? 'Uploading...' : 'Upload Document'}
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Step 2: Sign Service Agreement</Label>
+              <div className="text-xs text-gray-600">By clicking sign, you confirm agreement with the service terms.</div>
+              <Button onClick={signContractInApp} disabled={isSubmitting || !verificationToken} className="w-full">
+                {isSubmitting ? 'Signing...' : 'Sign Agreement'}
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500">
+              After you complete these steps, an admin will review your submission. You’ll be notified when your account is activated.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
