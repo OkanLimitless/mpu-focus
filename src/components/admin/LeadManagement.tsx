@@ -180,6 +180,7 @@ export default function LeadManagement() {
           title: "Success",
           description: "Lead converted to user successfully",
         })
+        setIsConvertDialogOpen(false)
         fetchLeads() // Refresh to update stats
       } else {
         const err = await response.json().catch(() => ({}))
