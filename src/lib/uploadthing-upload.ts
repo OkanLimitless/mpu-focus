@@ -58,24 +58,20 @@ export async function deleteUploadThingFiles(fileUrls: string[]): Promise<{ succ
       return { success: false, deletedCount: 0, errors: ['No valid file keys found in URLs'] };
     }
 
-    // Make request to our deletion API (use absolute URL for server-side calls)
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
-                   process.env.NODE_ENV === 'production' ? 'https://mpu-focus.vercel.app' : 
-                   'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/uploadthing-delete`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fileKeys }),
-    });
+    // Use UploadThing's server SDK for deletion
+    const { UTApi } = await import('uploadthing/server');
+    const utapi = new UTApi();
 
-    if (!response.ok) {
-      throw new Error(`Deletion request failed: ${response.status} ${response.statusText}`);
-    }
+    // Delete files using UploadThing's official API
+    await utapi.deleteFiles(fileKeys);
 
-    const result = await response.json();
-    return result;
+    console.log(`Successfully deleted ${fileKeys.length} files from UploadThing`);
+    
+    return {
+      success: true,
+      deletedCount: fileKeys.length,
+      errors: []
+    };
   } catch (error) {
     console.error('Error deleting UploadThing files:', error);
     return { 
