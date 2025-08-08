@@ -103,7 +103,7 @@ export default function UserManagement() {
       case 'documents_uploaded':
         return <Badge variant="info"><FileText className="w-3 h-3 mr-1" />Documents Uploaded</Badge>
       case 'contract_signed':
-        return <Badge variant="purple"><Shield className="w-3 h-3 mr-1" />Contract Signed</Badge>
+        return <Badge variant="purple"><Shield className="w-3 h-3 mr-1" />Ready for Review</Badge>
       case 'rejected':
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>
       case 'resubmission_required':

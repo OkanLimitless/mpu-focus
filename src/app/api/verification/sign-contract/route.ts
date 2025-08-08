@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Contract signed successfully. Your account is now under review.',
+      message: 'Contract signed successfully. All steps completed — ready for admin review.',
     })
 
   } catch (error) {

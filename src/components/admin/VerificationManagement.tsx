@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Eye, FileText, User } from 'lucide-react'
+import { CheckCircle2, XCircle, Clock, AlertTriangle, Eye, FileText, User, Shield } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import DocumentPreview from '@/components/ui/document-preview'
 import { SignatureDisplay } from '@/components/ui/digital-signature'
@@ -113,18 +113,19 @@ export default function VerificationManagement() {
     const variants = {
       pending: { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800', icon: Clock },
       documents_uploaded: { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800', icon: FileText },
-      contract_signed: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800', icon: User },
+      contract_signed: { variant: 'secondary' as const, className: 'bg-purple-100 text-purple-800', icon: Shield },
       resubmission_required: { variant: 'secondary' as const, className: 'bg-orange-100 text-orange-800', icon: AlertTriangle },
       verified: { variant: 'secondary' as const, className: 'bg-green-100 text-green-800', icon: CheckCircle2 },
       rejected: { variant: 'secondary' as const, className: 'bg-red-100 text-red-800', icon: XCircle }
     }
     
     const { variant, className, icon: Icon } = variants[safeStatus as keyof typeof variants] || variants.pending
+    const displayText = safeStatus === 'contract_signed' ? 'Ready for review' : safeStatus.replace(/_/g, ' ')
     
     return (
       <Badge variant={variant} className={`flex items-center space-x-1 ${className}`}>
         <Icon className="w-3 h-3" />
-        <span className="capitalize">{safeStatus.replace(/_/g, ' ')}</span>
+        <span className="capitalize">{displayText}</span>
       </Badge>
     )
   }
@@ -219,7 +220,7 @@ export default function VerificationManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
@@ -251,6 +252,18 @@ export default function VerificationManagement() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Rejected</p>
                 <p className="text-2xl font-bold">{stats.rejected}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2">
+              <Shield className="h-8 w-8 text-purple-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Ready for Review</p>
+                <p className="text-2xl font-bold">{stats.contractSigned}</p>
               </div>
             </div>
           </CardContent>
@@ -295,7 +308,7 @@ export default function VerificationManagement() {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
-                  <SelectItem value="contract_signed">Contract Signed</SelectItem>
+                  <SelectItem value="contract_signed">Ready for Review</SelectItem>
                   <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
                   <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>

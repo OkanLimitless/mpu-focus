@@ -273,7 +273,7 @@ export default function VerificationPage() {
         setCurrentStep(3)
         toast({
           title: "Success",
-          description: "Contract signed successfully. Your account is now under review.",
+          description: "Contract signed successfully. All steps completed — your account is ready for admin review.",
         })
         // Refresh verification data
         await verifyToken()
