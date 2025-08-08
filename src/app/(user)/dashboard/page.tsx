@@ -311,17 +311,19 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-medium">Account</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm">
-                    {userDetails ? getVerificationBadge(userDetails.verificationStatus) : '...'}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">Verification status</p>
-                </CardContent>
-              </Card>
+              {userDetails?.verificationStatus !== 'verified' && (
+                <Card>
+                  <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-medium">Account</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm">
+                      {userDetails ? getVerificationBadge(userDetails.verificationStatus) : '...'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">Verification status</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Verification Status Alert */}
