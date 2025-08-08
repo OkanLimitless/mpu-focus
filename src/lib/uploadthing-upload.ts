@@ -58,8 +58,11 @@ export async function deleteUploadThingFiles(fileUrls: string[]): Promise<{ succ
       return { success: false, deletedCount: 0, errors: ['No valid file keys found in URLs'] };
     }
 
-    // Make request to our deletion API
-    const response = await fetch('/api/uploadthing-delete', {
+    // Make request to our deletion API (use absolute URL for server-side calls)
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+                   process.env.NODE_ENV === 'production' ? 'https://mpu-focus.vercel.app' : 
+                   'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/uploadthing-delete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -83,7 +83,7 @@ Please generate a complete, professional HTML document that will create a beauti
         }
       ],
       max_completion_tokens: 16000,
-      temperature: 0.1, // Low temperature for consistent formatting
+      // Note: GPT-5 Mini only supports default temperature (1)
     });
 
     const htmlContent = completion.choices[0]?.message?.content;
