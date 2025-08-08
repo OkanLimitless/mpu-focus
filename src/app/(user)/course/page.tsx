@@ -100,17 +100,15 @@ export default function CoursePage() {
           if (currentChapter) {
             setOpenChapters(new Set([currentChapter._id]))
           }
-          
-          // Find first accessible incomplete video
+        }
+
+        // Preserve current video selection by refreshing its reference from the new data
+        if (selectedVideo) {
           for (const chapter of data.chapters) {
-            if (chapter.isUnlocked) {
-              const incompleteVideo = chapter.videos.find((v: VideoData) => 
-                v.isAccessible && !v.progress?.isCompleted
-              )
-              if (incompleteVideo) {
-                setSelectedVideo(incompleteVideo)
-                break
-              }
+            const match = chapter.videos.find((v: VideoData) => v._id === selectedVideo._id)
+            if (match) {
+              setSelectedVideo(match)
+              break
             }
           }
         }
@@ -561,18 +559,53 @@ export default function CoursePage() {
                 </Card>
               </>
             ) : (
-              <Card className="h-96">
-                <CardContent className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="p-4 bg-blue-100 rounded-full inline-block mb-4">
-                      <PlayCircle className="h-12 w-12 text-blue-600" />
+              <Card className="h-auto">
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    <div className="flex items-start justify-between flex-wrap gap-4">
+                      <div>
+                        <h3 className="text-2xl font-semibold text-gray-900">{courseData.course.title}</h3>
+                        {courseData.course.description && (
+                          <p className="text-gray-600 mt-2 max-w-2xl">{courseData.course.description}</p>
+                        )}
+                      </div>
+                      <div className="min-w-[240px]">
+                        <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                          <span>Overall Progress</span>
+                          <span className="font-medium">{getOverallProgress()}%</span>
+                        </div>
+                        <Progress value={getOverallProgress()} className="h-2" />
+                      </div>
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Select a video to begin learning
-                    </h3>
-                    <p className="text-gray-500">
-                      Choose a video from the course content to start your learning journey
-                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => {
+                          // Find first accessible incomplete video on demand (Resume)
+                          for (const chapter of courseData.chapters) {
+                            if (chapter.isUnlocked) {
+                              const incompleteVideo = chapter.videos.find((v: VideoData) => v.isAccessible && !v.progress?.isCompleted)
+                              if (incompleteVideo) {
+                                setSelectedVideo(incompleteVideo)
+                                return
+                              }
+                            }
+                          }
+                          // Fallback: first accessible video
+                          for (const chapter of courseData.chapters) {
+                            const firstAccessible = chapter.videos.find((v: VideoData) => v.isAccessible)
+                            if (firstAccessible) {
+                              setSelectedVideo(firstAccessible)
+                              return
+                            }
+                          }
+                        }}
+                      >
+                        Resume Course
+                      </Button>
+                      <span className="text-sm text-gray-500">or select a video from the left to begin</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

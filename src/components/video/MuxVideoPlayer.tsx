@@ -245,7 +245,8 @@ export default function MuxVideoPlayer({
               video_title: video.title,
               video_id: video._id,
             }}
-            style={{ height: '400px', width: '100%' }}
+            className="w-full"
+            style={{ aspectRatio: '16 / 9', width: '100%', ['--media-object-fit' as any]: 'cover' }}
             onPlay={handlePlay}
             onPause={handlePause}
             onTimeUpdate={handleTimeUpdate}
@@ -253,17 +254,6 @@ export default function MuxVideoPlayer({
             onEnded={handleEnded}
             startTime={userProgress?.currentTime || 0}
           />
-          
-          {/* Progress overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
-            <div className="flex items-center justify-between text-white text-sm">
-              <span>Progress: {progressPercentage}%</span>
-              <span>
-                {Math.floor(currentTime / 60)}:{String(Math.floor(currentTime % 60)).padStart(2, '0')} / 
-                {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
-              </span>
-            </div>
-          </div>
         </div>
         
         {video.description && (
@@ -272,22 +262,6 @@ export default function MuxVideoPlayer({
             <p className="text-sm text-gray-600">{video.description}</p>
           </div>
         )}
-        
-        {/* Progress bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-            <span>Watch Progress</span>
-            <span>{progressPercentage}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full transition-all duration-300 ${
-                isCompleted ? 'bg-green-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
       </CardContent>
     </Card>
   )
