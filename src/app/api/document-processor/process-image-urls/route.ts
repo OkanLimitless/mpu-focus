@@ -131,10 +131,14 @@ export async function POST(request: NextRequest) {
 
               allExtractedData = completion.choices[0]?.message?.content || '';
             } catch (fallbackError: any) {
-              // Try to clean up files even if processing fails
+              // Try to clean up files even if processing fails (with timeout)
               try {
                 const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-                await deleteUploadThingFiles(imageUrls);
+                const cleanupPromise = deleteUploadThingFiles(imageUrls);
+                const timeoutPromise = new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
+                );
+                await Promise.race([cleanupPromise, timeoutPromise]);
                 console.log('Cleaned up temporary files after processing failure');
               } catch (cleanupError) {
                 console.error('Failed to cleanup files after processing failure:', cleanupError);
@@ -169,9 +173,16 @@ export async function POST(request: NextRequest) {
           });
 
           try {
-            // Import cleanup function
+            // Import cleanup function with timeout
             const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-            const cleanupResult = await deleteUploadThingFiles(imageUrls);
+            
+            // Add timeout to cleanup operation (10 seconds max)
+            const cleanupPromise = deleteUploadThingFiles(imageUrls);
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Cleanup timeout')), 10000)
+            );
+            
+            const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]) as any;
             
             if (cleanupResult.success) {
               console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
@@ -181,6 +192,7 @@ export async function POST(request: NextRequest) {
           } catch (cleanupError) {
             // Don't fail the whole process if cleanup fails
             console.error('Cleanup failed (non-critical):', cleanupError);
+            // If cleanup times out or fails, just log it and continue
           }
 
           sendStatus({
@@ -195,12 +207,16 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           console.error('Processing error:', error);
           
-          // Try to clean up files even on error
+          // Try to clean up files even on error (with timeout)
           try {
             const { imageUrls: urlsToClean } = await request.clone().json();
             if (urlsToClean && Array.isArray(urlsToClean) && urlsToClean.length > 0) {
               const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-              await deleteUploadThingFiles(urlsToClean);
+              const cleanupPromise = deleteUploadThingFiles(urlsToClean);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
+              );
+              await Promise.race([cleanupPromise, timeoutPromise]);
               console.log('Cleaned up temporary files after error');
             }
           } catch (cleanupError) {
