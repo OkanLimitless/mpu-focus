@@ -52,6 +52,7 @@ export default function LeadManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [hasAutoSentVerification, setHasAutoSentVerification] = useState(false)
 
   useEffect(() => {
     fetchLeads()
@@ -107,6 +108,7 @@ export default function LeadManagement() {
   const handleViewDetails = (lead: Lead) => {
     setSelectedLead(lead)
     setNotes(lead.notes || '')
+    setHasAutoSentVerification(false)
     setIsDetailDialogOpen(true)
   }
 
@@ -180,6 +182,27 @@ export default function LeadManagement() {
           title: "Success",
           description: "Lead converted to user successfully",
         })
+        setIsConvertDialogOpen(false)
+        // Auto-send verification email immediately after successful conversion
+        try {
+          setIsSendingEmail(true)
+          const res = await fetch(`/api/leads/${data.lead._id}/send-verification`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: data.password || newPassword || undefined })
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw new Error(err.error || 'Failed to send verification email')
+          }
+          setHasAutoSentVerification(true)
+          toast({ title: 'Verification Email Sent', description: 'Welcome and verification email has been sent.' })
+        } catch (e) {
+          console.error(e)
+          toast({ title: 'Email Error', description: (e as any).message || 'Failed to send verification email', variant: 'destructive' })
+        } finally {
+          setIsSendingEmail(false)
+        }
         fetchLeads() // Refresh to update stats
       } else {
         const err = await response.json().catch(() => ({}))
@@ -568,6 +591,7 @@ export default function LeadManagement() {
                             const err = await res.json().catch(() => ({}))
                             throw new Error(err.error || 'Failed to send verification email')
                           }
+                          setHasAutoSentVerification(true)
                           toast({ title: 'Success', description: 'Verification email sent with login details' })
                         } catch (e) {
                           console.error(e)
@@ -576,12 +600,12 @@ export default function LeadManagement() {
                           setIsSendingEmail(false)
                         }
                       }}
-                      disabled={isSendingEmail}
+                      disabled={isSendingEmail || hasAutoSentVerification}
                       className="w-full"
                       variant="outline"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {isSendingEmail ? 'Sending...' : 'Send Verification Email'}
+                      {isSendingEmail ? 'Sending...' : hasAutoSentVerification ? 'Verification Email Sent' : 'Send Verification Email'}
                     </Button>
                   </div>
                 )}
