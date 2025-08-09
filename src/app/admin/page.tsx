@@ -233,9 +233,9 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex">
       {/* Sidebar */}
-      <div className="hidden lg:flex w-64 bg-white shadow-lg border-r flex-col">
+      <div className="hidden lg:flex w-72 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur shadow-xl border-r flex-col">
         {/* Header */}
         <div className="p-6 border-b">
           <div className="flex items-center gap-3">
@@ -261,20 +261,20 @@ export default function AdminDashboardPage() {
                   className={cn(
                     "w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 group",
                     activeSection === item.id
-                      ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-200"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-blue-600 text-white shadow-sm border border-blue-600"
+                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                   )}
                 >
                   <Icon className={cn(
                     "h-5 w-5 transition-colors flex-shrink-0",
-                    activeSection === item.id ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600"
+                    activeSection === item.id ? "text-white" : "text-gray-400 group-hover:text-gray-600"
                   )} />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium">{item.name}</div>
                     <div className="text-xs text-gray-500 truncate">{item.description}</div>
                   </div>
                   {(item.id === 'leads' && stats.newLeads > 0) && (
-                    <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                    <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
                   )}
                 </button>
               )
@@ -283,7 +283,7 @@ export default function AdminDashboardPage() {
         </nav>
 
         {/* User Info & Logout */}
-        <div className="p-4 border-t bg-white">
+        <div className="p-4 border-t bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur">
           <div className="space-y-3">
             <div className="text-sm">
               <div className="font-medium text-gray-900">
@@ -307,7 +307,7 @@ export default function AdminDashboardPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="bg-white shadow-sm border-b px-4 lg:px-8 py-4">
+        <header className="bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur shadow-sm border-b px-4 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
@@ -386,7 +386,7 @@ export default function AdminDashboardPage() {
           {renderDashboardContent()}
         </main>
         {/* Mobile bottom nav */}
-        <nav className="lg:hidden sticky bottom-0 inset-x-0 bg-white border-t shadow-sm" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <nav className="lg:hidden sticky bottom-0 inset-x-0 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-t shadow-sm" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="grid grid-cols-3">
             {(['dashboard','users','leads'] as AdminSection[]).map((id) => {
               const item = navigationItems.find(i => i.id === id)!

@@ -242,7 +242,7 @@ export default function DashboardPage() {
   const userInitials = `${session.user.firstName?.[0] || ''}${session.user.lastName?.[0] || ''}`.toUpperCase()
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Top Bar */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -259,7 +259,7 @@ export default function DashboardPage() {
             <div className="hidden sm:flex items-center text-xs sm:text-sm text-gray-700">
               Welcome, {session.user.firstName} {session.user.lastName}
             </div>
-            <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold">
+            <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold ring-2 ring-blue-100">
               {userInitials || <User className="h-4 w-4" />}
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Verification Status */}
-                          <div className="flex items-center space-x-3">
+                                                     <div className="flex items-center space-x-3">
                             {userDetails.verificationStatus === 'verified' ? (
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
                             ) : (
