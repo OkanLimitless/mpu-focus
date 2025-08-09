@@ -184,7 +184,7 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
           )}
 
           {isPDF && !error && isMounted && (
-            <div className="pdf-container">
+            <div className="pdf-container max-h-[70vh] overflow-auto">
               <Document
                 file={url}
                 onLoadSuccess={onDocumentLoadSuccess}
@@ -226,7 +226,7 @@ export default function DocumentPreview({ filename, url, className }: DocumentPr
           )}
 
           {isImage && !error && (
-            <div className="image-container">
+            <div className="image-container max-h-[70vh] overflow-auto">
               <img
                 src={url}
                 alt={filename}

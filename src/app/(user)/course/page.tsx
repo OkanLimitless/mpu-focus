@@ -69,7 +69,7 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true)
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set())
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -507,12 +507,12 @@ export default function CoursePage() {
                 {/* Navigation Controls */}
                 <Card>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                       <Button
                         variant="outline"
                         onClick={() => prevVideo && handleVideoSelect(prevVideo)}
                         disabled={!prevVideo}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 w-full sm:w-auto"
                       >
                         <ArrowLeft className="h-4 w-4" />
                         Previous
@@ -522,13 +522,13 @@ export default function CoursePage() {
                         <div className="text-sm text-gray-600 mb-1">
                           Video {current} of {total}
                         </div>
-                        <Progress value={(current / total) * 100} className="w-48 h-2" />
+                        <Progress value={(current / total) * 100} className="w-32 sm:w-48 h-2" />
                       </div>
                       
                       <Button
                         onClick={() => nextVideo && handleVideoSelect(nextVideo)}
                         disabled={!nextVideo}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                       >
                         Next
                         <ArrowRight className="h-4 w-4" />

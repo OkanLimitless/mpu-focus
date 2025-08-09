@@ -45,9 +45,12 @@ export default function DigitalSignature({
   className 
 }: DigitalSignatureProps) {
   const sigCanvasRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const [isEmpty, setIsEmpty] = useState(true)
   const [isValid, setIsValid] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [canvasWidth, setCanvasWidth] = useState<number>(500)
+  const [canvasHeight, setCanvasHeight] = useState<number>(200)
 
   useEffect(() => {
     setIsMounted(true)
@@ -59,6 +62,37 @@ export default function DigitalSignature({
       setIsEmpty(sigCanvasRef.current.isEmpty())
     }
   }, [isMounted])
+
+  useEffect(() => {
+    // Responsively size the canvas to the container
+    const updateSize = () => {
+      const width = containerRef.current?.clientWidth || 500
+      // Keep a reasonable aspect ratio for signing area
+      const height = Math.max(160, Math.min(280, Math.round(width * 0.4)))
+      setCanvasWidth(width)
+      setCanvasHeight(height)
+    }
+
+    updateSize()
+
+    // Prefer ResizeObserver for container changes
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => updateSize())
+      resizeObserver.observe(containerRef.current)
+    } else if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateSize)
+    }
+
+    return () => {
+      if (resizeObserver && containerRef.current) {
+        resizeObserver.unobserve(containerRef.current)
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateSize)
+      }
+    }
+  }, [])
 
   const handleClear = () => {
     if (sigCanvasRef.current) {
@@ -93,9 +127,9 @@ export default function DigitalSignature({
     backgroundColor: 'rgb(255, 255, 255)',
     onEnd: handleSignatureEnd,
     canvasProps: {
-      width: 500,
-      height: 200,
-      className: 'signature-canvas w-full h-48 border rounded cursor-crosshair',
+      width: canvasWidth,
+      height: canvasHeight,
+      className: 'signature-canvas w-full border rounded cursor-crosshair',
     }
   }
 
@@ -126,7 +160,7 @@ export default function DigitalSignature({
       <CardContent className="space-y-4">
         {/* Signature Canvas */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white">
-          <div className="relative">
+          <div className="relative" ref={containerRef}>
             <SignatureCanvasWrapper
               ref={sigCanvasRef}
               {...canvasProps}

@@ -382,9 +382,29 @@ export default function AdminDashboardPage() {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 p-4 lg:p-8 overflow-auto">
+        <main className="flex-1 p-4 pb-24 lg:pb-8 lg:p-8 overflow-auto">
           {renderDashboardContent()}
         </main>
+        {/* Mobile bottom nav */}
+        <nav className="lg:hidden sticky bottom-0 inset-x-0 bg-white border-t shadow-sm" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="grid grid-cols-3">
+            {(['dashboard','users','leads'] as AdminSection[]).map((id) => {
+              const item = navigationItems.find(i => i.id === id)!
+              const Icon = item.icon
+              const isActive = activeSection === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={cn('py-3 text-xs flex flex-col items-center justify-center', isActive ? 'text-blue-600' : 'text-gray-600')}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="mt-1">{item.name.split(' ')[0]}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
       </div>
     </div>
   )

@@ -246,23 +246,23 @@ export default function DashboardPage() {
       {/* Top Bar */}
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <div className="text-xl font-bold text-gray-900 tracking-tight">MPU-Focus</div>
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center min-w-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search your course" className="pl-9 w-72" />
+                <Input placeholder="Search your course" className="pl-9 w-64 lg:w-72" />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center text-sm text-gray-700">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex items-center text-xs sm:text-sm text-gray-700">
               Welcome, {session.user.firstName} {session.user.lastName}
             </div>
             <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold">
               {userInitials || <User className="h-4 w-4" />}
             </div>
-            <Button variant="outline" onClick={handleLogout}>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
