@@ -269,9 +269,9 @@ export default function AdminDashboardPage() {
                     "h-5 w-5 transition-colors flex-shrink-0",
                     activeSection === item.id ? "text-white" : "text-gray-400 group-hover:text-gray-600"
                   )} />
-                  <div className="flex-1 min-w-0">
+                  <div className={"flex-1 min-w-0"}>
                     <div className="font-medium">{item.name}</div>
-                    <div className="text-xs text-gray-500 truncate">{item.description}</div>
+                    <div className={cn("text-xs truncate", activeSection === item.id ? "text-white/80" : "text-gray-500")}>{item.description}</div>
                   </div>
                   {(item.id === 'leads' && stats.newLeads > 0) && (
                     <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
