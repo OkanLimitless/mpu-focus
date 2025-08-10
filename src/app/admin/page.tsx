@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck, Loader2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 // Dynamic imports for admin components to prevent SSR issues
 const UserManagement = dynamic(() => import('@/components/admin/UserManagement'), {
@@ -41,39 +42,39 @@ type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters
 const navigationItems = [
   {
     id: 'dashboard' as AdminSection,
-    name: 'Dashboard',
+    nameKey: 'nav_dashboard',
     icon: BarChart3,
-    description: 'Overview and statistics'
+    descriptionKey: 'nav_dashboard_desc'
   },
   {
     id: 'users' as AdminSection,
-    name: 'User Management',
+    nameKey: 'nav_users',
     icon: Users,
-    description: 'Manage users and track progress'
+    descriptionKey: 'nav_users_desc'
   },
   {
     id: 'leads' as AdminSection,
-    name: 'Lead Management',
+    nameKey: 'nav_leads',
     icon: UserCheck,
-    description: 'Manage and convert leads'
+    descriptionKey: 'nav_leads_desc'
   },
   {
     id: 'verification' as AdminSection,
-    name: 'Verification',
+    nameKey: 'nav_verification',
     icon: FileCheck,
-    description: 'Review user verification submissions'
+    descriptionKey: 'nav_verification_desc'
   },
   {
     id: 'chapters' as AdminSection,
-    name: 'Chapters',
+    nameKey: 'nav_chapters',
     icon: BookOpen,
-    description: 'Manage course chapters'
+    descriptionKey: 'nav_chapters_desc'
   },
   {
     id: 'videos' as AdminSection,
-    name: 'Videos',
+    nameKey: 'nav_videos',
     icon: Video,
-    description: 'Manage course videos'
+    descriptionKey: 'nav_videos_desc'
   }
 ]
 
@@ -94,6 +95,7 @@ export default function AdminDashboardPage() {
     convertedLeads: 0
   })
   const [loading, setLoading] = useState(true)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -148,31 +150,31 @@ export default function AdminDashboardPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
-              <p className="text-gray-600">Welcome to the admin dashboard. Here's a quick overview of your system.</p>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('adminOverviewTitle')}</h2>
+              <p className="text-gray-600">{t('adminOverviewDesc')}</p>
             </div>
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="border-l-4 border-l-blue-500">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('totalUsers')}</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? '...' : stats.totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">Registered users</p>
+                  <p className="text-xs text-muted-foreground">{t('registeredUsers')}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-green-500">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('activeUsers')}</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? '...' : stats.activeUsers}</div>
-                  <p className="text-xs text-muted-foreground">Recently active</p>
+                  <p className="text-xs text-muted-foreground">{t('recentlyActive')}</p>
                 </CardContent>
               </Card>
 
@@ -185,14 +187,14 @@ export default function AdminDashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5 text-blue-500" />
-                    User Management
+                    {t('nav_users')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-blue-600">{loading ? '...' : stats.totalUsers}</div>
-                  <p className="text-sm text-muted-foreground">Manage all users and track their progress</p>
+                  <p className="text-sm text-muted-foreground">{t('nav_users_desc')}</p>
                   <Button className="mt-3 w-full" variant="outline">
-                    Manage Users
+                    {t('manageUsers')}
                   </Button>
                 </CardContent>
               </Card>
@@ -201,14 +203,14 @@ export default function AdminDashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <UserCheck className="h-5 w-5 text-green-500" />
-                    New Leads
+                    {t('newLeads')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-green-600">{loading ? '...' : stats.newLeads}</div>
-                  <p className="text-sm text-muted-foreground">Fresh leads to contact and convert</p>
+                  <p className="text-sm text-muted-foreground">{t('nav_leads_desc')}</p>
                   <Button className="mt-3 w-full" variant="outline">
-                    Manage Leads
+                    {t('nav_leads')}
                   </Button>
                 </CardContent>
               </Card>
@@ -244,7 +246,7 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">MPU-Focus</h1>
-              <p className="text-sm text-gray-500">Admin Panel</p>
+              <p className="text-sm text-gray-500">{t('adminPanel')}</p>
             </div>
           </div>
         </div>
@@ -270,8 +272,8 @@ export default function AdminDashboardPage() {
                     activeSection === item.id ? "text-white" : "text-gray-400 group-hover:text-gray-600"
                   )} />
                   <div className={"flex-1 min-w-0"}>
-                    <div className="font-medium">{item.name}</div>
-                    <div className={cn("text-xs truncate", activeSection === item.id ? "text-white/80" : "text-gray-500")}>{item.description}</div>
+                    <div className="font-medium">{t(item.nameKey)}</div>
+                    <div className={cn("text-xs truncate", activeSection === item.id ? "text-white/80" : "text-gray-500")}>{t(item.descriptionKey)}</div>
                   </div>
                   {(item.id === 'leads' && stats.newLeads > 0) && (
                     <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
@@ -298,7 +300,7 @@ export default function AdminDashboardPage() {
               className="w-full"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {t('logout')}
             </Button>
           </div>
         </div>
@@ -311,10 +313,10 @@ export default function AdminDashboardPage() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
-                {navigationItems.find(item => item.id === activeSection)?.name || 'Dashboard'}
+                {t(navigationItems.find(item => item.id === activeSection)?.nameKey || 'nav_dashboard')}
               </h1>
               <p className="text-sm lg:text-base text-gray-600 truncate">
-                {navigationItems.find(item => item.id === activeSection)?.description || 'Admin dashboard overview'}
+                {t(navigationItems.find(item => item.id === activeSection)?.descriptionKey || 'nav_dashboard_desc')}
               </p>
             </div>
             
@@ -327,7 +329,7 @@ export default function AdminDashboardPage() {
               >
                 {navigationItems.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name}
+                    {t(item.nameKey)}
                   </option>
                 ))}
               </select>
@@ -342,7 +344,7 @@ export default function AdminDashboardPage() {
                   onClick={() => setActiveSection('leads')}
                 >
                   <UserCheck className="h-4 w-4 mr-2" />
-                  {stats.newLeads} New Leads
+                  {stats.newLeads} {t('newLeads')}
                 </Button>
               )}
             </div>
@@ -362,7 +364,7 @@ export default function AdminDashboardPage() {
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {t('logout')}
             </Button>
           </div>
 
@@ -375,7 +377,7 @@ export default function AdminDashboardPage() {
                 onClick={() => setActiveSection('leads')}
               >
                 <UserCheck className="h-4 w-4 mr-2" />
-                {stats.newLeads} New Leads
+                {stats.newLeads} {t('newLeads')}
               </Button>
             )}
           </div>
@@ -399,7 +401,7 @@ export default function AdminDashboardPage() {
                   className={cn('py-3 text-xs flex flex-col items-center justify-center', isActive ? 'text-blue-600' : 'text-gray-600')}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="mt-1">{item.name.split(' ')[0]}</span>
+                  <span className="mt-1">{t(item.nameKey)}</span>
                 </button>
               )
             })}

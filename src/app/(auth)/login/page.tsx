@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { t } = useI18n()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,14 +30,14 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast({
-          title: 'Login Failed',
-          description: 'Please check your credentials.',
+          title: t('loginFailedTitle'),
+          description: t('loginFailedDesc'),
           variant: 'destructive',
         })
       } else {
         toast({
-          title: 'Login Successful',
-          description: 'Redirecting...',
+          title: t('loginSuccessTitle'),
+          description: t('redirecting'),
         })
         router.push('/dashboard')
       }
@@ -60,16 +62,16 @@ export default function LoginPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Login</CardTitle>
+            <CardTitle>{t('loginTitle')}</CardTitle>
             <CardDescription>
-              Sign in with your credentials
+              {t('loginSubtitle')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
+                  {t('email')}
                 </label>
                 <Input
                   id="email"
@@ -77,13 +79,13 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="your.email@example.com"
+                  placeholder={t('placeholderEmail')}
                 />
               </div>
               
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
+                  {t('password')}
                 </label>
                 <Input
                   id="password"
@@ -91,7 +93,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="Your password"
+                  placeholder={t('placeholderPassword')}
                 />
               </div>
               
@@ -100,7 +102,7 @@ export default function LoginPage() {
                 className="w-full h-11"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? t('signingIn') : t('signIn')}
               </Button>
             </form>
           </CardContent>

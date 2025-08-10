@@ -23,6 +23,7 @@ import { signOut } from 'next-auth/react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [signatureData, setSignatureData] = useState<string | null>(null)
   const [signatureMethod, setSignatureMethod] = useState<'checkbox' | 'digital_signature' | 'qes'>('checkbox')
+  const { t } = useI18n()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -178,36 +180,36 @@ export default function DashboardPage() {
   const getVerificationBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Pending</Badge>
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">{t('status_pending')}</Badge>
       case 'documents_uploaded':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Documents Uploaded</Badge>
+        return <Badge variant="secondary" className="bg-blue-100 text-blue-800">{t('status_documents_uploaded')}</Badge>
       case 'contract_signed':
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Under Review</Badge>
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">{t('status_contract_signed')}</Badge>
       case 'resubmission_required':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Resubmission Required</Badge>
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">{t('status_resubmission_required')}</Badge>
       case 'verified':
-        return <Badge variant="secondary" className="bg-green-100 text-green-800">Verified</Badge>
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">{t('status_verified')}</Badge>
       case 'rejected':
-        return <Badge variant="secondary" className="bg-red-100 text-red-800">Rejected</Badge>
+        return <Badge variant="secondary" className="bg-red-100 text-red-800">{t('status_rejected')}</Badge>
       default:
-        return <Badge variant="secondary">Unknown</Badge>
+        return <Badge variant="secondary">{t('status_unknown')}</Badge>
     }
   }
 
   const getVerificationMessage = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'Please complete verification steps below to upload your documents and sign the service agreement.'
+        return t('verificationSteps')
       case 'documents_uploaded':
-        return 'Your documents have been uploaded. Please complete the contract signing process.'
+        return t('docsUploadedMsg')
       case 'contract_signed':
-        return 'Your documents and contract are being reviewed by our team. This typically takes 1-2 business days.'
+        return t('underReviewMsg')
       case 'resubmission_required':
-        return 'Your documents need to be updated. Please upload new documents. Your contract signature remains valid.'
+        return t('resubmissionMsg')
       case 'rejected':
-        return 'Your submission was rejected. Please contact support for more information and to resubmit.'
+        return t('rejectedMsg')
       default:
-        return 'Please complete the verification process to access your account.'
+        return t('defaultVerificationMsg')
     }
   }
 
@@ -251,20 +253,20 @@ export default function DashboardPage() {
             <div className="hidden md:flex items-center min-w-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Search your course" className="pl-9 w-64 lg:w-72" />
+                <Input placeholder={t('search')} className="pl-9 w-64 lg:w-72" />
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden sm:flex items-center text-xs sm:text-sm text-gray-700">
-              Welcome, {session.user.firstName} {session.user.lastName}
+              {t('welcome')}, {session.user.firstName} {session.user.lastName}
             </div>
             <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold ring-2 ring-blue-100">
               {userInitials || <User className="h-4 w-4" />}
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              {t('logout')}
             </Button>
           </div>
         </div>
@@ -277,12 +279,12 @@ export default function DashboardPage() {
             {/* Welcome Section */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Your Training Dashboard</h2>
-                <p className="text-gray-600">Track progress, access your course, and complete verification.</p>
+                <h2 className="text-3xl font-bold text-gray-900 tracking-tight">{t('trainingDashboard')}</h2>
+                <p className="text-gray-600">{t('trainingDashboardSub')}</p>
               </div>
               {userDetails && userDetails.verificationStatus !== 'verified' && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Account Status:</span>
+                  <span className="text-sm text-gray-600">{t('accountStatus')}</span>
                   {getVerificationBadge(userDetails.verificationStatus)}
                 </div>
               )}
@@ -292,35 +294,35 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Overall Progress</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('overallProgress')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? '...' : `${userProgress.overallProgress}%`}</div>
                   <Progress value={userProgress.overallProgress} className="mt-2" />
-                  <p className="text-xs text-muted-foreground mt-2">Course completion</p>
+                  <p className="text-xs text-muted-foreground mt-2">{t('completed')}</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Chapters</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('chapters')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{loading ? '...' : `${userProgress.completedChapters}/${userProgress.totalChapters}`}</div>
-                  <p className="text-xs text-muted-foreground">Completed</p>
+                  <p className="text-xs text-muted-foreground">{t('completed')}</p>
                 </CardContent>
               </Card>
 
               {userDetails?.verificationStatus !== 'verified' && (
                 <Card>
                   <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-medium">Account</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('account')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm">
                       {userDetails ? getVerificationBadge(userDetails.verificationStatus) : '...'}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">Verification status</p>
+                    <p className="text-xs text-muted-foreground mt-2">{t('verificationStatus')}</p>
                   </CardContent>
                 </Card>
               )}
@@ -333,16 +335,16 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-4">
                     <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                     <div className="flex-1">
-                      <h3 className="font-medium text-orange-800">Account Verification Required</h3>
+                      <h3 className="font-medium text-orange-800">{t('accountVerificationRequired')}</h3>
                       <p className="text-sm text-orange-700 mt-1">{getVerificationMessage(userDetails.verificationStatus)}</p>
                       <ul className="text-sm text-orange-700 mt-3 list-disc pl-5 space-y-1">
-                        <li>Upload a clear photo of your ID/passport</li>
-                        <li>Sign the service agreement digitally</li>
-                        <li>We will review within 1–2 business days</li>
+                        <li>{t('uploadId')}</li>
+                        <li>{t('signAgreement')}</li>
+                        <li>{t('reviewTimeline')}</li>
                       </ul>
                       <div className="mt-4 flex gap-2 flex-wrap">
                         <Button onClick={startVerification}>
-                          <Upload className="h-4 w-4 mr-2" /> Start Verification Now
+                          <Upload className="h-4 w-4 mr-2" /> {t('startVerificationNow')}
                         </Button>
                         {userDetails.verificationStatus === 'resubmission_required' && (
                           <Button
@@ -358,7 +360,7 @@ export default function DashboardPage() {
                             }}
                             className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
                           >
-                            <Upload className="h-4 w-4 mr-2" /> Upload New Documents
+                            <Upload className="h-4 w-4 mr-2" /> {t('uploadNewDocuments')}
                           </Button>
                         )}
                       </div>
@@ -373,9 +375,9 @@ export default function DashboardPage() {
               {/* Course Section */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Your Course</CardTitle>
+                  <CardTitle>{t('yourCourse')}</CardTitle>
                   <CardDescription>
-                    {userDetails?.verificationStatus === 'verified' ? 'Continue your training progress' : 'Course access pending verification'}
+                    {userDetails?.verificationStatus === 'verified' ? t('continueTraining') : t('courseAccessPending')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -388,13 +390,13 @@ export default function DashboardPage() {
                       <>
                         <div className="flex items-center justify-between p-4 border rounded-lg">
                           <div>
-                            <h4 className="font-medium">Training Course</h4>
-                            <p className="text-sm text-gray-600">Continue your learning journey</p>
+                            <h4 className="font-medium">{t('yourCourse')}</h4>
+                            <p className="text-sm text-gray-600">{t('watchVideosAndTrack')}</p>
                           </div>
-                          <Button onClick={() => router.push('/course')}>Continue</Button>
+                          <Button onClick={() => router.push('/course')}>{t('continue')}</Button>
                         </div>
                         <div className="text-sm text-gray-600">
-                          <p>Watch videos, track your progress, and complete your training</p>
+                          <p>{t('watchVideosAndTrack')}</p>
                         </div>
                       </>
                     ) : (
@@ -402,11 +404,11 @@ export default function DashboardPage() {
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                           <BookOpen className="h-8 w-8 text-gray-400" />
                         </div>
-                        <h4 className="font-medium text-gray-900 mb-2">Course Access Locked</h4>
-                        <p className="text-sm text-gray-600">Complete your account verification to access the full course.</p>
+                        <h4 className="font-medium text-gray-900 mb-2">{t('courseAccessLocked')}</h4>
+                        <p className="text-sm text-gray-600">{t('completeVerificationToAccess')}</p>
                         <div className="mt-4">
                           <Button size="sm" onClick={startVerification}>
-                            <Play className="h-4 w-4 mr-2" /> Start Verification
+                            <Play className="h-4 w-4 mr-2" /> {t('startVerification')}
                           </Button>
                         </div>
                       </div>
@@ -419,8 +421,8 @@ export default function DashboardPage() {
               {userDetails?.verificationStatus !== 'verified' && (
                 <Card className="lg:col-span-1">
                   <CardHeader>
-                    <CardTitle>Verification Status</CardTitle>
-                    <CardDescription>Your account verification progress</CardDescription>
+                    <CardTitle>{t('verificationStatus')}</CardTitle>
+                    <CardDescription>{t('accountVerification')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -444,15 +446,15 @@ export default function DashboardPage() {
                               <AlertCircle className="h-5 w-5 text-gray-400" />
                             )}
                             <div className="flex-1">
-                              <p className="text-sm font-medium">Identity Document</p>
+                              <p className="text-sm font-medium">{t('identityDocument')}</p>
                               <p className="text-xs text-gray-600">
                                 {userDetails.passportDocument
                                   ? userDetails.passportDocument.status === 'approved'
-                                    ? 'Approved'
+                                    ? t('approved')
                                     : userDetails.passportDocument.status === 'rejected'
-                                    ? 'Rejected - Please resubmit'
-                                    : 'Under review'
-                                  : 'Not uploaded'}
+                                    ? t('rejected')
+                                    : t('underReview')
+                                  : t('notUploaded')}
                               </p>
                             </div>
                           </div>
@@ -465,21 +467,21 @@ export default function DashboardPage() {
                               <AlertCircle className="h-5 w-5 text-gray-400" />
                             )}
                             <div className="flex-1">
-                              <p className="text-sm font-medium">Service Agreement</p>
-                              <p className="text-xs text-gray-600">{userDetails.contractSigned?.signedAt ? 'Signed' : 'Not signed'}</p>
+                              <p className="text-sm font-medium">{t('serviceAgreement')}</p>
+                              <p className="text-xs text-gray-600">{userDetails.contractSigned?.signedAt ? t('signed') : t('notSigned')}</p>
                             </div>
                           </div>
 
                           {/* Verification Status */}
-                                                     <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-3">
                             {userDetails.verificationStatus === 'verified' ? (
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
                             ) : (
                               <Clock className="h-5 w-5 text-yellow-600" />
                             )}
                             <div className="flex-1">
-                              <p className="text-sm font-medium">Account Verification</p>
-                              <p className="text-xs text-gray-600">{userDetails.verificationStatus === 'verified' ? 'Complete' : 'In progress'}</p>
+                              <p className="text-sm font-medium">{t('accountVerification')}</p>
+                              <p className="text-xs text-gray-600">{userDetails.verificationStatus === 'verified' ? t('complete') : t('inProgress')}</p>
                             </div>
                           </div>
                         </div>

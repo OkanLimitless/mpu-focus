@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import RestrictedMuxVideoPlayer from '@/components/video/RestrictedMuxVideoPlayer'
 import { useToast } from '@/hooks/use-toast'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface VideoData {
   _id: string
@@ -70,6 +71,7 @@ export default function CoursePage() {
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [openChapters, setOpenChapters] = useState<Set<string>>(new Set())
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (status === 'loading') return
@@ -133,8 +135,8 @@ export default function CoursePage() {
   const handleVideoSelect = (video: VideoData) => {
     if (!video.isAccessible) {
       toast({
-        title: 'Content Locked',
-        description: 'Complete previous chapters to unlock this content.',
+        title: t('contentLockedTitle'),
+        description: t('contentLockedDesc'),
         variant: 'destructive',
       })
       return
@@ -287,7 +289,7 @@ export default function CoursePage() {
       <div className="min-h-screen bg-gradient_to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your course...</p>
+          <p className="text-gray-600">{t('loadingYourCourse')}</p>
         </div>
       </div>
     )
@@ -300,10 +302,10 @@ export default function CoursePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-6 w-6" />
-              No Course Available
+              {t('noCourseTitle')}
             </CardTitle>
             <CardDescription>
-              {courseData.message || 'There are no courses available at this time.'}
+              {courseData.message || t('noCourseDesc')}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -338,7 +340,7 @@ export default function CoursePage() {
                 <div>
                   <h1 className="font-semibold text-gray-900">{courseData.course.title}</h1>
                   <p className="text-sm text-gray-500">
-                    Video {current} of {total}
+                    {t('videoOf', { current, total })}
                   </p>
                 </div>
               </div>
@@ -346,7 +348,7 @@ export default function CoursePage() {
             
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2">
-                <span className="text-sm text-gray-600">Progress:</span>
+                <span className="text-sm text-gray-600">{t('progress')}:</span>
                 <div className="w-32">
                   <Progress value={getOverallProgress()} className="h-2" />
                 </div>
@@ -360,7 +362,7 @@ export default function CoursePage() {
                 className="flex items-center gap-2"
               >
                 <Home className="h-4 w-4" />
-                Dashboard
+                {t('dashboard')}
               </Button>
             </div>
           </div>
@@ -373,7 +375,7 @@ export default function CoursePage() {
           <div className={`lg:col-span-1 ${sidebarOpen ? 'block' : 'hidden lg:block'}`}>
             <Card className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-hidden">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Course Content</CardTitle>
+                <CardTitle className="text-lg">{t('courseContent')}</CardTitle>
                 <div className="flex items-center gap-2">
                   <Progress value={getOverallProgress()} className="flex-1 h-2" />
                   <span className="text-sm font-medium">{getOverallProgress()}%</span>
@@ -403,25 +405,25 @@ export default function CoursePage() {
                                 {chapter.isCompleted && (
                                   <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
                                     <CheckCircle className="h-3 w-3 mr-1" />
-                                    Complete
+                                    {t('completed')}
                                   </Badge>
                                 )}
                                 {chapter.isCurrent && !chapter.isCompleted && (
                                   <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
                                     <PlayCircle className="h-3 w-3 mr-1" />
-                                    Current
+                                    {t('current')}
                                   </Badge>
                                 )}
                                 {!chapter.isUnlocked && (
                                   <Badge variant="outline" className="text-gray-500">
                                     <Lock className="h-3 w-3 mr-1" />
-                                    Locked
+                                    {t('locked')}
                                   </Badge>
                                 )}
                               </div>
                             </div>
                             <div className="text-xs text-gray-500">
-                              {chapter.videos.length} videos
+                              {t('videosCount', { count: chapter.videos.length })}
                             </div>
                           </div>
                         </div>
@@ -515,12 +517,12 @@ export default function CoursePage() {
                         className="flex items-center gap-2 w-full sm:w-auto"
                       >
                         <ArrowLeft className="h-4 w-4" />
-                        Previous
+                        {t('previous')}
                       </Button>
                       
                       <div className="text-center">
                         <div className="text-sm text-gray-600 mb-1">
-                          Video {current} of {total}
+                          {t('videoOf', { current, total })}
                         </div>
                         <Progress value={(current / total) * 100} className="w-32 sm:w-48 h-2" />
                       </div>
@@ -530,7 +532,7 @@ export default function CoursePage() {
                         disabled={!nextVideo}
                         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
                       >
-                        Next
+                        {t('next')}
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -551,7 +553,7 @@ export default function CoursePage() {
                       {selectedVideo.progress?.isCompleted && (
                         <Badge className="bg-green-100 text-green-700 border-green-200">
                           <Award className="h-4 w-4 mr-1" />
-                          Completed
+                          {t('completed')}
                         </Badge>
                       )}
                     </div>
@@ -571,7 +573,7 @@ export default function CoursePage() {
                       </div>
                       <div className="min-w-[240px]">
                         <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                          <span>Overall Progress</span>
+                          <span>{t('overallProgress')}</span>
                           <span className="font-medium">{getOverallProgress()}%</span>
                         </div>
                         <Progress value={getOverallProgress()} className="h-2" />
@@ -602,9 +604,9 @@ export default function CoursePage() {
                           }
                         }}
                       >
-                        Resume Course
+                        {t('resumeCourse')}
                       </Button>
-                      <span className="text-sm text-gray-500">or select a video from the left to begin</span>
+                      <span className="text-sm text-gray-500">{t('orSelectVideo')}</span>
                     </div>
                   </div>
                 </CardContent>
