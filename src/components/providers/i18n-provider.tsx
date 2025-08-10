@@ -250,7 +250,6 @@ const dictionaries: I18nDictionaries = {
     failedToSyncMux: "Failed to sync Mux asset",
     noMuxAsset: "No Mux Asset",
     ready: "Ready",
-    processing: "Processing",
     unknown: "Unknown",
 
     // Admin: Chapter Management
@@ -508,7 +507,6 @@ const dictionaries: I18nDictionaries = {
     failedToSyncMux: "Mux-Asset konnte nicht synchronisiert werden",
     noMuxAsset: "Kein Mux-Asset",
     ready: "Bereit",
-    processing: "Verarbeitung",
     unknown: "Unbekannt",
 
     // Admin: Chapter Management
