@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Video, Upload, Play, Edit, Trash2, Plus, Eye, ExternalLink } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface VideoData {
   _id: string
@@ -41,6 +42,7 @@ export default function VideoManagement() {
   const [editingVideo, setEditingVideo] = useState<VideoData | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const [formData, setFormData] = useState({
     title: '',
@@ -63,15 +65,15 @@ export default function VideoManagement() {
         setVideos(data.videos)
       } else {
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to fetch videos',
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     } finally {
@@ -100,8 +102,8 @@ export default function VideoManagement() {
     // Additional validation
     if (!formData.description.trim()) {
       toast({
-        title: 'Error',
-        description: 'Description is required',
+        title: t('error'),
+        description: t('description') + ' ' + t('isRequired' as any) || t('unexpectedError'),
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -110,8 +112,8 @@ export default function VideoManagement() {
 
     if (!formData.chapterId) {
       toast({
-        title: 'Error',
-        description: 'Please select a chapter',
+        title: t('error'),
+        description: t('selectChapter'),
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -134,23 +136,23 @@ export default function VideoManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: `Video ${editingVideo ? 'updated' : 'created'} successfully`,
+          title: t('success'),
+          description: `Video ${editingVideo ? t('update') : t('create')} ${t('success').toLowerCase()}`,
         })
         setDialogOpen(false)
         resetForm()
         fetchVideos()
       } else {
         toast({
-          title: 'Error',
-          description: data.error || `Failed to ${editingVideo ? 'update' : 'create'} video`,
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     } finally {
@@ -182,7 +184,7 @@ export default function VideoManagement() {
   }
 
   const handleDelete = async (videoId: string) => {
-    if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+    if (!confirm(t('confirmDeleteVideo'))) {
       return
     }
 
@@ -193,22 +195,22 @@ export default function VideoManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Video deleted successfully',
+          title: t('success'),
+          description: t('videoDeleted'),
         })
         fetchVideos()
       } else {
         const data = await response.json()
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to delete video',
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     }
@@ -222,22 +224,22 @@ export default function VideoManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Mux asset synced successfully',
+          title: t('success'),
+          description: t('muxSynced'),
         })
         fetchVideos()
       } else {
         const data = await response.json()
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to sync Mux asset',
+          title: t('error'),
+          description: data.error || t('failedToSyncMux'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     }
@@ -245,22 +247,22 @@ export default function VideoManagement() {
 
   const getStatusBadge = (video: VideoData) => {
     if (!video.muxAssetId) {
-      return <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">No Mux Asset</span>
+      return <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">{t('noMuxAsset')}</span>
     }
     if (video.status === 'ready') {
-      return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Ready</span>
+      return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">{t('ready')}</span>
     }
     if (video.status === 'preparing') {
-      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Processing</span>
+      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">{t('processing')}</span>
     }
-    return <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Unknown</span>
+    return <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">{t('unknown')}</span>
   }
 
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Video Management</CardTitle>
+          <CardTitle>{t('videoManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -277,65 +279,63 @@ export default function VideoManagement() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Video className="h-5 w-5" />
-            Video Management
+            {t('videoManagement')}
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { resetForm(); setDialogOpen(true) }}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Video
+                {t('addVideo')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>
-                  {editingVideo ? 'Edit Video' : 'Add New Video'}
+                  {editingVideo ? t('editVideo') : t('addNewVideo')}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingVideo ? 'Update video information and Mux integration.' : 'Create a new video and connect it to your Mux asset.'}
+                  {t('manageVideosDesc')}
                 </DialogDescription>
               </DialogHeader>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Video Title</Label>
+                  <Label htmlFor="title">{t('videoTitle')}</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter video title"
+                    placeholder={t('enterVideoTitle')}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('description')}</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Enter video description"
+                    placeholder={t('enterDescription')}
                     rows={3}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="muxAssetId">Mux Asset ID</Label>
+                  <Label htmlFor="muxAssetId">{t('muxAssetId')}</Label>
                   <Input
                     id="muxAssetId"
                     value={formData.muxAssetId}
                     onChange={(e) => setFormData(prev => ({ ...prev, muxAssetId: e.target.value }))}
-                    placeholder="Enter Mux Asset ID (from Mux dashboard)"
+                    placeholder={t('enterMuxAssetId')}
                   />
-                  <p className="text-xs text-gray-500">
-                    Find this in your Mux dashboard under Assets. It looks like: abcd1234efgh5678
-                  </p>
+                  <p className="text-xs text-gray-500">{t('findMuxHint')}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="order">Order</Label>
+                    <Label htmlFor="order">{t('order')}</Label>
                     <Input
                       id="order"
                       type="number"
@@ -346,25 +346,25 @@ export default function VideoManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="chapterId">Chapter</Label>
+                    <Label htmlFor="chapterId">{t('chapter')}</Label>
                     <Select
                       value={formData.chapterId}
                       onValueChange={(value) => setFormData(prev => ({ ...prev, chapterId: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a chapter" />
+                        <SelectValue placeholder={t('selectChapter')} />
                       </SelectTrigger>
                       <SelectContent>
                         {chapters.map((chapter) => (
                           <SelectItem key={chapter._id} value={chapter._id}>
-                            Chapter {chapter.order}: {chapter.title}
+                            {t('chapter')} {chapter.order}: {chapter.title}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     {chapters.length === 0 && (
                       <p className="text-xs text-red-500">
-                        No chapters available. Please create chapters first.
+                        {t('noChaptersAvailable')}
                       </p>
                     )}
                   </div>
@@ -372,10 +372,10 @@ export default function VideoManagement() {
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
+                    {t('cancel')}
                   </Button>
                   <Button type="submit" disabled={formLoading}>
-                    {formLoading ? 'Saving...' : (editingVideo ? 'Update Video' : 'Create Video')}
+                    {formLoading ? t('processing') : (editingVideo ? t('updateVideo') : t('createVideo'))}
                   </Button>
                 </DialogFooter>
               </form>
@@ -383,14 +383,14 @@ export default function VideoManagement() {
           </Dialog>
         </CardTitle>
         <CardDescription>
-          Manage course videos and their Mux integration
+          {t('manageVideosDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {videos.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Video className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No videos found. Create your first video to get started.</p>
+            <p>{t('noVideosFound')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -404,11 +404,11 @@ export default function VideoManagement() {
                     </div>
                     <p className="text-sm text-gray-600">{video.description}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>Order: {video.order}</span>
-                      {video.duration > 0 && <span>Duration: {Math.round(video.duration)}s</span>}
+                      <span>{t('orderLabel')} {video.order}</span>
+                      {video.duration > 0 && <span>{t('duration')} {Math.round(video.duration)}s</span>}
                       {video.muxAssetId && (
                         <span className="flex items-center gap-1">
-                          Mux: {video.muxAssetId}
+                          {t('mux')} {video.muxAssetId}
                           <ExternalLink className="h-3 w-3" />
                         </span>
                       )}

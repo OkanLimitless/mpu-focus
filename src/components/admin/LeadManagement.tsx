@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import type { Lead } from '@/types'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface LeadStats {
   new: number
@@ -54,6 +55,8 @@ export default function LeadManagement() {
   const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [hasAutoSentVerification, setHasAutoSentVerification] = useState(false)
 
+  const { t } = useI18n()
+
   useEffect(() => {
     fetchLeads()
   }, [page, statusFilter, searchTerm])
@@ -78,9 +81,9 @@ export default function LeadManagement() {
     } catch (error) {
       console.error('Failed to fetch leads:', error)
       toast({
-        title: "Error",
-        description: "Failed to fetch leads",
-        variant: "destructive",
+        title: t('error'),
+        description: t('noLeadsFound'),
+        variant: 'destructive',
       })
     } finally {
       setLoading(false)
@@ -133,8 +136,8 @@ export default function LeadManagement() {
         ))
         setSelectedLead(data.lead)
         toast({
-          title: "Success",
-          description: "Lead status updated successfully",
+          title: t('success'),
+          description: t('updateStatus'),
         })
         fetchLeads() // Refresh to update stats
       } else {
@@ -143,8 +146,8 @@ export default function LeadManagement() {
     } catch (error) {
       console.error('Error updating lead:', error)
       toast({
-        title: "Error",
-        description: "Failed to update lead status",
+        title: t('error'),
+        description: t('updateStatus'),
         variant: "destructive",
       })
     } finally {
@@ -179,8 +182,8 @@ export default function LeadManagement() {
           setNewPassword(data.password)
         }
         toast({
-          title: "Success",
-          description: "Lead converted to user successfully",
+          title: t('success'),
+          description: t('convertToUser'),
         })
         setIsConvertDialogOpen(false)
         // Auto-send verification email immediately after successful conversion
@@ -193,26 +196,26 @@ export default function LeadManagement() {
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            throw new Error(err.error || 'Failed to send verification email')
+            throw new Error(err.error || t('sendVerificationEmail'))
           }
           setHasAutoSentVerification(true)
-          toast({ title: 'Verification Email Sent', description: 'Welcome and verification email has been sent.' })
+          toast({ title: t('verificationEmailSent'), description: t('documentVerification') })
         } catch (e) {
           console.error(e)
-          toast({ title: 'Email Error', description: (e as any).message || 'Failed to send verification email', variant: 'destructive' })
+          toast({ title: t('error'), description: (e as any).message || t('unexpectedError'), variant: 'destructive' })
         } finally {
           setIsSendingEmail(false)
         }
         fetchLeads() // Refresh to update stats
       } else {
         const err = await response.json().catch(() => ({}))
-        throw new Error(err.error || 'Failed to convert lead')
+        throw new Error(err.error || t('convertToUser'))
       }
     } catch (error) {
       console.error('Error converting lead:', error)
       toast({
-        title: "Error",
-        description: (error as any).message || "Failed to convert lead to user",
+        title: t('error'),
+        description: (error as any).message || t('unexpectedError'),
         variant: "destructive",
       })
     } finally {
@@ -232,19 +235,19 @@ export default function LeadManagement() {
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: "Verification email sent successfully",
+          title: t('success'),
+          description: t('verificationEmailSent'),
         })
         fetchLeads() // Refresh to update any status changes
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send verification email')
+        throw new Error(errorData.error || t('sendVerificationEmail'))
       }
     } catch (error: any) {
       console.error('Error sending verification email:', error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to send verification email",
+        title: t('error'),
+        description: error.message || t('unexpectedError'),
         variant: "destructive",
       })
     } finally {
@@ -267,17 +270,17 @@ export default function LeadManagement() {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Users className="h-5 w-5" />
-          <span>Lead Management</span>
+          <span>{t('leadManagement')}</span>
         </CardTitle>
         <CardDescription>
-          Manage leads from the enrollment process and convert them to users.
+          {t('manageLeadsDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-red-50 p-3 rounded-lg">
-            <div className="text-red-600 text-sm font-medium">New Leads</div>
+            <div className="text-red-600 text-sm font-medium">{t('newLeads')}</div>
             <div className="text-2xl font-bold text-red-700">{stats.new}</div>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg">
@@ -300,7 +303,7 @@ export default function LeadManagement() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search leads by name, email, or phone..."
+                placeholder={t('searchLeadsPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -312,7 +315,7 @@ export default function LeadManagement() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md bg-white"
           >
-            <option value="all">All Status</option>
+            <option value="all">{t('allStatus')}</option>
             <option value="new">New</option>
             <option value="contacted">Contacted</option>
             <option value="converted">Converted</option>
@@ -326,24 +329,24 @@ export default function LeadManagement() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Contact</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Timeframe</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Created</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('contactHeader')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('statusHeader')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('timeframeHeader')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('createdHeader')}</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('actionsHeader')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      Loading leads...
+                      {t('loadingLeads')}
                     </td>
                   </tr>
                 ) : leads.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      No leads found
+                      {t('noLeadsFound')}
                     </td>
                   </tr>
                 ) : (
@@ -388,7 +391,7 @@ export default function LeadManagement() {
                               size="sm"
                               onClick={() => handleSendVerificationEmail(lead._id)}
                               disabled={isSendingEmail}
-                              title="Send verification email"
+                              title={t('sendVerificationEmail')}
                             >
                               <Send className="h-4 w-4" />
                             </Button>
@@ -407,8 +410,8 @@ export default function LeadManagement() {
         {pagination.pages > 1 && (
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">
-              Page {pagination.page} of {pagination.pages} 
-              ({pagination.total} total leads)
+              {t('pageOf', { page: pagination.page, pages: pagination.pages })}
+              {' '}{t('totalLeads', { total: pagination.total })}
             </div>
             <div className="flex space-x-2">
               <Button
@@ -417,7 +420,7 @@ export default function LeadManagement() {
                 onClick={() => setPage(page - 1)}
                 disabled={page <= 1}
               >
-                Previous
+                {t('previous')}
               </Button>
               <Button
                 variant="outline"
@@ -425,7 +428,7 @@ export default function LeadManagement() {
                 onClick={() => setPage(page + 1)}
                 disabled={page >= pagination.pages}
               >
-                Next
+                {t('next')}
               </Button>
             </div>
           </div>
@@ -435,10 +438,8 @@ export default function LeadManagement() {
         <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Lead Details</DialogTitle>
-              <DialogDescription>
-                View and manage lead information
-              </DialogDescription>
+              <DialogTitle>{t('leadDetails')}</DialogTitle>
+              <DialogDescription>{t('viewAndManageLeadInfo')}</DialogDescription>
             </DialogHeader>
             
             {selectedLead && (
@@ -446,21 +447,21 @@ export default function LeadManagement() {
                 {/* Contact Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Name</Label>
+                    <Label className="text-sm font-medium">{t('name')}</Label>
                     <p className="text-sm text-gray-600">
                       {selectedLead.firstName} {selectedLead.lastName}
                     </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Email</Label>
+                    <Label className="text-sm font-medium">{t('emailLabel')}</Label>
                     <p className="text-sm text-gray-600">{selectedLead.email}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Phone</Label>
+                    <Label className="text-sm font-medium">{t('phoneLabel')}</Label>
                     <p className="text-sm text-gray-600">{selectedLead.phone}</p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Status</Label>
+                    <Label className="text-sm font-medium">{t('statusHeader')}</Label>
                     <div className="mt-1">
                       {getStatusBadge(selectedLead.status)}
                     </div>
@@ -473,7 +474,7 @@ export default function LeadManagement() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium">Timeframe</Label>
+                      <Label className="text-sm font-medium">{t('timeframeHeader')}</Label>
                       <p className="text-sm text-gray-600">{selectedLead.timeframe}</p>
                     </div>
                     <div>
@@ -516,10 +517,10 @@ export default function LeadManagement() {
 
                 {/* Status Management */}
                 <div className="space-y-4">
-                  <h4 className="text-lg font-medium">Status Management</h4>
+                  <h4 className="text-lg font-medium">{t('updateStatus')}</h4>
                   
                   <div>
-                    <Label htmlFor="status">Update Status</Label>
+                    <Label htmlFor="status">{t('updateStatus')}</Label>
                     <select
                       id="status"
                       value={selectedLead.status}
@@ -535,12 +536,12 @@ export default function LeadManagement() {
                   </div>
 
                   <div>
-                    <Label htmlFor="notes">Notes</Label>
+                    <Label htmlFor="notes">{t('notesLabel')}</Label>
                     <Textarea
                       id="notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Add notes about this lead..."
+                      placeholder={t('notesLabel')}
                       className="mt-1"
                     />
                   </div>
@@ -550,21 +551,20 @@ export default function LeadManagement() {
                     disabled={isSubmitting}
                     className="w-full"
                   >
-                    {isSubmitting ? 'Updating...' : 'Update Notes'}
+                    {isSubmitting ? t('processing') : t('updateNotes')}
                   </Button>
                 </div>
 
                 {/* Convert to User */}
                 {selectedLead.status !== 'converted' && (
                   <div className="space-y-4">
-                    <h4 className="text-lg font-medium">Convert to User</h4>
+                    <h4 className="text-lg font-medium">{t('convertToUser')}</h4>
                     <Button
                       onClick={() => setIsConvertDialogOpen(true)}
                       className="w-full"
                       variant="default"
                     >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Convert to User Account
+                      <UserPlus className="h-4 w-4 mr-2" /> {t('createUserAccount')}
                     </Button>
                   </div>
                 )}
@@ -572,10 +572,8 @@ export default function LeadManagement() {
                 {/* Send Verification Email */}
                 {selectedLead.status === 'converted' && (
                   <div className="space-y-4">
-                    <h4 className="text-lg font-medium">Document Verification</h4>
-                    <p className="text-sm text-gray-600">
-                      Send an email invitation for document upload and contract signing.
-                    </p>
+                    <h4 className="text-lg font-medium">{t('documentVerification')}</h4>
+                    <p className="text-sm text-gray-600">{t('documentVerification')}</p>
                     <Button
                       onClick={async () => {
                         if (!selectedLead) return
@@ -589,13 +587,13 @@ export default function LeadManagement() {
                           })
                           if (!res.ok) {
                             const err = await res.json().catch(() => ({}))
-                            throw new Error(err.error || 'Failed to send verification email')
+                            throw new Error(err.error || t('sendVerificationEmail'))
                           }
                           setHasAutoSentVerification(true)
-                          toast({ title: 'Success', description: 'Verification email sent with login details' })
+                          toast({ title: t('success'), description: t('verificationEmailSent') })
                         } catch (e) {
                           console.error(e)
-                          toast({ title: 'Error', description: (e as any).message || 'Failed to send email', variant: 'destructive' })
+                          toast({ title: t('error'), description: (e as any).message || t('unexpectedError'), variant: 'destructive' })
                         } finally {
                           setIsSendingEmail(false)
                         }
@@ -605,7 +603,7 @@ export default function LeadManagement() {
                       variant="outline"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      {isSendingEmail ? 'Sending...' : hasAutoSentVerification ? 'Verification Email Sent' : 'Send Verification Email'}
+                      {isSendingEmail ? t('sending') : hasAutoSentVerification ? t('verificationEmailSent') : t('sendVerificationEmail')}
                     </Button>
                   </div>
                 )}
@@ -613,9 +611,9 @@ export default function LeadManagement() {
                 {/* Conversion Info */}
                 {selectedLead.status === 'converted' && selectedLead.convertedToUserId && (
                   <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="text-lg font-medium text-green-800">Converted to User</h4>
+                    <h4 className="text-lg font-medium text-green-800">{t('convertedToUser')}</h4>
                     <p className="text-sm text-green-600">
-                      Converted on: {selectedLead.convertedAt && formatDate(selectedLead.convertedAt.toString())}
+                      {t('convertedOn')} {selectedLead.convertedAt && formatDate(selectedLead.convertedAt.toString())}
                     </p>
                   </div>
                 )}
@@ -628,21 +626,21 @@ export default function LeadManagement() {
         <Dialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Convert Lead to User</DialogTitle>
+              <DialogTitle>{t('convertToUser')}</DialogTitle>
               <DialogDescription>
-                Create a user account for {selectedLead?.firstName} {selectedLead?.lastName}
+                {t('createUserAccount')} {selectedLead?.firstName} {selectedLead?.lastName}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="newPassword">Set Password for User</Label>
+                <Label htmlFor="newPassword">{t('setPasswordForUser')}</Label>
                 <Input
                   id="newPassword"
                   type="text"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Leave empty to auto-generate"
+                  placeholder={t('leaveEmptyToAutogenerate')}
                   className="mt-1"
                 />
               </div>
@@ -653,14 +651,14 @@ export default function LeadManagement() {
                   onClick={() => setIsConvertDialogOpen(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {t('cancel')}
                 </Button>
                 <Button
                   onClick={handleConvertToUser}
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create User Account'}
+                  {isSubmitting ? t('processing') : t('createUserAccount')}
                 </Button>
               </div>
             </div>

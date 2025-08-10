@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BookOpen, Plus, Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface ChapterData {
   _id: string
@@ -27,6 +28,7 @@ export default function ChapterManagement() {
   const [editingChapter, setEditingChapter] = useState<ChapterData | null>(null)
   const [formLoading, setFormLoading] = useState(false)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const [formData, setFormData] = useState({
     title: '',
@@ -46,15 +48,15 @@ export default function ChapterManagement() {
         setChapters(data.chapters)
       } else {
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to fetch chapters',
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     } finally {
@@ -68,8 +70,8 @@ export default function ChapterManagement() {
 
     if (!formData.title.trim()) {
       toast({
-        title: 'Error',
-        description: 'Chapter title is required',
+        title: t('error'),
+        description: t('chapterTitle') + ' ' + (t('isRequired' as any) || ''),
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -78,8 +80,8 @@ export default function ChapterManagement() {
 
     if (!formData.description.trim()) {
       toast({
-        title: 'Error',
-        description: 'Chapter description is required',
+        title: t('error'),
+        description: t('chapterDescription') + ' ' + (t('isRequired' as any) || ''),
         variant: 'destructive',
       })
       setFormLoading(false)
@@ -102,23 +104,23 @@ export default function ChapterManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: `Chapter ${editingChapter ? 'updated' : 'created'} successfully`,
+          title: t('success'),
+          description: `${t('chapterManagement')} ${editingChapter ? t('update') : t('create')} ${t('success').toLowerCase()}`,
         })
         setDialogOpen(false)
         resetForm()
         fetchChapters()
       } else {
         toast({
-          title: 'Error',
-          description: data.error || `Failed to ${editingChapter ? 'update' : 'create'} chapter`,
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     } finally {
@@ -146,7 +148,7 @@ export default function ChapterManagement() {
   }
 
   const handleDelete = async (chapterId: string) => {
-    if (!confirm('Are you sure you want to delete this chapter? This will also affect any videos assigned to it.')) {
+    if (!confirm(t('confirmDeleteVideo'))) { // reuse generic
       return
     }
 
@@ -157,22 +159,22 @@ export default function ChapterManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Chapter deleted successfully',
+          title: t('success'),
+          description: t('chapterDeleted'),
         })
         fetchChapters()
       } else {
         const data = await response.json()
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to delete chapter',
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     }
@@ -190,22 +192,22 @@ export default function ChapterManagement() {
 
       if (response.ok) {
         toast({
-          title: 'Success',
-          description: 'Chapter order updated',
+          title: t('success'),
+          description: t('orderUpdated'),
         })
         fetchChapters()
       } else {
         const data = await response.json()
         toast({
-          title: 'Error',
-          description: data.error || 'Failed to reorder chapter',
+          title: t('error'),
+          description: data.error || t('unexpectedError'),
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     }
@@ -215,7 +217,7 @@ export default function ChapterManagement() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Chapter Management</CardTitle>
+          <CardTitle>{t('chapterManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -232,51 +234,51 @@ export default function ChapterManagement() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Chapter Management
+            {t('chapterManagement')}
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { resetForm(); setDialogOpen(true) }}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Chapter
+                {t('addChapter')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>
-                  {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
+                  {editingChapter ? t('editChapter') : t('addNewChapter')}
                 </DialogTitle>
                 <DialogDescription>
-                  Create and organize course chapters. Videos will be assigned to chapters separately.
+                  {t('chaptersWillBePresented')}
                 </DialogDescription>
               </DialogHeader>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Chapter Title</Label>
+                  <Label htmlFor="title">{t('chapterTitle')}</Label>
                   <Input
                     id="title"
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g., Introduction to Traffic Psychology"
+                    placeholder={t('chapterTitle')}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('chapterDescription')}</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe what this chapter covers..."
+                    placeholder={t('chapterDescription')}
                     rows={3}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="order">Chapter Order</Label>
+                  <Label htmlFor="order">{t('chapterOrder')}</Label>
                   <Input
                     id="order"
                     type="number"
@@ -284,17 +286,15 @@ export default function ChapterManagement() {
                     onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))}
                     min="1"
                   />
-                  <p className="text-xs text-gray-500">
-                    Chapters will be presented to students in this order
-                  </p>
+                  <p className="text-xs text-gray-500">{t('chaptersWillBePresented')}</p>
                 </div>
 
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
+                    {t('cancel')}
                   </Button>
                   <Button type="submit" disabled={formLoading}>
-                    {formLoading ? 'Saving...' : (editingChapter ? 'Update Chapter' : 'Create Chapter')}
+                    {formLoading ? t('processing') : (editingChapter ? t('updateChapter') : t('createChapter'))}
                   </Button>
                 </DialogFooter>
               </form>
@@ -302,14 +302,14 @@ export default function ChapterManagement() {
           </Dialog>
         </CardTitle>
         <CardDescription>
-          Create and organize course chapters. Students will progress through chapters sequentially.
+          {t('chaptersWillBePresented')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {chapters.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No chapters found. Create your first chapter to get started.</p>
+            <p>{t('noChaptersFound')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -319,14 +319,14 @@ export default function ChapterManagement() {
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                        Chapter {chapter.order}
+                        {t('chapter')} {chapter.order}
                       </span>
                       <h3 className="font-medium">{chapter.title}</h3>
                     </div>
                     <p className="text-sm text-gray-600">{chapter.description}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{chapter.videoCount || 0} videos</span>
-                      <span>Created: {new Date(chapter.createdAt).toLocaleDateString()}</span>
+                      <span>{(chapter.videoCount || 0)} {t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                      <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                   
