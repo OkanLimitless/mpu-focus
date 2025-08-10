@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadToUploadThing } from '@/lib/uploadthing-upload';
+import { useToast } from '@/hooks/use-toast'
+import { useI18n } from '@/components/providers/i18n-provider'
 // Removed client-side PDF generator - now using GPT-powered server-side generation
 
 interface ProcessingStatus {
@@ -38,6 +40,9 @@ export default function DocumentProcessor() {
   // Check if we're processing for a specific user (from URL params)
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
   const [targetUserName, setTargetUserName] = useState<string | null>(null);
+  const { toast } = useToast()
+  const { t } = useI18n()
+  const [isDragActive, setIsDragActive] = useState(false)
 
   useEffect(() => {
     // Check URL parameters for user ID and name
@@ -70,11 +75,14 @@ export default function DocumentProcessor() {
 
       if (response.ok) {
         console.log('Results saved to user account successfully');
+        toast({ title: 'Erfolg', description: 'Ergebnisse dem Benutzerkonto zugeordnet.' })
       } else {
         console.error('Failed to save results to user account');
+        toast({ title: 'Fehler', description: 'Ergebnisse konnten nicht gespeichert werden.', variant: 'destructive' })
       }
     } catch (error) {
       console.error('Error saving results to user account:', error);
+      toast({ title: 'Fehler', description: 'Speichern fehlgeschlagen.', variant: 'destructive' })
     }
   };
 
@@ -82,11 +90,13 @@ export default function DocumentProcessor() {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type !== 'application/pdf') {
-        setError('Please select a PDF file');
+        setError('Please select a PDF file')
+        toast({ title: 'Ungültiger Dateityp', description: 'Bitte eine PDF-Datei auswählen.', variant: 'destructive' })
         return;
       }
-      if (selectedFile.size > 100 * 1024 * 1024) { // 100MB limit
+      if (selectedFile.size > 100 * 1024 * 1024) {
         setError('File size must be less than 100MB. Large files will be processed with adaptive quality.');
+        toast({ title: 'Datei zu groß', description: 'Maximale Größe 100MB.', variant: 'destructive' })
         return;
       }
       
@@ -96,6 +106,29 @@ export default function DocumentProcessor() {
       setFile(selectedFile);
       setError(null);
     }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      const syntheticEvent = { target: { files: [droppedFile] } } as unknown as React.ChangeEvent<HTMLInputElement>;
+      handleFileSelect(syntheticEvent);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
   };
 
   const handleUploadAndProcess = async () => {
@@ -132,6 +165,7 @@ export default function DocumentProcessor() {
       console.error('Upload error:', error);
       setError(error instanceof Error ? error.message : 'Upload failed');
       setIsProcessing(false);
+      toast({ title: 'Upload fehlgeschlagen', description: error instanceof Error ? error.message : 'Unbekannter Fehler', variant: 'destructive' })
     }
   };
 
@@ -350,6 +384,7 @@ export default function DocumentProcessor() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsProcessing(false);
+      toast({ title: 'Verarbeitung fehlgeschlagen', description: err instanceof Error ? err.message : 'Unbekannter Fehler', variant: 'destructive' })
     }
   };
 
@@ -412,26 +447,38 @@ export default function DocumentProcessor() {
           }, 1000);
         }, 500);
       };
-
+      toast({ title: 'PDF bereit', description: 'Druckdialog geöffnet. Wähle "Als PDF speichern".' })
     } catch (error) {
       console.error('PDF generation failed:', error);
       setError(`Failed to generate PDF report: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast({ title: 'PDF-Generierung fehlgeschlagen', description: error instanceof Error ? error.message : 'Unbekannter Fehler', variant: 'destructive' })
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
+  const handleDownloadHtml = (html: string, suggestedName: string) => {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (suggestedName?.replace(/\.[^.]+$/, '') || 'document') + '.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Download gestartet', description: 'HTML-Datei wurde heruntergeladen.' })
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Document Processor</h1>
-        <p className="text-gray-600">
-          Upload large PDF documents to extract structured data using OCR and AI analysis
-        </p>
+        <h1 className="text-3xl font-bold mb-2">{t('documentProcessorTitle')}</h1>
+        <p className="text-gray-600">{t('documentProcessorSubtitle')}</p>
         {targetUserId && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 font-medium">
-              🎯 Processing for user: {targetUserName || 'Unknown User'}
+               🎯 Processing for user: {targetUserName || 'Unknown User'}
             </p>
             <p className="text-blue-600 text-sm">
               Results will be automatically saved to this user's account
@@ -445,18 +492,23 @@ export default function DocumentProcessor() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Upload Document
+             {t('documentProcessorTitle')}
             </CardTitle>
             <CardDescription>
-              Select a PDF document (up to 100MB) - large files processed with adaptive quality
+             {t('supportsUpTo')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Smart File Upload - detect file size and route accordingly */}
             {!file ? (
               <>
-                {/* File Selection */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                {/* File Selection with Drag-and-Drop */}
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input
                     type="file"
                     accept=".pdf"
@@ -465,13 +517,13 @@ export default function DocumentProcessor() {
                     id="file-upload"
                     disabled={isProcessing}
                   />
-                  <label htmlFor="file-upload" className="cursor-pointer">
+                  <label htmlFor="file-upload" className="cursor-pointer block">
                     <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                     <p className="text-lg font-medium mb-2">
-                      Choose PDF file or drag and drop
+                     {t('choosePdfOrDrag')}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Supports PDF files up to 100MB (auto-optimized upload)
+                     {t('supportsUpTo')}
                     </p>
                   </label>
                 </div>
@@ -495,10 +547,10 @@ export default function DocumentProcessor() {
                       {isProcessing ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          Processing...
+                         {t('processing')}
                         </>
                       ) : (
-                        'Process Document'
+                        t('processDocument')
                       )}
                     </Button>
                   </div>
@@ -525,10 +577,10 @@ export default function DocumentProcessor() {
                         {isProcessing ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            {processingStatus?.step || 'Processing...'}
+                           {processingStatus?.step || t('processing')}
                           </>
                         ) : (
-                          'Upload & Process Document'
+                         t('processDocument')
                         )}
                       </Button>
                       <Button
@@ -555,10 +607,10 @@ export default function DocumentProcessor() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="font-medium">{processingStatus.step}</span>
+                     <span className="font-medium">{processingStatus.step}</span>
                     </div>
                     <Progress value={processingStatus.progress} className="w-full" />
-                    <p className="text-sm text-gray-600">{processingStatus.message}</p>
+                   <p className="text-sm text-gray-600">{processingStatus.message}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -579,7 +631,7 @@ export default function DocumentProcessor() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              Processing Complete
+             {t('processingComplete')}
             </CardTitle>
             <CardDescription>
               Document processed successfully in {result.processingTime}s
@@ -599,7 +651,7 @@ export default function DocumentProcessor() {
             </div>
 
             <div>
-              <h3 className="font-medium mb-2">Extracted Data:</h3>
+             <h3 className="font-medium mb-2">{t('extractedData')}</h3>
               <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
                 <pre className="whitespace-pre-wrap text-sm">{result.extractedData}</pre>
               </div>
@@ -607,22 +659,50 @@ export default function DocumentProcessor() {
 
             {/* PDF Generation Section */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h3 className="font-medium text-blue-800">Professional PDF Report</h3>
-                <Button
-                  onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
-                  disabled={isGeneratingPDF}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                >
-                                     {isGeneratingPDF ? (
-                     <>
-                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                       Generating PDF...
-                     </>
-                   ) : (
-                     'Generate PDF Report'
-                   )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleGeneratePDF(result.extractedData, result.fileName)}
+                    disabled={isGeneratingPDF}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                       {t('processing')}
+                      </>
+                    ) : (
+                     t('generatePdf')
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const resp = await fetch('/api/document-processor/generate-pdf', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ extractedData: result.extractedData, fileName: result.fileName })
+                        })
+                        if (!resp.ok) {
+                          const err = await resp.json().catch(() => ({}))
+                          throw new Error(err.details || 'Generierung fehlgeschlagen')
+                        }
+                        const data = await resp.json()
+                        if (data?.htmlContent) {
+                          handleDownloadHtml(data.htmlContent, result.fileName)
+                        } else {
+                          throw new Error('Ungültige Antwort vom Server')
+                        }
+                      } catch (e: any) {
+                        toast({ title: 'Download fehlgeschlagen', description: e?.message || 'Unbekannter Fehler', variant: 'destructive' })
+                      }
+                    }}
+                  >
+                   {t('downloadHtml')}
+                  </Button>
+                </div>
               </div>
               {isGeneratingPDF && (
                 <div className="mt-3">
@@ -630,7 +710,7 @@ export default function DocumentProcessor() {
                     <div className="flex-1 bg-blue-200 rounded-full h-2">
                       <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                     </div>
-                    <span>Processing...</span>
+                   <span>{t('processing')}</span>
                   </div>
                 </div>
               )}
@@ -638,7 +718,7 @@ export default function DocumentProcessor() {
 
             <div className="flex gap-2">
               <Button onClick={resetForm} variant="outline">
-                Process Another Document
+               {t('processAnother')}
               </Button>
               <Button 
                 onClick={() => {
@@ -646,12 +726,12 @@ export default function DocumentProcessor() {
                 }}
                 variant="secondary"
               >
-                Copy Extracted Data
+               {t('copyExtracted')}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
     </div>
-  );
+  )
 }
