@@ -284,15 +284,15 @@ export default function LeadManagement() {
             <div className="text-2xl font-bold text-red-700">{stats.new}</div>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg">
-            <div className="text-blue-600 text-sm font-medium">Contacted</div>
+            <div className="text-blue-600 text-sm font-medium">{t('contacted')}</div>
             <div className="text-2xl font-bold text-blue-700">{stats.contacted}</div>
           </div>
           <div className="bg-green-50 p-3 rounded-lg">
-            <div className="text-green-600 text-sm font-medium">Converted</div>
+            <div className="text-green-600 text-sm font-medium">{t('converted')}</div>
             <div className="text-2xl font-bold text-green-700">{stats.converted}</div>
           </div>
           <div className="bg-gray-50 p-3 rounded-lg">
-            <div className="text-gray-600 text-sm font-medium">Closed</div>
+            <div className="text-gray-600 text-sm font-medium">{t('closed')}</div>
             <div className="text-2xl font-bold text-gray-700">{stats.closed}</div>
           </div>
         </div>
@@ -316,10 +316,10 @@ export default function LeadManagement() {
             className="px-3 py-2 border border-gray-300 rounded-md bg-white"
           >
             <option value="all">{t('allStatus')}</option>
-            <option value="new">New</option>
-            <option value="contacted">Contacted</option>
-            <option value="converted">Converted</option>
-            <option value="closed">Closed</option>
+            <option value="new">{t('status_new')}</option>
+            <option value="contacted">{t('status_contacted')}</option>
+            <option value="converted">{t('status_converted')}</option>
+            <option value="closed">{t('status_closed')}</option>
           </select>
         </div>
 
