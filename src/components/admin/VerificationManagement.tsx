@@ -14,6 +14,7 @@ import { CheckCircle2, XCircle, Clock, AlertTriangle, Eye, FileText, User, Shiel
 import { useToast } from '@/hooks/use-toast'
 import DocumentPreview from '@/components/ui/document-preview'
 import { SignatureDisplay } from '@/components/ui/digital-signature'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface VerificationUser {
   _id: string
@@ -72,6 +73,7 @@ export default function VerificationManagement() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [allowResubmission, setAllowResubmission] = useState(false)
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  const { t } = useI18n()
 
   useEffect(() => {
     fetchUsers()
@@ -120,7 +122,12 @@ export default function VerificationManagement() {
     }
     
     const { variant, className, icon: Icon } = variants[safeStatus as keyof typeof variants] || variants.pending
-    const displayText = safeStatus === 'contract_signed' ? 'Ready for review' : safeStatus.replace(/_/g, ' ')
+    const displayText = safeStatus === 'contract_signed' ? t('underReview') : (
+      safeStatus === 'documents_uploaded' ? t('status_documents_uploaded') :
+      safeStatus === 'resubmission_required' ? t('status_resubmission_required') :
+      safeStatus === 'verified' ? t('status_verified') :
+      safeStatus === 'rejected' ? t('status_rejected') : t('status_pending')
+    )
     
     return (
       <Badge variant={variant} className={`flex items-center space-x-1 ${className}`}>
@@ -216,7 +223,7 @@ export default function VerificationManagement() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Verification Management</h1>
+        <h1 className="text-2xl font-bold">{t('verificationManagement')}</h1>
       </div>
 
       {/* Stats Cards */}
@@ -226,7 +233,7 @@ export default function VerificationManagement() {
             <div className="flex items-center space-x-2">
               <Clock className="h-8 w-8 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-sm font-medium text-gray-600">{t('status_pending')}</p>
                 <p className="text-2xl font-bold">{stats.pending}</p>
               </div>
             </div>
@@ -238,7 +245,7 @@ export default function VerificationManagement() {
             <div className="flex items-center space-x-2">
               <CheckCircle2 className="h-8 w-8 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Verified</p>
+                <p className="text-sm font-medium text-gray-600">{t('status_verified')}</p>
                 <p className="text-2xl font-bold">{stats.verified}</p>
               </div>
             </div>
@@ -250,7 +257,7 @@ export default function VerificationManagement() {
             <div className="flex items-center space-x-2">
               <XCircle className="h-8 w-8 text-red-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Rejected</p>
+                <p className="text-sm font-medium text-gray-600">{t('status_rejected')}</p>
                 <p className="text-2xl font-bold">{stats.rejected}</p>
               </div>
             </div>
@@ -262,7 +269,7 @@ export default function VerificationManagement() {
             <div className="flex items-center space-x-2">
               <Shield className="h-8 w-8 text-purple-600" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Ready for Review</p>
+                <p className="text-sm font-medium text-gray-600">{t('underReview')}</p>
                 <p className="text-2xl font-bold">{stats.contractSigned}</p>
               </div>
             </div>
@@ -274,7 +281,7 @@ export default function VerificationManagement() {
             <div className="flex items-center space-x-2">
               <AlertTriangle className="h-8 w-8 text-orange-500" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Resubmission</p>
+                <p className="text-sm font-medium text-gray-600">{t('status_resubmission_required')}</p>
                 <p className="text-2xl font-bold">{stats.resubmission}</p>
               </div>
             </div>
@@ -285,39 +292,39 @@ export default function VerificationManagement() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>{t('filters')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="search">Search Users</Label>
+              <Label htmlFor="search">{t('searchUsers')}</Label>
               <Input
                 id="search"
-                placeholder="Search by name or email..."
+                placeholder={t('searchUsersPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="status">Filter by Status</Label>
+              <Label htmlFor="status">{t('filterByStatus')}</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
+                  <SelectValue placeholder={t('allStatuses')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="documents_uploaded">Documents Uploaded</SelectItem>
-                  <SelectItem value="contract_signed">Ready for Review</SelectItem>
-                  <SelectItem value="resubmission_required">Resubmission Required</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="all">{t('allStatuses')}</SelectItem>
+                  <SelectItem value="pending">{t('status_pending')}</SelectItem>
+                  <SelectItem value="documents_uploaded">{t('status_documents_uploaded')}</SelectItem>
+                  <SelectItem value="contract_signed">{t('underReview')}</SelectItem>
+                  <SelectItem value="resubmission_required">{t('status_resubmission_required')}</SelectItem>
+                  <SelectItem value="verified">{t('status_verified')}</SelectItem>
+                  <SelectItem value="rejected">{t('status_rejected')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end">
               <Button onClick={fetchUsers} variant="outline">
-                Refresh
+                {t('update')}
               </Button>
             </div>
           </div>
@@ -327,20 +334,18 @@ export default function VerificationManagement() {
       {/* Users List */}
       <Card>
         <CardHeader>
-          <CardTitle>Verification Requests</CardTitle>
-          <CardDescription>
-            Manage user verification documents and status
-          </CardDescription>
+          <CardTitle>{t('verificationManagement')}</CardTitle>
+          <CardDescription>{t('manageVerificationDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {loading ? (
               <div className="text-center py-8 text-gray-500">
-                Loading verification data...
+                {t('loading')}
               </div>
             ) : users.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No users found matching the current filters.
+                {t('noUsersFound')}
               </div>
             ) : (
               users.map((user) => (
@@ -354,39 +359,39 @@ export default function VerificationManagement() {
                   
                   <div className="flex items-center space-x-4">
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Status</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('statusHeader')}</p>
                       {getStatusBadge(user.verificationStatus || 'pending')}
                     </div>
                     
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Document</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('documentLabel')}</p>
                       <div className="text-sm">
                         {user.passportDocument ? (
                           <div className="flex items-center space-x-2">
                             <FileText className="h-4 w-4 text-green-600" />
-                            <span>Uploaded</span>
+                            <span>{t('uploaded')}</span>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2">
                             <XCircle className="h-4 w-4 text-red-600" />
-                            <span>Missing</span>
+                            <span>{t('missing')}</span>
                           </div>
                         )}
                       </div>
                     </div>
                     
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Contract</p>
+                      <p className="text-xs text-gray-500 mb-1">{t('contractLabel')}</p>
                       <div className="text-sm">
                         {user.contractSigned?.signedAt ? (
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-green-600" />
-                            <span>Signed</span>
+                            <span>{t('signedLabel')}</span>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2">
                             <XCircle className="h-4 w-4 text-red-600" />
-                            <span>Pending</span>
+                            <span>{t('pendingLabel')}</span>
                           </div>
                         )}
                       </div>
@@ -401,12 +406,12 @@ export default function VerificationManagement() {
                           disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
                         >
                           <Eye className="h-4 w-4 mr-2" />
-                          Review
+                          {t('review')}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>User Verification Review</DialogTitle>
+                          <DialogTitle>{t('userVerificationReview')}</DialogTitle>
                         </DialogHeader>
                         
                         {selectedUser && (
@@ -414,11 +419,11 @@ export default function VerificationManagement() {
                             {/* User Info */}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <Label>Name</Label>
+                                <Label>{t('nameLabel')}</Label>
                                 <p className="font-medium">{selectedUser.firstName || 'N/A'} {selectedUser.lastName || ''}</p>
                               </div>
                               <div>
-                                <Label>Email</Label>
+                                <Label>{t('emailLabel')}</Label>
                                 <p className="font-medium">{selectedUser.email || 'N/A'}</p>
                               </div>
                             </div>
@@ -429,18 +434,18 @@ export default function VerificationManagement() {
                                 <div className="flex items-center space-x-2">
                                   <AlertTriangle className="h-5 w-5 text-orange-500" />
                                   <p className="text-orange-800 font-medium">
-                                    This user is in resubmission status
+                                    {t('status_resubmission_required')}
                                   </p>
                                 </div>
                                 <p className="text-orange-700 text-sm mt-1">
-                                  Previous documents were rejected. User can resubmit without re-signing the contract.
+                                  {t('allowResubmission')}
                                 </p>
                               </div>
                             )}
 
                             {/* Document Preview */}
                             <div>
-                              <Label className="text-lg font-semibold mb-4 block">Passport Document</Label>
+                              <Label className="text-lg font-semibold mb-4 block">{t('passportDocument')}</Label>
                               {selectedUser.passportDocument?.url || selectedUser.passportDocument?.filename ? (
                                 <DocumentPreview
                                   filename={selectedUser.passportDocument.filename}
@@ -457,9 +462,7 @@ export default function VerificationManagement() {
                                 <div className="bg-gray-50 p-4 rounded-lg">
                                   <div className="flex items-center space-x-2 text-gray-600">
                                     <AlertTriangle className="h-5 w-5" />
-                                    <p className="text-sm">
-                                      Document not available for preview. Please contact support.
-                                    </p>
+                                    <p className="text-sm">{t('notAvailablePreview')}</p>
                                   </div>
                                 </div>
                               )}
@@ -468,29 +471,29 @@ export default function VerificationManagement() {
                             {/* Contract Details */}
                             {selectedUser.contractSigned && (
                               <div className="space-y-4">
-                                <Label className="text-lg font-semibold">Contract Details</Label>
+                                <Label className="text-lg font-semibold">{t('contractDetails')}</Label>
                                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <Label className="text-sm text-gray-600">Signed At</Label>
+                                      <Label className="text-sm text-gray-600">{t('signedAt')}</Label>
                                       <p className="text-sm font-medium">
                                         {selectedUser.contractSigned.signedAt ? formatDate(selectedUser.contractSigned.signedAt) : 'N/A'}
                                       </p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm text-gray-600">Signature Method</Label>
+                                      <Label className="text-sm text-gray-600">{t('signatureMethod')}</Label>
                                       <p className="text-sm font-medium capitalize">
                                         {selectedUser.contractSigned.signatureMethod === 'digital_signature' 
-                                          ? 'Digital Signature' 
-                                          : 'Checkbox Agreement'}
+                                          ? t('digitalSignature') 
+                                          : 'Checkbox'}
                                       </p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm text-gray-600">IP Address</Label>
+                                      <Label className="text-sm text-gray-600">{t('ipAddress')}</Label>
                                       <p className="text-sm font-medium">{selectedUser.contractSigned.ipAddress}</p>
                                     </div>
                                     <div>
-                                      <Label className="text-sm text-gray-600">User Agent</Label>
+                                      <Label className="text-sm text-gray-600">{t('userAgent')}</Label>
                                       <p className="text-sm font-medium break-all">{selectedUser.contractSigned.userAgent}</p>
                                     </div>
                                   </div>
@@ -498,7 +501,7 @@ export default function VerificationManagement() {
                                   {/* Digital Signature Display */}
                                   {selectedUser.contractSigned.signatureData && (
                                     <div>
-                                      <Label className="text-sm text-gray-600 mb-2 block">Digital Signature</Label>
+                                      <Label className="text-sm text-gray-600 mb-2 block">{t('digitalSignature')}</Label>
                                       <SignatureDisplay 
                                         signatureData={selectedUser.contractSigned.signatureData}
                                         className="border rounded-lg"
@@ -511,17 +514,17 @@ export default function VerificationManagement() {
 
                             {/* Review Form */}
                             <div className="space-y-4">
-                              <Label className="text-lg font-semibold">Admin Review</Label>
+                              <Label className="text-lg font-semibold">{t('adminReview')}</Label>
                               <div className="space-y-4">
                                 <div>
-                                  <Label htmlFor="review-status">Decision</Label>
+                                  <Label htmlFor="review-status">{t('decision')}</Label>
                                   <Select value={reviewAction || ''} onValueChange={(value) => setReviewAction(value as 'approve' | 'reject')}>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select decision" />
+                                      <SelectValue placeholder={t('decision')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="approve">Approve</SelectItem>
-                                      <SelectItem value="reject">Reject</SelectItem>
+                                      <SelectItem value="approve">{t('approve')}</SelectItem>
+                                      <SelectItem value="reject">{t('reject')}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -529,10 +532,10 @@ export default function VerificationManagement() {
                                 {reviewAction === 'reject' && (
                                   <div className="space-y-4">
                                     <div>
-                                      <Label htmlFor="rejection-reason">Reason for Rejection</Label>
+                                      <Label htmlFor="rejection-reason">{t('rejectionReason')}</Label>
                                       <Textarea
                                         id="rejection-reason"
-                                        placeholder="Please provide a reason for rejection..."
+                                        placeholder={t('rejectionReason')}
                                         value={rejectionReason}
                                         onChange={(e) => setRejectionReason(e.target.value)}
                                         className="min-h-[100px]"
@@ -545,7 +548,7 @@ export default function VerificationManagement() {
                                         onCheckedChange={(checked) => setAllowResubmission(checked as boolean)}
                                       />
                                       <Label htmlFor="allow-resubmission" className="text-sm">
-                                        Allow document re-submission (user won't need to sign contract again)
+                                        {t('allowResubmission')}
                                       </Label>
                                     </div>
                                   </div>
@@ -556,7 +559,7 @@ export default function VerificationManagement() {
                                   disabled={isSubmittingReview || !reviewAction}
                                   className="w-full"
                                 >
-                                  {isSubmittingReview ? 'Processing...' : 'Submit Review'}
+                                  {isSubmittingReview ? t('processing') : t('submitReview')}
                                 </Button>
                               </div>
                             </div>
