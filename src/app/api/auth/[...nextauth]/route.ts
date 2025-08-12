@@ -5,14 +5,21 @@ import { rateLimit } from '@/lib/rate-limit'
 
 const handler = NextAuth(authOptions)
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: { nextauth: string[] } }
+) {
   // Limit login attempts: 5 per minute per IP
   const limited = await rateLimit({ request: req, limit: 5, windowMs: 60 * 1000, keyPrefix: 'login' })
   if (!limited.ok) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   }
-  // Delegate to NextAuth handler
-  return (handler as any)(req)
+  return (handler as any)(req, context)
 }
 
-export { handler as GET }
+export async function GET(
+  req: NextRequest,
+  context: { params: { nextauth: string[] } }
+) {
+  return (handler as any)(req, context)
+}

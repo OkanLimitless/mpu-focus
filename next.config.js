@@ -15,9 +15,11 @@ const nextConfig = {
     serverComponentsExternalPackages: ['pdf-poppler'],
   },
   async headers() {
-    const cspDirectives = [
+    const isProd = process.env.NODE_ENV === 'production'
+
+    const baseDirectives = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // TODO: tighten and remove unsafe-* where possible
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh",
       "font-src 'self' data:",
@@ -28,7 +30,15 @@ const nextConfig = {
       "object-src 'none'",
       "frame-src 'self' https://*.mux.com",
       "media-src 'self' https://stream.mux.com https://*.mux.com",
-    ].join('; ')
+    ]
+
+    // Allow Vercel Live (scripts and frames) in non-production to avoid dev warnings
+    if (!isProd) {
+      baseDirectives[1] += " https://vercel.live"
+      baseDirectives[12] += " https://vercel.live"
+    }
+
+    const cspDirectives = baseDirectives.join('; ')
 
     return [
       {
