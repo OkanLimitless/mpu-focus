@@ -6,6 +6,33 @@ import connectDB from '@/lib/mongodb'
 import Video from '@/models/Video'
 import { generateSignedPlaybackToken } from '@/lib/mux'
 import mongoose from 'mongoose'
+import crypto from 'crypto'
+
+function base64url(input: Buffer | string) {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input, 'utf8')
+  return buf
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+}
+
+function signWithKey(playbackId: string, key: Buffer, ttlSeconds: number) {
+  const now = Math.floor(Date.now() / 1000)
+  const header = { alg: 'HS256', typ: 'JWT', kid: process.env.MUX_SIGNING_KEY_ID }
+  const payload: Record<string, any> = { aud: 'v', sub: playbackId, exp: now + ttlSeconds, iat: now }
+  const encHeader = base64url(JSON.stringify(header))
+  const encPayload = base64url(JSON.stringify(payload))
+  const toSign = `${encHeader}.${encPayload}`
+  const signature = crypto
+    .createHmac('sha256', key)
+    .update(toSign)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+  return `${toSign}.${signature}`
+}
 
 export async function GET(
   req: NextRequest,
@@ -39,9 +66,33 @@ export async function GET(
       return NextResponse.json({ error: 'Playback not ready' }, { status: 409 })
     }
 
-    const token = generateSignedPlaybackToken(video.muxPlaybackId, 120)
+    const kid = process.env.MUX_SIGNING_KEY_ID
+    const secret = process.env.MUX_SIGNING_KEY_SECRET || ''
+    if (!kid || !secret) {
+      return NextResponse.json({ error: 'Mux signing keys not configured' }, { status: 500 })
+    }
 
-    return NextResponse.json({ token, playbackId: video.muxPlaybackId, ttlSeconds: 120 })
+    const ttl = 120
+    const playbackId = video.muxPlaybackId
+
+    // First try base64-decoded secret (Mux default)
+    const keyB64 = Buffer.from(secret, 'base64')
+    let token = signWithKey(playbackId, keyB64, ttl)
+
+    const testUrl = `https://stream.mux.com/${playbackId}.m3u8?token=${encodeURIComponent(token)}`
+    let ok = false
+    try {
+      const head = await fetch(testUrl, { method: 'HEAD' })
+      ok = head.ok
+    } catch {}
+
+    // Fallback: try raw utf8 secret if base64 variant fails
+    if (!ok) {
+      const keyRaw = Buffer.from(secret, 'utf8')
+      token = signWithKey(playbackId, keyRaw, ttl)
+    }
+
+    return NextResponse.json({ token, playbackId, ttlSeconds: ttl })
   } catch (error) {
     console.error('Error generating playback token:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
