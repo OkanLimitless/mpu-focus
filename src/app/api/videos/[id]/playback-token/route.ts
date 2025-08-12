@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 import connectDB from '@/lib/mongodb'
 import Video from '@/models/Video'
-import { generateSignedPlaybackToken } from '@/lib/mux'
 import mongoose from 'mongoose'
 import crypto from 'crypto'
 
@@ -17,9 +16,9 @@ function base64url(input: Buffer | string) {
     .replace(/\//g, '_')
 }
 
-function signWithKey(playbackId: string, key: Buffer, ttlSeconds: number) {
+function signWithKey(playbackId: string, key: Buffer, kid: string, ttlSeconds: number) {
   const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'HS256', typ: 'JWT', kid: process.env.MUX_SIGNING_KEY_ID }
+  const header = { alg: 'HS256', typ: 'JWT', kid }
   const payload: Record<string, any> = { aud: 'v', sub: playbackId, exp: now + ttlSeconds, iat: now }
   const encHeader = base64url(JSON.stringify(header))
   const encPayload = base64url(JSON.stringify(payload))
@@ -66,7 +65,7 @@ export async function GET(
       return NextResponse.json({ error: 'Playback not ready' }, { status: 409 })
     }
 
-    const kid = process.env.MUX_SIGNING_KEY_ID
+    const kid = process.env.MUX_SIGNING_KEY_ID || ''
     const secret = process.env.MUX_SIGNING_KEY_SECRET || ''
     if (!kid || !secret) {
       return NextResponse.json({ error: 'Mux signing keys not configured' }, { status: 500 })
@@ -75,24 +74,28 @@ export async function GET(
     const ttl = 120
     const playbackId = video.muxPlaybackId
 
-    // First try base64-decoded secret (Mux default)
+    // Try base64-decoded secret first
     const keyB64 = Buffer.from(secret, 'base64')
-    let token = signWithKey(playbackId, keyB64, ttl)
-
-    const testUrl = `https://stream.mux.com/${playbackId}.m3u8?token=${encodeURIComponent(token)}`
-    let ok = false
+    const tokenB64 = signWithKey(playbackId, keyB64, kid, ttl)
+    let headOkB64 = false
     try {
-      const head = await fetch(testUrl, { method: 'HEAD' })
-      ok = head.ok
+      const head = await fetch(`https://stream.mux.com/${playbackId}.m3u8?token=${encodeURIComponent(tokenB64)}`, { method: 'HEAD' })
+      headOkB64 = head.ok
     } catch {}
 
-    // Fallback: try raw utf8 secret if base64 variant fails
-    if (!ok) {
+    // Fallback with raw utf8 if needed
+    let token = tokenB64
+    let headOkRaw = false
+    if (!headOkB64) {
       const keyRaw = Buffer.from(secret, 'utf8')
-      token = signWithKey(playbackId, keyRaw, ttl)
+      token = signWithKey(playbackId, keyRaw, kid, ttl)
+      try {
+        const head = await fetch(`https://stream.mux.com/${playbackId}.m3u8?token=${encodeURIComponent(token)}`, { method: 'HEAD' })
+        headOkRaw = head.ok
+      } catch {}
     }
 
-    return NextResponse.json({ token, playbackId, ttlSeconds: ttl })
+    return NextResponse.json({ token, playbackId, ttlSeconds: ttl, kid, headOkB64, headOkRaw })
   } catch (error) {
     console.error('Error generating playback token:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
