@@ -69,7 +69,7 @@ export const createMuxDirectUpload = async () => {
     const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
-        playback_policy: ['signed'],
+        playback_policy: ['public'],
         mp4_support: 'standard',
       },
       cors_origin: corsOrigin,
@@ -149,7 +149,7 @@ export const verifyMuxWebhook = (rawBody: string, signatureHeader: string): bool
   }
 }
 
-// Generate short-lived signed playback token for a playbackId
+// Generate short-lived signed playback token for a playbackId (kept for backward compatibility)
 export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 120): string {
   const signingKeyId = process.env.MUX_SIGNING_KEY_ID
   const signingKeySecret = process.env.MUX_SIGNING_KEY_SECRET
@@ -160,8 +160,8 @@ export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: numb
   const header = { alg: 'HS256', typ: 'JWT', kid: signingKeyId }
   const now = Math.floor(Date.now() / 1000)
   const payload: Record<string, any> = {
-    aud: 'v',        // video playback
-    sub: playbackId, // playback id subject
+    aud: 'v',
+    sub: playbackId,
     exp: now + ttlSeconds,
     iat: now,
   }
@@ -176,16 +176,29 @@ export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: numb
   const encPayload = base64url(JSON.stringify(payload))
   const toSign = `${encHeader}.${encPayload}`
 
-  // Mux private key is base64-encoded; decode to bytes before HMAC
-  const key = Buffer.from(signingKeySecret, 'base64')
+  // Decode base64 secret if provided that way; fallback to raw utf8
+  const tryKeys: Buffer[] = []
+  tryKeys.push(Buffer.from(signingKeySecret, 'base64'))
+  tryKeys.push(Buffer.from(signingKeySecret, 'utf8'))
 
-  const signature = crypto
-    .createHmac('sha256', key)
-    .update(toSign)
-    .digest('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
+  for (const key of tryKeys) {
+    try {
+      const signature = crypto
+        .createHmac('sha256', key)
+        .update(toSign)
+        .digest('base64')
+        .replace(/=/g, '')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+      return `${toSign}.${signature}`
+    } catch {}
+  }
 
-  return `${toSign}.${signature}`
+  throw new Error('Failed to sign playback token')
+}
+
+export const createPublicPlaybackId = async (assetId: string): Promise<string> => {
+  const mux = getMuxClient()
+  const playback = await mux.video.assets.createPlaybackId(assetId, { policy: 'public' })
+  return playback.id
 }

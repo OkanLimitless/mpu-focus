@@ -71,9 +71,9 @@ async function handleAssetReady(assetData: any, Video: any) {
     const duration = assetData.duration || 0
     const status = assetData.status
 
-    // Prefer a signed playback ID if available
-    const signedPlayback = playbackIds.find((p: any) => p.policy === 'signed')
-    const selectedPlaybackId = (signedPlayback?.id) || playbackIds[0]?.id || ''
+    // Prefer a public playback ID for simple playback
+    const publicPlayback = playbackIds.find((p: any) => p.policy === 'public')
+    const selectedPlaybackId = (publicPlayback?.id) || playbackIds[0]?.id || ''
 
     // Find and update the video in our database
     const video = await Video.findOne({ muxAssetId: assetId })

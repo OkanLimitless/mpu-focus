@@ -58,9 +58,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     try {
       const muxAsset = await getMuxAsset(video.muxAssetId)
 
-      // Prefer a signed playback ID if available
-      const signed = (muxAsset.playbackIds || []).find((p: any) => p.policy === 'signed')
-      const selectedPlaybackId = (signed?.id) || muxAsset.playbackId || ''
+      // Prefer a public playback ID if available
+      const publicId = (muxAsset.playbackIds || []).find((p: any) => p.policy === 'public')?.id
+      const selectedPlaybackId = publicId || muxAsset.playbackId || ''
       
       // Update video with latest Mux information
       const updatedVideo = await Video.findByIdAndUpdate(
