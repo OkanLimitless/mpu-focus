@@ -17,9 +17,20 @@ const nextConfig = {
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
 
+    // Build script-src with required sources
+    let scriptSrc = isProd
+      ? "script-src 'self' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    // Allow pdf.js worker script from unpkg (module URL import)
+    scriptSrc += " https://unpkg.com"
+    // Allow Vercel Live and gstatic only in non-production
+    if (!isProd) {
+      scriptSrc += " https://vercel.live https://www.gstatic.com"
+    }
+
     const baseDirectives = [
       "default-src 'self'",
-      isProd ? "script-src 'self' 'unsafe-inline'" : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com",
       "font-src 'self' data:",
@@ -30,13 +41,9 @@ const nextConfig = {
       "object-src 'none'",
       "frame-src 'self' https://*.mux.com",
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
+      // Allow web workers (pdf.js uses blob workers)
+      "worker-src 'self' blob:",
     ]
-
-    // Allow Vercel Live and gstatic only in non-production to avoid dev warnings
-    if (!isProd) {
-      baseDirectives[1] += " https://vercel.live https://www.gstatic.com"
-      baseDirectives[12] += " https://vercel.live"
-    }
 
     const csp = baseDirectives.join('; ')
 
