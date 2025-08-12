@@ -57,12 +57,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Fetch latest information from Mux
     try {
       const muxAsset = await getMuxAsset(video.muxAssetId)
+
+      // Prefer a signed playback ID if available
+      const signed = (muxAsset.playbackIds || []).find((p: any) => p.policy === 'signed')
+      const selectedPlaybackId = (signed?.id) || muxAsset.playbackId || ''
       
       // Update video with latest Mux information
       const updatedVideo = await Video.findByIdAndUpdate(
         params.id,
         {
-          muxPlaybackId: muxAsset.playbackId || video.muxPlaybackId,
+          muxPlaybackId: selectedPlaybackId,
           duration: muxAsset.duration || video.duration,
           status: muxAsset.status || video.status
         },
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         muxAsset: {
           status: muxAsset.status,
           duration: muxAsset.duration,
-          playbackId: muxAsset.playbackId
+          playbackId: selectedPlaybackId
         }
       })
 
