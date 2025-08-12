@@ -115,7 +115,9 @@ export async function POST(request: NextRequest) {
     if (muxAssetId) {
       try {
         const muxAsset = await getMuxAsset(muxAssetId)
-        muxPlaybackId = muxAsset.playbackId || ''
+        // Prefer signed playback id
+        const signed = (muxAsset.playbackIds || []).find((p: any) => p.policy === 'signed')
+        muxPlaybackId = (signed?.id) || muxAsset.playbackId || ''
         duration = muxAsset.duration || 0
         status = muxAsset.status || 'preparing'
       } catch (error) {

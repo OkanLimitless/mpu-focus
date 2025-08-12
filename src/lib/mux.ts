@@ -51,6 +51,7 @@ export const getMuxAsset = async (assetId: string) => {
     return {
       assetId: asset.id,
       playbackId: asset.playback_ids?.[0]?.id,
+      playbackIds: asset.playback_ids || [],
       status: asset.status,
       duration: asset.duration,
       aspectRatio: asset.aspect_ratio,

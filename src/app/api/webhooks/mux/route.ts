@@ -71,16 +71,20 @@ async function handleAssetReady(assetData: any, Video: any) {
     const duration = assetData.duration || 0
     const status = assetData.status
 
+    // Prefer a signed playback ID if available
+    const signedPlayback = playbackIds.find((p: any) => p.policy === 'signed')
+    const selectedPlaybackId = (signedPlayback?.id) || playbackIds[0]?.id || ''
+
     // Find and update the video in our database
     const video = await Video.findOne({ muxAssetId: assetId })
     
     if (video) {
-      video.muxPlaybackId = playbackIds[0]?.id || ''
+      video.muxPlaybackId = selectedPlaybackId
       video.duration = duration
       video.status = status
       await video.save()
       
-      console.log(`Updated video ${video.title} - Asset ${assetId} is ready`)
+      console.log(`Updated video ${video.title} - Asset ${assetId} is ready (playbackId=${selectedPlaybackId})`)
     } else {
       console.log(`No video found for Mux Asset ID: ${assetId}`)
     }
