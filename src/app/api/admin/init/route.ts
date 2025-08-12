@@ -4,6 +4,18 @@ import User from '@/models/User'
 
 export async function POST(request: NextRequest) {
   try {
+    // Disable in production
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ message: 'Not available' }, { status: 404 })
+    }
+
+    // Require a strong install token
+    const installToken = process.env.ADMIN_INSTALL_TOKEN
+    const provided = request.headers.get('x-install-token') || ''
+    if (!installToken || provided !== installToken) {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    }
+
     await connectDB()
 
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@mpu-focus.com'

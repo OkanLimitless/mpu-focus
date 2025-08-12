@@ -41,6 +41,26 @@ export default function RestrictedMuxVideoPlayer({
   const [currentTime, setCurrentTime] = useState(userProgress?.currentTime || 0)
   const [duration, setDuration] = useState(video.duration || 0)
   const [hasStarted, setHasStarted] = useState(false)
+  const [playbackToken, setPlaybackToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Fetch a short-lived signed token for playback
+    const fetchToken = async () => {
+      if (!video.muxPlaybackId || !video._id) return
+      try {
+        const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setPlaybackToken(data.token)
+        } else {
+          console.error('Failed to fetch playback token')
+        }
+      } catch (e) {
+        console.error('Error fetching playback token', e)
+      }
+    }
+    fetchToken()
+  }, [video._id, video.muxPlaybackId])
 
   useEffect(() => {
     if (userProgress?.currentTime && playerRef.current && hasStarted) {
@@ -188,6 +208,7 @@ export default function RestrictedMuxVideoPlayer({
           <MuxPlayer
             ref={playerRef}
             playbackId={video.muxPlaybackId}
+            tokens={playbackToken ? { playback: playbackToken } : undefined}
             metadata={{
               video_title: video.title,
               video_id: video._id,

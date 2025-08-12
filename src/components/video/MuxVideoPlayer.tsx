@@ -45,6 +45,26 @@ export default function MuxVideoPlayer({
   const [duration, setDuration] = useState(video.duration || 0)
   const [watchedDuration, setWatchedDuration] = useState(userProgress?.watchedDuration || 0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [playbackToken, setPlaybackToken] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Fetch a short-lived signed token for playback
+    const fetchToken = async () => {
+      if (!video.muxPlaybackId || !video._id) return
+      try {
+        const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          setPlaybackToken(data.token)
+        } else {
+          console.error('Failed to fetch playback token')
+        }
+      } catch (e) {
+        console.error('Error fetching playback token', e)
+      }
+    }
+    fetchToken()
+  }, [video._id, video.muxPlaybackId])
 
   useEffect(() => {
     if (userProgress?.currentTime && playerRef.current) {
@@ -241,6 +261,7 @@ export default function MuxVideoPlayer({
           <MuxPlayer
             ref={playerRef}
             playbackId={video.muxPlaybackId}
+            tokens={playbackToken ? { playback: playbackToken } : undefined}
             metadata={{
               video_title: video.title,
               video_id: video._id,

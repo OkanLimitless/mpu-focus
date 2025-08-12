@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -28,6 +29,12 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit: moderate to prevent abuse (60/min)
+    const limited = await rateLimit({ request, limit: 60, windowMs: 60 * 1000, keyPrefix: 'doc-proxy' })
+    if (!limited.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
     const { searchParams } = new URL(request.url)
     const fileUrl = searchParams.get('url')
 
@@ -158,6 +165,11 @@ export async function GET(request: NextRequest) {
 
 // Handle preflight requests
 export async function OPTIONS(request: NextRequest) {
+  // Rate limit OPTIONS lightly as well
+  const limited = await rateLimit({ request, limit: 120, windowMs: 60 * 1000, keyPrefix: 'doc-proxy-preflight' })
+  if (!limited.ok) {
+    return new NextResponse(null, { status: 429 })
+  }
   const origin = request.headers.get('origin')
   const corsHeaders = getCorsHeaders(origin)
   return new NextResponse(null, {

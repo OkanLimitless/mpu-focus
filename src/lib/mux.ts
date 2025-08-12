@@ -19,8 +19,6 @@ function getMuxClient(): Mux {
   return muxClientSingleton
 }
 
-export const muxClient = getMuxClient()
-
 // Helper functions for common Mux operations
 export const createMuxAsset = async (input: string, options?: {
   playbackPolicy?: 'public' | 'signed'
@@ -70,7 +68,7 @@ export const createMuxDirectUpload = async () => {
     const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
-        playback_policy: ['public'],
+        playback_policy: ['signed'],
         mp4_support: 'standard',
       },
       cors_origin: corsOrigin,
@@ -148,4 +146,41 @@ export const verifyMuxWebhook = (rawBody: string, signatureHeader: string): bool
     console.error('Error verifying Mux webhook signature:', err)
     return false
   }
+}
+
+// Generate short-lived signed playback token for a playbackId
+export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 120): string {
+  const signingKeyId = process.env.MUX_SIGNING_KEY_ID
+  const signingKeySecret = process.env.MUX_SIGNING_KEY_SECRET
+  if (!signingKeyId || !signingKeySecret) {
+    throw new Error('Mux signing key envs are required: MUX_SIGNING_KEY_ID and MUX_SIGNING_KEY_SECRET')
+  }
+
+  const header = { alg: 'HS256', typ: 'JWT', kid: signingKeyId }
+  const now = Math.floor(Date.now() / 1000)
+  const payload: Record<string, any> = {
+    aud: 'v',        // video playback
+    sub: playbackId, // playback id subject
+    exp: now + ttlSeconds,
+    iat: now,
+  }
+
+  const base64url = (input: Buffer | string) => Buffer.from(typeof input === 'string' ? input : input.toString('utf8'))
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+
+  const encHeader = base64url(JSON.stringify(header))
+  const encPayload = base64url(JSON.stringify(payload))
+  const toSign = `${encHeader}.${encPayload}`
+  const signature = crypto
+    .createHmac('sha256', signingKeySecret)
+    .update(toSign)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+
+  return `${toSign}.${signature}`
 }
