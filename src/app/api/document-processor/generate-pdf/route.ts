@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Generate HTML template using GPT
     console.log('Generating HTML template with GPT...');
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "system",
@@ -80,8 +80,8 @@ DOCUMENT INFO:
 Please generate a complete, professional HTML document that will create a beautiful PDF report.`
         }
       ],
-      max_tokens: 16000,
-      temperature: 0.7,
+      max_completion_tokens: 16000,
+      // Note: GPT-5 Mini only supports default temperature (1)
     });
 
     const htmlContent = completion.choices[0]?.message?.content;
