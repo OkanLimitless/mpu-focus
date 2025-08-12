@@ -175,8 +175,12 @@ export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: numb
   const encHeader = base64url(JSON.stringify(header))
   const encPayload = base64url(JSON.stringify(payload))
   const toSign = `${encHeader}.${encPayload}`
+
+  // Mux private key is base64-encoded; decode to bytes before HMAC
+  const key = Buffer.from(signingKeySecret, 'base64')
+
   const signature = crypto
-    .createHmac('sha256', signingKeySecret)
+    .createHmac('sha256', key)
     .update(toSign)
     .digest('base64')
     .replace(/=/g, '')
