@@ -395,9 +395,6 @@ export default function DashboardPage() {
                           </div>
                           <Button onClick={() => router.push('/course')}>{t('continue')}</Button>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          <p>{t('watchVideosAndTrack')}</p>
-                        </div>
                       </>
                     ) : (
                       <div className="text-center py-8">
