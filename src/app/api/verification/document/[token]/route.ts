@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import { rateLimit } from '@/lib/rate-limit'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,12 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
+    // Rate limit: 20 requests per 5 minutes per IP
+    const limited = await rateLimit({ request, limit: 20, windowMs: 5 * 60 * 1000, keyPrefix: 'verify-doc' })
+    if (!limited.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
     await connectDB()
 
     const { token } = params

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import OpenAI from 'openai'
+import DOMPurify from 'isomorphic-dompurify'
 
 // GPT prompt for generating professional PDF template (same as document processor)
 const PDF_GENERATION_PROMPT = `
@@ -94,7 +95,7 @@ export async function POST(
     // Generate HTML template using GPT
     console.log('Generating HTML template with GPT for user:', user.firstName, user.lastName);
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -116,8 +117,8 @@ DOCUMENT INFO:
 Please generate a complete, professional HTML document that will create a beautiful PDF report.`
         }
       ],
-      max_completion_tokens: 16000,
-      // Note: GPT-5 Mini only supports default temperature (1)
+      max_tokens: 16000,
+      temperature: 0.7,
     });
 
     const htmlContent = completion.choices[0]?.message?.content;
@@ -126,7 +127,7 @@ Please generate a complete, professional HTML document that will create a beauti
       throw new Error('Failed to generate HTML template');
     }
 
-    // Clean up the HTML (remove any markdown artifacts)
+    // Clean up and sanitize the HTML
     let cleanHtml = htmlContent
       .replace(/```html\n?/g, '')
       .replace(/```\n?/g, '')
@@ -147,13 +148,15 @@ Please generate a complete, professional HTML document that will create a beauti
 </html>`;
     }
 
-    console.log('Generated HTML length:', cleanHtml.length);
-    console.log('Returning GPT-generated HTML for admin panel PDF generation...');
+    // Sanitize HTML server-side to prevent XSS in the client-side PDF renderer
+    const sanitizedHtml = DOMPurify.sanitize(cleanHtml, { ALLOW_UNKNOWN_PROTOCOLS: false })
+
+    console.log('Generated HTML length (sanitized):', sanitizedHtml.length);
 
     // Return the HTML content for client-side PDF generation
     return NextResponse.json({
       success: true,
-      htmlContent: cleanHtml,
+      htmlContent: sanitizedHtml,
       fileName: user.documentProcessing.fileName || 'MPU_Document',
       userName: `${user.firstName} ${user.lastName}`,
       generatedAt: new Date().toISOString()

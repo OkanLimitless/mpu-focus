@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    // Basic burst limit to avoid abuse: 60 requests per minute per IP
+    const limited = await rateLimit({ request, limit: 60, windowMs: 60 * 1000, keyPrefix: 'mux-webhook' })
+    if (!limited.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
     const { default: connectDB } = await import('@/lib/mongodb')
     const { ensureModelsRegistered } = await import('@/lib/models')
     const { verifyMuxWebhook } = await import('@/lib/mux')

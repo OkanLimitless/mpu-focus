@@ -1,16 +1,25 @@
 import Mux from '@mux/mux-node'
+import crypto from 'crypto'
 
-if (!process.env.MUX_TOKEN_ID || !process.env.MUX_TOKEN_SECRET) {
-  throw new Error('Mux credentials are required. Please set MUX_TOKEN_ID and MUX_TOKEN_SECRET in your environment variables.')
+// Lazy initialize Mux client to avoid throwing at import time
+let muxClientSingleton: Mux | null = null
+
+function getMuxClient(): Mux {
+  if (!muxClientSingleton) {
+    const tokenId = process.env.MUX_TOKEN_ID
+    const tokenSecret = process.env.MUX_TOKEN_SECRET
+
+    if (!tokenId || !tokenSecret) {
+      throw new Error('Mux credentials are required. Please set MUX_TOKEN_ID and MUX_TOKEN_SECRET in your environment variables.')
+    }
+
+    muxClientSingleton = new Mux({ tokenId, tokenSecret })
+  }
+
+  return muxClientSingleton
 }
 
-// Initialize Mux client
-const mux = new Mux({
-  tokenId: process.env.MUX_TOKEN_ID,
-  tokenSecret: process.env.MUX_TOKEN_SECRET,
-})
-
-export const muxClient = mux
+export const muxClient = getMuxClient()
 
 // Helper functions for common Mux operations
 export const createMuxAsset = async (input: string, options?: {
@@ -18,6 +27,7 @@ export const createMuxAsset = async (input: string, options?: {
   mp4Support?: 'standard' | 'none' | 'capped-1080p'
 }) => {
   try {
+    const mux = getMuxClient()
     const asset = await mux.video.assets.create({
       input: [{ url: input }],
       playback_policy: [options?.playbackPolicy || 'public'],
@@ -38,6 +48,7 @@ export const createMuxAsset = async (input: string, options?: {
 
 export const getMuxAsset = async (assetId: string) => {
   try {
+    const mux = getMuxClient()
     const asset = await mux.video.assets.retrieve(assetId)
     return {
       assetId: asset.id,
@@ -55,12 +66,14 @@ export const getMuxAsset = async (assetId: string) => {
 
 export const createMuxDirectUpload = async () => {
   try {
+    const mux = getMuxClient()
+    const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
         playback_policy: ['public'],
         mp4_support: 'standard',
       },
-      cors_origin: '*', // Configure this properly for production
+      cors_origin: corsOrigin,
     })
     
     return {
@@ -75,6 +88,7 @@ export const createMuxDirectUpload = async () => {
 
 export const deleteMuxAsset = async (assetId: string) => {
   try {
+    const mux = getMuxClient()
     await mux.video.assets.delete(assetId)
     return true
   } catch (error) {
@@ -83,14 +97,55 @@ export const deleteMuxAsset = async (assetId: string) => {
   }
 }
 
-// Webhook verification (simplified for now - can be enhanced later)
-export const verifyMuxWebhook = (rawBody: string, signature: string): boolean => {
-  if (!process.env.MUX_WEBHOOK_SECRET) {
-    console.warn('MUX_WEBHOOK_SECRET not set, skipping webhook verification')
-    return true
+// Verify Mux webhook using HMAC SHA256 with timestamp tolerance
+export const verifyMuxWebhook = (rawBody: string, signatureHeader: string): boolean => {
+  const secret = process.env.MUX_WEBHOOK_SECRET
+  if (!secret) {
+    console.warn('MUX_WEBHOOK_SECRET not set; rejecting webhook verification in production is recommended')
+    // For safety, do not auto-approve; but return false only if running in production
+    return process.env.NODE_ENV !== 'production'
   }
-  
-  // For now, return true - webhook verification can be implemented later
-  // when setting up actual webhook endpoints
-  return true
+
+  try {
+    // Header format: "t=timestamp, v1=signature" (may include multiple v1 values)
+    const parts = signatureHeader.split(',').map(p => p.trim())
+    const timestampPart = parts.find(p => p.startsWith('t='))
+    const signatureParts = parts.filter(p => p.startsWith('v1='))
+
+    if (!timestampPart || signatureParts.length === 0) {
+      return false
+    }
+
+    const timestamp = parseInt(timestampPart.split('=')[1], 10)
+    if (!Number.isFinite(timestamp)) return false
+
+    // Enforce a 5-minute tolerance window
+    const toleranceMs = 5 * 60 * 1000
+    const now = Date.now()
+    if (Math.abs(now - timestamp * 1000) > toleranceMs) {
+      return false
+    }
+
+    const signedPayload = `${timestamp}.${rawBody}`
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(signedPayload, 'utf8')
+      .digest('hex')
+
+    // Compare against any provided v1 signature using constant-time compare
+    const timingSafeEqual = (a: string, b: string): boolean => {
+      const aBuf = Buffer.from(a, 'utf8')
+      const bBuf = Buffer.from(b, 'utf8')
+      if (aBuf.length !== bBuf.length) return false
+      return crypto.timingSafeEqual(aBuf, bBuf)
+    }
+
+    return signatureParts.some(sig => {
+      const provided = sig.split('=')[1]
+      return provided ? timingSafeEqual(provided, expected) : false
+    })
+  } catch (err) {
+    console.error('Error verifying Mux webhook signature:', err)
+    return false
+  }
 }

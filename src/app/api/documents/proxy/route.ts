@@ -3,6 +3,29 @@ import { NextRequest, NextResponse } from 'next/server'
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
+function getAllowedOrigins(): string[] {
+  // Configure allowed origins via ALLOWED_ORIGINS (comma-separated) or NEXT_PUBLIC_APP_URL
+  const fromEnv = process.env.ALLOWED_ORIGINS || process.env.NEXT_PUBLIC_APP_URL || ''
+  return fromEnv
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean)
+}
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowed = getAllowedOrigins()
+  const isAllowed = origin && allowed.includes(origin)
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
+  }
+  if (isAllowed && origin) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -98,16 +121,17 @@ export async function GET(request: NextRequest) {
 
     console.log(`Successfully fetched document. Size: ${fileBuffer.byteLength} bytes, Type: ${contentType}`)
 
+    const origin = request.headers.get('origin')
+    const corsHeaders = getCorsHeaders(origin)
+
     // Create response with proper headers
     const proxyResponse = new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Content-Length': contentLength || fileBuffer.byteLength.toString(),
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Cache-Control': 'public, max-age=3600', // Cache for debugging
+        ...corsHeaders,
+        'Cache-Control': 'private, max-age=60',
         'Content-Disposition': 'inline',
       }
     })
@@ -134,12 +158,10 @@ export async function GET(request: NextRequest) {
 
 // Handle preflight requests
 export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin')
+  const corsHeaders = getCorsHeaders(origin)
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    }
+    headers: corsHeaders,
   })
 }

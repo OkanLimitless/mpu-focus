@@ -1,22 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { rateLimit } from '@/lib/rate-limit'
+
+const signupSchema = z.object({
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.string().email().max(255),
+  reason: z.string().max(1000).optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 10 requests per 10 minutes per IP
+    const limited = await rateLimit({ request, limit: 10, windowMs: 10 * 60 * 1000, keyPrefix: 'signup' })
+    if (!limited.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+    }
+
     const { default: connectDB } = await import('@/lib/mongodb')
     const { ensureModelsRegistered } = await import('@/lib/models')
     
     await connectDB()
     const { UserRequest, User } = ensureModelsRegistered()
     
-    const { firstName, lastName, email, reason } = await request.json()
-
-    // Validate required fields
-    if (!firstName || !lastName || !email) {
-      return NextResponse.json(
-        { error: 'First name, last name, and email are required' },
-        { status: 400 }
-      )
+    const body = await request.json()
+    const parseResult = signupSchema.safeParse(body)
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parseResult.error.flatten() }, { status: 400 })
     }
+
+    const { firstName, lastName, email, reason } = parseResult.data
 
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() })
