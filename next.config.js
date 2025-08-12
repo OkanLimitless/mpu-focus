@@ -34,7 +34,8 @@ const nextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com",
+      // Allow UploadThing ingest regions
+      "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com https://*.ingest.uploadthing.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
