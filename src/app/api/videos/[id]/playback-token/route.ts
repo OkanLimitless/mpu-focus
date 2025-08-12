@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { rateLimit } from '@/lib/rate-limit'
 import connectDB from '@/lib/mongodb'
 import Video from '@/models/Video'
@@ -17,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
 
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
