@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/utils'
 import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar, Download, Plus, StickyNote, ExternalLink } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface User {
   _id: string
@@ -92,24 +93,25 @@ export default function UserManagement() {
   const [isPrivateNote, setIsPrivateNote] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   // Helper function to get verification status badge
   const getVerificationStatusBadge = (status?: string) => {
     switch (status) {
       case 'verified':
-        return <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>
+        return <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />{t('status_verified')}</Badge>
       case 'pending':
-        return <Badge variant="warning"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
+        return <Badge variant="warning"><Clock className="w-3 h-3 mr-1" />{t('status_pending')}</Badge>
       case 'documents_uploaded':
-        return <Badge variant="info"><FileText className="w-3 h-3 mr-1" />Documents Uploaded</Badge>
+        return <Badge variant="info"><FileText className="w-3 h-3 mr-1" />{t('status_documents_uploaded')}</Badge>
       case 'contract_signed':
-        return <Badge variant="purple"><Shield className="w-3 h-3 mr-1" />Ready for Review</Badge>
+        return <Badge variant="purple"><Shield className="w-3 h-3 mr-1" />{t('underReview')}</Badge>
       case 'rejected':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />{t('status_rejected')}</Badge>
       case 'resubmission_required':
-        return <Badge variant="orange"><AlertTriangle className="w-3 h-3 mr-1" />Resubmission Required</Badge>
+        return <Badge variant="orange"><AlertTriangle className="w-3 h-3 mr-1" />{t('status_resubmission_required')}</Badge>
       default:
-        return <Badge variant="outline">No Status</Badge>
+        return <Badge variant="outline">{t('status_unknown')}</Badge>
     }
   }
 
@@ -424,12 +426,12 @@ export default function UserManagement() {
 
   const getUserStatusBadge = (user: User) => {
     if (!user.isActive) {
-      return <Badge variant="destructive">Inactive</Badge>
+      return <Badge variant="destructive">{t('status_pending')}</Badge>
     }
     if (user.role === 'admin') {
-      return <Badge variant="purple">Admin</Badge>
+      return <Badge variant="purple">{t('admin')}</Badge>
     }
-    return <Badge variant="success">Active</Badge>
+    return <Badge variant="success">{t('status_verified')}</Badge>
   }
 
   const getProgressColor = (percentage: number) => {
@@ -442,7 +444,7 @@ export default function UserManagement() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
+          <CardTitle>{t('userManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -459,22 +461,22 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            User Management
+            {t('userManagement')}
           </CardTitle>
           <CardDescription>
-            Manage all users and track their progress through the training program
+            {t('manageUsersDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <div className="flex-1">
-              <Label htmlFor="search">Search Users</Label>
+              <Label htmlFor="search">{t('searchUsers')}</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search"
-                  placeholder="Search by name or email..."
+                  placeholder={t('searchUsersPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -482,15 +484,15 @@ export default function UserManagement() {
               </div>
             </div>
             <div>
-              <Label htmlFor="role-filter">Role</Label>
+              <Label htmlFor="role-filter">{t('role')}</Label>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger id="role-filter">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="all">{t('allRoles')}</SelectItem>
+                  <SelectItem value="admin">{t('admin')}</SelectItem>
+                  <SelectItem value="user">{t('user')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -502,7 +504,7 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Verified Users</p>
+                    <p className="text-sm text-muted-foreground">{t('verifiedUsers')}</p>
                     <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified').length}</p>
                   </div>
                   <CheckCircle2 className="h-8 w-8 text-green-500" />
@@ -513,7 +515,7 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Docs Processed</p>
+                    <p className="text-sm text-muted-foreground">{t('docsProcessedHeader')}</p>
                     <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified' && u.documentProcessing).length}</p>
                   </div>
                   <FileText className="h-8 w-8 text-blue-500" />
@@ -524,7 +526,7 @@ export default function UserManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Admins</p>
+                    <p className="text-sm text-muted-foreground">{t('admins')}</p>
                     <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
                   </div>
                   <Shield className="h-8 w-8 text-purple-500" />
@@ -536,7 +538,7 @@ export default function UserManagement() {
           {/* Master-Detail Layout */}
           {filteredUsers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No users found matching your criteria
+              {t('noUsersFound')}
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -575,7 +577,7 @@ export default function UserManagement() {
               <div className="lg:col-span-2">
                 {!selectedUser ? (
                   <div className="border rounded-lg p-6 text-center text-muted-foreground">
-                    Select a user to view details
+                    {t('selectUserToView')}
                   </div>
                 ) : (
                   <div className="border rounded-lg p-4 space-y-4">
@@ -589,9 +591,9 @@ export default function UserManagement() {
                           <Mail className="h-4 w-4" /> {selectedUser.email}
                         </p>
                         <div className="text-xs text-muted-foreground">
-                          <p>Created: {formatDate(new Date(selectedUser.createdAt))}</p>
+                          <p>{t('createdLabel')}: {formatDate(new Date(selectedUser.createdAt))}</p>
                           {selectedUser.lastLoginAt && (
-                            <p>Last Login: {formatDate(new Date(selectedUser.lastLoginAt))}</p>
+                            <p>{t('lastLogin')}: {formatDate(new Date(selectedUser.lastLoginAt))}</p>
                           )}
                         </div>
                       </div>
@@ -600,12 +602,12 @@ export default function UserManagement() {
                     {selectedUser.role === 'user' && selectedUser.progress && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs">
-                          <span>Progress</span>
+                          <span>{t('progressLabel')}</span>
                           <span>{selectedUser.progress.averageProgress}%</span>
                         </div>
                         <Progress value={selectedUser.progress.averageProgress} className="h-2" />
                         <div className="text-xs text-muted-foreground">
-                          {selectedUser.progress.completedChapters}/{selectedUser.progress.totalChapters} chapters completed
+                          {selectedUser.progress.completedChapters}/{selectedUser.progress.totalChapters} {t('chaptersCompleted')}
                         </div>
                       </div>
                     )}
@@ -613,14 +615,14 @@ export default function UserManagement() {
                     {selectedUser.role === 'user' && (
                       <div className="space-y-3 pt-2 border-t">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">Document Processing:</span>
+                          <span className="text-xs font-medium">{t('documentProcessingLabel')}</span>
                           {selectedUser.documentProcessing ? (
                             <Badge variant="success">
                               <FileText className="w-3 h-3 mr-1" />
-                              Processed
+                              {t('processedLabel')}
                             </Badge>
                           ) : (
-                            <Badge variant="outline">No Data</Badge>
+                            <Badge variant="outline">{t('noData')}</Badge>
                           )}
                         </div>
 
@@ -628,15 +630,15 @@ export default function UserManagement() {
                           <div className="text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-1">
                             <p className="flex items-center gap-1">
                               <FileText className="w-3 h-3" />
-                              File: {selectedUser.documentProcessing.fileName}
+                              {t('fileLabel')}: {selectedUser.documentProcessing.fileName}
                             </p>
                             <p className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              Processed: {formatDate(new Date(selectedUser.documentProcessing.processedAt))}
+                              {t('processedAt')}: {formatDate(new Date(selectedUser.documentProcessing.processedAt))}
                             </p>
                             <p className="flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              Pages: {selectedUser.documentProcessing.totalPages}
+                              {t('pagesLabel')}: {selectedUser.documentProcessing.totalPages}
                             </p>
                           </div>
                         )}
@@ -644,7 +646,7 @@ export default function UserManagement() {
                         {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <StickyNote className="w-3 h-3" />
-                            {selectedUser.adminNotes.length} admin note{selectedUser.adminNotes.length !== 1 ? 's' : ''}
+                            {selectedUser.adminNotes.length} {t('adminNotesCount')}
                           </div>
                         )}
                       </div>
@@ -654,7 +656,7 @@ export default function UserManagement() {
                     <div className="flex flex-wrap gap-2 pt-2">
                       <Button size="sm" variant="outline" onClick={() => viewUserProgress(selectedUser)}>
                         <BarChart3 className="w-4 h-4 mr-1" />
-                        Progress
+                        {t('progressBtn')}
                       </Button>
 
                       {selectedUser.role === 'user' && (
@@ -666,7 +668,7 @@ export default function UserManagement() {
                             className="bg-blue-50 hover:bg-blue-100"
                           >
                             <FileText className="w-4 h-4 mr-1" />
-                            Documents
+                            {t('documentsBtn')}
                           </Button>
 
                           <Button
@@ -676,7 +678,7 @@ export default function UserManagement() {
                             className="bg-purple-50 hover:bg-purple-100"
                           >
                             <ExternalLink className="w-4 h-4 mr-1" />
-                            Process
+                            {t('processBtn')}
                           </Button>
 
                           {selectedUser.documentProcessing?.extractedData && (
@@ -688,7 +690,7 @@ export default function UserManagement() {
                               className="bg-green-50 hover:bg-green-100"
                             >
                               <Download className="w-4 h-4 mr-1" />
-                              PDF
+                              {t('pdfBtn')}
                             </Button>
                           )}
 
@@ -699,7 +701,7 @@ export default function UserManagement() {
                             className="bg-yellow-50 hover:bg-yellow-100"
                           >
                             <StickyNote className="w-4 h-4 mr-1" />
-                            Notes
+                            {t('notesBtn')}
                           </Button>
                         </>
                       )}
@@ -715,7 +717,7 @@ export default function UserManagement() {
                           disabled={actionLoading}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
+                          {t('deleteBtn')}
                         </Button>
                       )}
                     </div>
@@ -727,7 +729,7 @@ export default function UserManagement() {
                           <div className="text-xs text-muted-foreground space-y-1">
                             <p className="flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
-                              Verified: {formatDate(new Date(selectedUser.verifiedAt))}
+                              {t('status_verified')}: {formatDate(new Date(selectedUser.verifiedAt))}
                             </p>
                           </div>
                         )}
@@ -746,10 +748,10 @@ export default function UserManagement() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Progress Details - {selectedUser?.firstName} {selectedUser?.lastName}
+              {t('progressBtn')} - {selectedUser?.firstName} {selectedUser?.lastName}
             </DialogTitle>
             <DialogDescription>
-              Detailed progress tracking for this user
+              {t('manageUsersDesc')}
             </DialogDescription>
           </DialogHeader>
           
@@ -761,7 +763,7 @@ export default function UserManagement() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Chapters Completed</p>
+                        <p className="text-sm text-muted-foreground">{t('chapters')} {t('completed')}</p>
                         <p className="text-2xl font-bold">
                           {userProgress.filter((ch: any) => ch.isChapterCompleted).length}/{userProgress.length}
                         </p>
@@ -774,7 +776,7 @@ export default function UserManagement() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Overall Progress</p>
+                        <p className="text-sm text-muted-foreground">{t('overallProgress')}</p>
                         <p className="text-2xl font-bold">
                           {userProgress.length > 0 
                             ? Math.round((userProgress.filter((ch: any) => ch.isChapterCompleted).length / userProgress.length) * 100)
@@ -789,7 +791,7 @@ export default function UserManagement() {
 
               {/* Detailed Progress */}
               <div>
-                <h4 className="font-medium mb-4">Chapter Progress</h4>
+                <h4 className="font-medium mb-4">{t('chapters')} {t('progress')}</h4>
                 <div className="space-y-3">
                   {userProgress.map((chapter: any) => (
                     <div key={chapter.chapterId} className="border rounded p-3">
@@ -798,12 +800,12 @@ export default function UserManagement() {
                           <h5 className="font-medium">{chapter.chapterTitle}</h5>
                           {chapter.isChapterCompleted && (
                             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                              Completed
+                              {t('completed')}
                             </span>
                           )}
                         </div>
                         <span className="text-sm text-muted-foreground">
-                          Chapter {chapter.chapterOrder}
+                          {t('chapter')} {chapter.chapterOrder}
                         </span>
                       </div>
                       <Progress 
@@ -811,10 +813,10 @@ export default function UserManagement() {
                         className={`h-2 mb-2 ${chapter.isChapterCompleted ? 'bg-green-100' : ''}`}
                       />
                       <div className="text-xs text-muted-foreground">
-                        Status: {chapter.isChapterCompleted ? 'Completed' : 'Not Started'}
+                        {t('statusHeader')}: {chapter.isChapterCompleted ? t('completed') : t('inProgress')}
                         {chapter.lastActivity && (
                           <span className="ml-4">
-                            Last activity: {formatDate(new Date(chapter.lastActivity))}
+                            {t('lastLogin')}: {formatDate(new Date(chapter.lastActivity))}
                           </span>
                         )}
                       </div>
@@ -827,7 +829,7 @@ export default function UserManagement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setProgressDialogOpen(false)}>
-              Close
+              {t('close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -837,14 +839,14 @@ export default function UserManagement() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>{t('confirmDeletionTitle')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete user {userToDelete?.firstName} {userToDelete?.lastName}? This action cannot be undone.
+              {t('confirmDeletionDesc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -856,7 +858,7 @@ export default function UserManagement() {
               }}
               disabled={actionLoading}
             >
-              {actionLoading ? 'Deleting...' : 'Delete'}
+              {actionLoading ? t('deleting') : t('deleteBtn')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -867,10 +869,10 @@ export default function UserManagement() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Document Processing Data - {selectedUser?.firstName} {selectedUser?.lastName}
+              {t('documentProcessingLabel')} - {selectedUser?.firstName} {selectedUser?.lastName}
             </DialogTitle>
             <DialogDescription>
-              View extracted document data and processing details
+              {t('manageUsersDesc')}
             </DialogDescription>
           </DialogHeader>
           
@@ -883,12 +885,12 @@ export default function UserManagement() {
                     <Card>
                       <CardContent className="p-4">
                         <div className="space-y-2">
-                          <h4 className="font-medium">Processing Details</h4>
+                          <h4 className="font-medium">{t('documentProcessingLabel')}</h4>
                           <div className="text-sm space-y-1">
-                            <p><span className="font-medium">File:</span> {selectedUser.documentProcessing.fileName}</p>
-                            <p><span className="font-medium">Pages:</span> {selectedUser.documentProcessing.totalPages}</p>
+                            <p><span className="font-medium">{t('fileLabel')}:</span> {selectedUser.documentProcessing.fileName}</p>
+                            <p><span className="font-medium">{t('pagesLabel')}:</span> {selectedUser.documentProcessing.totalPages}</p>
                             <p><span className="font-medium">Method:</span> {selectedUser.documentProcessing.processingMethod}</p>
-                            <p><span className="font-medium">Processed:</span> {formatDate(new Date(selectedUser.documentProcessing.processedAt))}</p>
+                            <p><span className="font-medium">{t('processedAt')}:</span> {formatDate(new Date(selectedUser.documentProcessing.processedAt))}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -896,7 +898,7 @@ export default function UserManagement() {
                     <Card>
                       <CardContent className="p-4">
                         <div className="space-y-2">
-                          <h4 className="font-medium">Actions</h4>
+                          <h4 className="font-medium">{t('actionsHeader')}</h4>
                           <div className="space-y-2">
                             <Button
                               size="sm"
@@ -905,7 +907,7 @@ export default function UserManagement() {
                               className="w-full"
                             >
                               <Download className="w-4 h-4 mr-2" />
-                              {isGeneratingPDF ? 'Generating...' : 'Generate PDF Report'}
+                              {isGeneratingPDF ? t('processing') : t('generatePdf')}
                             </Button>
                             <Button
                               size="sm"
@@ -914,7 +916,7 @@ export default function UserManagement() {
                               className="w-full"
                             >
                               <ExternalLink className="w-4 h-4 mr-2" />
-                              Process New Document
+                              {t('processBtn')}
                             </Button>
                           </div>
                         </div>
@@ -924,7 +926,7 @@ export default function UserManagement() {
 
                   {/* Extracted Data */}
                   <div>
-                    <h4 className="font-medium mb-4">Extracted Data</h4>
+                    <h4 className="font-medium mb-4">{t('extractedData')}</h4>
                     <Card>
                       <CardContent className="p-4">
                         <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
@@ -939,14 +941,14 @@ export default function UserManagement() {
               ) : (
                 <div className="text-center py-8">
                   <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h4 className="text-lg font-medium mb-2">No Document Data</h4>
-                  <p className="text-gray-600 mb-4">This user hasn't processed any documents yet.</p>
+                  <h4 className="text-lg font-medium mb-2">{t('noData')}</h4>
+                  <p className="text-gray-600 mb-4">{t('manageUsersDesc')}</p>
                   <Button
                     onClick={() => openDocumentProcessor(selectedUser)}
                     className="mx-auto"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Process Document
+                    {t('processBtn')}
                   </Button>
                 </div>
               )}
@@ -955,7 +957,7 @@ export default function UserManagement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocumentDialogOpen(false)}>
-              Close
+              {t('close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -966,10 +968,10 @@ export default function UserManagement() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Admin Notes - {selectedUser?.firstName} {selectedUser?.lastName}
+              {t('notesBtn')} - {selectedUser?.firstName} {selectedUser?.lastName}
             </DialogTitle>
             <DialogDescription>
-              Manage administrative notes for this user
+              {t('manageUsersDesc')}
             </DialogDescription>
           </DialogHeader>
           
@@ -977,13 +979,13 @@ export default function UserManagement() {
             <div className="space-y-6 py-4">
               {/* Add New Note */}
               <div className="space-y-4">
-                <h4 className="font-medium">Add New Note</h4>
+                <h4 className="font-medium">{t('addNewNote')}</h4>
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="note">Note Content</Label>
+                    <Label htmlFor="note">{t('noteContent')}</Label>
                     <Textarea
                       id="note"
-                      placeholder="Enter admin note..."
+                      placeholder={t('noteContent')}
                       value={newNote}
                       onChange={(e) => setNewNote(e.target.value)}
                       className="min-h-[100px]"
@@ -995,9 +997,7 @@ export default function UserManagement() {
                       checked={isPrivateNote}
                       onCheckedChange={(checked) => setIsPrivateNote(Boolean(checked))}
                     />
-                    <Label htmlFor="private" className="text-sm">
-                      Private note (not visible to user)
-                    </Label>
+                    <Label htmlFor="private" className="text-sm">{t('privateNote')}</Label>
                   </div>
                   <Button
                     onClick={addNote}
@@ -1005,14 +1005,14 @@ export default function UserManagement() {
                     size="sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Note
+                    {t('addNote')}
                   </Button>
                 </div>
               </div>
 
               {/* Existing Notes */}
               <div className="space-y-4">
-                <h4 className="font-medium">Existing Notes ({selectedUser.adminNotes?.length || 0})</h4>
+                <h4 className="font-medium">{t('existingNotes')} ({selectedUser.adminNotes?.length || 0})</h4>
                 {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 ? (
                   <div className="space-y-3">
                     {selectedUser.adminNotes.map((note) => (
@@ -1025,7 +1025,7 @@ export default function UserManagement() {
                               </span>
                               {note.isPrivate && (
                                 <Badge variant="muted" className="text-xs">
-                                  Private
+                                  {t('privateNote')}
                                 </Badge>
                               )}
                             </div>
@@ -1052,7 +1052,7 @@ export default function UserManagement() {
                 ) : (
                   <div className="text-center py-6 text-gray-500">
                     <StickyNote className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No notes yet for this user</p>
+                    <p>{t('noData')}</p>
                   </div>
                 )}
               </div>
@@ -1061,7 +1061,7 @@ export default function UserManagement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>
-              Close
+              {t('close')}
             </Button>
           </DialogFooter>
         </DialogContent>
