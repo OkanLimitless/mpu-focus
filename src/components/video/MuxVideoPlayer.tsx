@@ -46,25 +46,36 @@ export default function MuxVideoPlayer({
   const [watchedDuration, setWatchedDuration] = useState(userProgress?.watchedDuration || 0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [playbackToken, setPlaybackToken] = useState<string | null>(null)
+  const tokenRefreshRef = useRef<NodeJS.Timeout | null>(null)
+
+  const fetchToken = async () => {
+    if (!video.muxPlaybackId || !video._id) return
+    try {
+      const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setPlaybackToken(data.token)
+      }
+    } catch {}
+  }
 
   useEffect(() => {
-    // Fetch a short-lived signed token for playback
-    const fetchToken = async () => {
-      if (!video.muxPlaybackId || !video._id) return
-      try {
-        const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
-        if (res.ok) {
-          const data = await res.json()
-          setPlaybackToken(data.token)
-        } else {
-          console.error('Failed to fetch playback token')
-        }
-      } catch (e) {
-        console.error('Error fetching playback token', e)
-      }
-    }
     fetchToken()
+    return () => {
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    }
   }, [video._id, video.muxPlaybackId])
+
+  useEffect(() => {
+    // Refresh token every 60s to avoid expiry (server TTL ~120s)
+    if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    tokenRefreshRef.current = setInterval(() => {
+      fetchToken()
+    }, 60000)
+    return () => {
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (userProgress?.currentTime && playerRef.current) {
@@ -202,10 +213,18 @@ export default function MuxVideoPlayer({
     }
   }
 
+  const handleError = () => {
+    // On any player error (e.g., 401/403), try refreshing the token
+    fetchToken()
+  }
+
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
+      }
+      if (tokenRefreshRef.current) {
+        clearInterval(tokenRefreshRef.current)
       }
     }
   }, [])
@@ -273,6 +292,7 @@ export default function MuxVideoPlayer({
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={handleEnded}
+            onError={handleError as any}
             startTime={userProgress?.currentTime || 0}
           />
         </div>

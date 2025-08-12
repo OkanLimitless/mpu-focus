@@ -42,25 +42,36 @@ export default function RestrictedMuxVideoPlayer({
   const [duration, setDuration] = useState(video.duration || 0)
   const [hasStarted, setHasStarted] = useState(false)
   const [playbackToken, setPlaybackToken] = useState<string | null>(null)
+  const tokenRefreshRef = useRef<NodeJS.Timeout | null>(null)
+
+  const fetchToken = async () => {
+    if (!video.muxPlaybackId || !video._id) return
+    try {
+      const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setPlaybackToken(data.token)
+      }
+    } catch {}
+  }
 
   useEffect(() => {
-    // Fetch a short-lived signed token for playback
-    const fetchToken = async () => {
-      if (!video.muxPlaybackId || !video._id) return
-      try {
-        const res = await fetch(`/api/videos/${video._id}/playback-token`, { cache: 'no-store' })
-        if (res.ok) {
-          const data = await res.json()
-          setPlaybackToken(data.token)
-        } else {
-          console.error('Failed to fetch playback token')
-        }
-      } catch (e) {
-        console.error('Error fetching playback token', e)
-      }
-    }
     fetchToken()
+    return () => {
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    }
   }, [video._id, video.muxPlaybackId])
+
+  useEffect(() => {
+    // Refresh token every 60s
+    if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    tokenRefreshRef.current = setInterval(() => {
+      fetchToken()
+    }, 60000)
+    return () => {
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (userProgress?.currentTime && playerRef.current && hasStarted) {
@@ -139,6 +150,10 @@ export default function RestrictedMuxVideoPlayer({
     }
   }
 
+  const handleError = () => {
+    fetchToken()
+  }
+
   // Prevent seeking by resetting to current position if user tries to seek
   const handleSeeked = () => {
     if (playerRef.current && hasStarted) {
@@ -156,6 +171,12 @@ export default function RestrictedMuxVideoPlayer({
       }
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current)
+    }
+  }, [])
 
   if (!video.muxPlaybackId) {
     return (
@@ -221,6 +242,7 @@ export default function RestrictedMuxVideoPlayer({
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={handleEnded}
             onSeeked={handleSeeked}
+            onError={handleError as any}
             startTime={0} // Always start from beginning to prevent seeking on load
           />
         </div>
