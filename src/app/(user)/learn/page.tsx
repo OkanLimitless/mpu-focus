@@ -61,12 +61,12 @@ export default function LearnHomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="relative h-40 md:h-56 bg-[url('/hero.jpg')] bg-cover bg-center flex items-center justify-center">
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow">ON MPU Campus</h1>
+      <div className="relative h-40 md:h-56 bg-gray-800 flex items-center justify-center">
+        <h1 className="text-2xl md:text-4xl font-extrabold text-white">MPU Focus Campus</h1>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-6">Meine Kurse</h2>
+        <h2 className="text-2xl md:text-3xl font-bold mb-6">{t('yourCourse')}</h2>
 
         <div className="space-y-6">
           {modules.map((group) => (

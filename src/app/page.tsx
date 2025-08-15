@@ -16,11 +16,11 @@ export default function HomePage() {
     if (status === 'loading') return // Still loading
 
     if (session) {
-      // User is authenticated, redirect to dashboard
+      // User is authenticated, redirect to primary learning environment
       if (session.user.role === 'admin') {
         router.push('/admin')
       } else {
-        router.push('/dashboard')
+        router.push('/learn')
       }
     } else {
       // User is not authenticated, show landing page
