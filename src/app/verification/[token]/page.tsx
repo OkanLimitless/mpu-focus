@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import DocumentPreview from '@/components/ui/document-preview'
 import DigitalSignature from '@/components/ui/digital-signature'
+import { useI18n } from '@/components/providers/i18n-provider'
 import { 
   Upload, 
   FileCheck, 
@@ -41,6 +42,7 @@ export default function VerificationPage() {
   const { token } = useParams()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   
   const [verificationData, setVerificationData] = useState<VerificationData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -93,8 +95,8 @@ export default function VerificationPage() {
         }
       } else {
         toast({
-          title: "Error",
-          description: "Invalid or expired verification link",
+          title: t('error'),
+          description: t('verificationPage_invalidLinkDesc'),
           variant: "destructive",
         })
         router.push('/login')
@@ -102,8 +104,8 @@ export default function VerificationPage() {
     } catch (error) {
       console.error('Error verifying token:', error)
       toast({
-        title: "Error",
-        description: "Failed to verify token",
+        title: t('error'),
+        description: t('verificationPage_failedToVerifyToken'),
         variant: "destructive",
       })
     } finally {
@@ -118,8 +120,8 @@ export default function VerificationPage() {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
       if (!allowedTypes.includes(file.type)) {
         toast({
-          title: "Error",
-          description: "Please upload a JPEG, PNG, or PDF file",
+          title: t('error'),
+          description: t('verificationPage_uploadTypeError'),
           variant: "destructive",
         })
         return
@@ -128,8 +130,8 @@ export default function VerificationPage() {
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: "Error", 
-          description: "File size must be less than 10MB",
+          title: t('error'), 
+          description: t('verificationPage_uploadSizeError'),
           variant: "destructive",
         })
         return
@@ -176,8 +178,8 @@ export default function VerificationPage() {
         
         setUploadProgress(100)
         toast({
-          title: "Success",
-          description: data.message || "Document uploaded successfully",
+          title: t('success'),
+          description: data.message || t('verificationPage_uploadSuccess'),
         })
         // Refresh verification data
         await verifyToken()
@@ -188,8 +190,8 @@ export default function VerificationPage() {
     } catch (error: any) {
       console.error('Error uploading document:', error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to upload document",
+        title: t('error'),
+        description: error.message || t('verificationPage_uploadFailed'),
         variant: "destructive",
       })
     } finally {
@@ -220,8 +222,8 @@ export default function VerificationPage() {
     setSignatureData(signature)
     setShowDigitalSignature(false)
     toast({
-      title: "Signature Captured",
-      description: "Your digital signature has been captured successfully.",
+      title: t('verificationPage_signatureCapturedTitle'),
+      description: t('verificationPage_signatureCapturedDesc'),
     })
   }
 
@@ -235,8 +237,8 @@ export default function VerificationPage() {
   const signContract = async () => {
     if (!agreedToTerms) {
       toast({
-        title: "Error",
-        description: "Please read and agree to the terms",
+        title: t('error'),
+        description: t('verificationPage_pleaseAgreeToTerms'),
         variant: "destructive",
       })
       return
@@ -245,8 +247,8 @@ export default function VerificationPage() {
     // If using digital signature, require signature data
     if (showDigitalSignature && !signatureData) {
       toast({
-        title: "Error",
-        description: "Please provide your digital signature",
+        title: t('error'),
+        description: t('verificationPage_pleaseProvideSignature'),
         variant: "destructive",
       })
       return
@@ -272,8 +274,8 @@ export default function VerificationPage() {
         setContractSigned(true)
         setCurrentStep(3)
         toast({
-          title: "Success",
-          description: "Contract signed successfully. All steps completed — your account is ready for admin review.",
+          title: t('success'),
+          description: t('verificationPage_contractSignedSuccess'),
         })
         // Refresh verification data
         await verifyToken()
@@ -284,8 +286,8 @@ export default function VerificationPage() {
     } catch (error: any) {
       console.error('Error signing contract:', error)
       toast({
-        title: "Error",
-        description: error.message || "Failed to sign contract",
+        title: t('error'),
+        description: error.message || t('verificationPage_signFailed'),
         variant: "destructive",
       })
     } finally {
@@ -308,14 +310,14 @@ export default function VerificationPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
-            <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+            <Button variant="ghost" onClick={() => router.push('/dashboard')}>{t('verificationPage_backToDashboard')}</Button>
+            <Button variant="outline" onClick={() => router.push('/login')}>{t('logout')}</Button>
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 py-12 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Verifying your link...</p>
+            <p className="mt-4 text-gray-600">{t('verificationPage_verifyingLink')}</p>
           </div>
         </div>
       </div>
@@ -327,19 +329,19 @@ export default function VerificationPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
           <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
-            <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+            <Button variant="ghost" onClick={() => router.push('/dashboard')}>{t('verificationPage_backToDashboard')}</Button>
+            <Button variant="outline" onClick={() => router.push('/login')}>{t('logout')}</Button>
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 py-12 flex items-center justify-center">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <CardTitle>Invalid Link</CardTitle>
-              <CardDescription>This verification link is invalid or has expired.</CardDescription>
+              <CardTitle>{t('verificationPage_invalidLinkTitle')}</CardTitle>
+              <CardDescription>{t('verificationPage_invalidLinkDesc')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => router.push('/login')} className="w-full">Go to Login</Button>
+              <Button onClick={() => router.push('/login')} className="w-full">{t('verificationPage_goToLogin')}</Button>
             </CardContent>
           </Card>
         </div>
@@ -352,30 +354,30 @@ export default function VerificationPage() {
       {/* Top Bar */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur border-b">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.push('/dashboard')}>Back to Dashboard</Button>
-          <Button variant="outline" onClick={() => router.push('/login')}>Logout</Button>
+          <Button variant="ghost" onClick={() => router.push('/dashboard')}>{t('verificationPage_backToDashboard')}</Button>
+          <Button variant="outline" onClick={() => router.push('/login')}>{t('logout')}</Button>
         </div>
       </div>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Account Verification</h1>
-          <p className="text-gray-600 mt-2">Welcome {verificationData.user.firstName}! Complete these steps to access your account.</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('accountVerification')}</h1>
+          <p className="text-gray-600 mt-2">{t('verificationPage_welcomeUser', { name: verificationData.user.firstName })}</p>
         </div>
 
         {/* Progress Bar */}
         <Card className="mb-8">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium">Progress</span>
-              <span className="text-sm text-gray-500">{currentStep}/4 steps</span>
+              <span className="text-sm font-medium">{t('progress')}</span>
+              <span className="text-sm text-gray-500">{t('verificationPage_stepsProgress', { current: currentStep })}</span>
             </div>
             <Progress value={getStepProgress()} className="mb-4" />
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Upload ID</span>
-              <span>Sign Contract</span>
-              <span>Review</span>
-              <span>Complete</span>
-            </div>
+                          <div className="flex justify-between text-xs text-gray-500">
+                <span>{t('verificationPage_stepLabelUploadId')}</span>
+                <span>{t('verificationPage_stepLabelSignContract')}</span>
+                <span>{t('verificationPage_stepLabelReview')}</span>
+                <span>{t('verificationPage_stepLabelComplete')}</span>
+              </div>
           </CardContent>
         </Card>
 
@@ -385,10 +387,10 @@ export default function VerificationPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Upload className="h-5 w-5" />
-                <span>Step 1: Upload Identity Document</span>
+                <span>{t('verificationPage_step1Title')}</span>
               </CardTitle>
               <CardDescription>
-                Please upload a clear photo of your passport or national ID card.
+                {t('verificationPage_step1Desc')}
               </CardDescription>
               
               {/* Resubmission Notice */}
@@ -397,14 +399,14 @@ export default function VerificationPage() {
                   <div className="flex items-start space-x-3">
                     <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
                     <div>
-                      <h4 className="text-sm font-medium text-orange-800">Document Resubmission Required</h4>
+                      <h4 className="text-sm font-medium text-orange-800">{t('verificationPage_resubmissionTitle')}</h4>
                       <p className="text-sm text-orange-700 mt-1">
-                        Your previous documents need to be updated. Please upload new documents below. 
-                        <strong> Your contract signature remains valid.</strong>
+                        {t('verificationPage_resubmissionMessage1')}
+                        <strong> {t('verificationPage_resubmissionMessageStrong')}</strong>
                       </p>
                       {verificationData.user.passportDocument?.rejectionReason && (
                         <div className="mt-2 p-2 bg-orange-100 rounded text-xs text-orange-800">
-                          <strong>Reason:</strong> {verificationData.user.passportDocument.rejectionReason}
+                          <strong>{t('verificationPage_reasonLabel')}</strong> {verificationData.user.passportDocument.rejectionReason}
                         </div>
                       )}
                     </div>
@@ -418,7 +420,7 @@ export default function VerificationPage() {
                 <div className="space-y-2">
                   <Label htmlFor="document" className="cursor-pointer">
                     <span className="text-lg font-medium text-blue-600 hover:text-blue-500">
-                      Choose file to upload
+                      {t('verificationPage_chooseFile')}
                     </span>
                     <Input
                       id="document"
@@ -429,7 +431,7 @@ export default function VerificationPage() {
                     />
                   </Label>
                   <p className="text-sm text-gray-500">
-                    Supported formats: JPEG, PNG, PDF (max 10MB)
+                    {t('verificationPage_supportedFormats')}
                   </p>
                 </div>
               </div>
@@ -453,7 +455,7 @@ export default function VerificationPage() {
                 disabled={!selectedFile || isSubmitting}
                 className="w-full"
               >
-                {isSubmitting ? 'Uploading...' : 'Upload Document'}
+                {isSubmitting ? t('verificationPage_uploading') : t('verificationPage_uploadDocument')}
               </Button>
 
               {/* Document Preview after upload */}
@@ -476,30 +478,30 @@ export default function VerificationPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="h-5 w-5" />
-                <span>Step 2: Sign Service Agreement</span>
+                <span>{t('verificationPage_step2Title')}</span>
               </CardTitle>
               <CardDescription>
-                Please review and sign our service agreement to proceed.
+                {t('verificationPage_step2Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="bg-gray-50 p-6 rounded-lg max-h-64 overflow-y-auto">
-                <h3 className="font-bold mb-4">MPU-Focus Service Agreement</h3>
+                <h3 className="font-bold mb-4">{t('verificationPage_agreementHeader')}</h3>
                 <div className="space-y-4 text-sm">
                   <p>
-                    <strong>1. Service Description:</strong> MPU-Focus provides comprehensive preparation courses and materials for the Medical-Psychological Assessment (MPU).
+                    <strong>{t('verificationPage_agreement_1_title')}</strong> {t('verificationPage_agreement_1_body')}
                   </p>
                   <p>
-                    <strong>2. User Obligations:</strong> You agree to use the platform responsibly and provide accurate information during the course.
+                    <strong>{t('verificationPage_agreement_2_title')}</strong> {t('verificationPage_agreement_2_body')}
                   </p>
                   <p>
-                    <strong>3. Privacy & Data Protection:</strong> We handle your personal data in accordance with GDPR and our Privacy Policy.
+                    <strong>{t('verificationPage_agreement_3_title')}</strong> {t('verificationPage_agreement_3_body')}
                   </p>
                   <p>
-                    <strong>4. Course Access:</strong> Upon verification, you will receive full access to all course materials and support services.
+                    <strong>{t('verificationPage_agreement_4_title')}</strong> {t('verificationPage_agreement_4_body')}
                   </p>
                   <p>
-                    <strong>5. Cancellation:</strong> You may cancel your subscription according to the terms outlined in your payment agreement.
+                    <strong>{t('verificationPage_agreement_5_title')}</strong> {t('verificationPage_agreement_5_body')}
                   </p>
                 </div>
               </div>
@@ -511,7 +513,7 @@ export default function VerificationPage() {
                   onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
                 />
                 <Label htmlFor="terms" className="text-sm">
-                  I have read and agree to the service agreement and privacy policy
+                  {t('verificationPage_termsAgreeLabel')}
                 </Label>
               </div>
 
@@ -529,24 +531,24 @@ export default function VerificationPage() {
               {/* Show captured signature */}
               {signatureData && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Your Digital Signature:</Label>
+                  <Label className="text-sm font-medium">{t('verificationPage_yourDigitalSignature')}</Label>
                   <div className="border rounded-lg p-4 bg-gray-50">
-                    <img
-                      src={signatureData}
-                      alt="Your signature"
-                      className="max-w-full h-auto max-h-24 object-contain"
-                    />
+                                          <img
+                        src={signatureData}
+                        alt={t('verificationPage_yourSignatureAlt')}
+                        className="max-w-full h-auto max-h-24 object-contain"
+                      />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSignatureData(null)
-                      setShowDigitalSignature(true)
-                    }}
-                  >
-                    Change Signature
-                  </Button>
+                                      <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSignatureData(null)
+                        setShowDigitalSignature(true)
+                      }}
+                    >
+                      {t('verificationPage_changeSignature')}
+                    </Button>
                 </div>
               )}
 
@@ -555,7 +557,7 @@ export default function VerificationPage() {
                 disabled={!agreedToTerms || !signatureData || isSubmitting}
                 className="w-full"
               >
-                {isSubmitting ? 'Signing...' : 'Sign Agreement'}
+                {isSubmitting ? t('verificationPage_signing') : t('verificationPage_signAgreementButton')}
               </Button>
             </CardContent>
           </Card>
@@ -567,26 +569,24 @@ export default function VerificationPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="h-5 w-5" />
-                <span>Step 3: Under Review</span>
+                <span>{t('verificationPage_step3Title')}</span>
               </CardTitle>
               <CardDescription>
-                Your documents are being reviewed by our team.
+                {t('verificationPage_step3Desc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 text-center">
               <div className="py-8">
                 <Clock className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Review in Progress</h3>
+                <h3 className="text-lg font-medium mb-2">{t('verificationPage_reviewInProgress')}</h3>
                 <p className="text-gray-600">
-                  Our team is reviewing your uploaded documents and signed agreement. 
-                  This typically takes 1-2 business days.
+                  {t('verificationPage_reviewInProgressDesc')}
                 </p>
               </div>
               
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>What's next?</strong> You'll receive an email notification once your verification is complete. 
-                  You can then access your full account and begin your MPU preparation.
+                  <strong>{t('verificationPage_whatsNext')}</strong> {t('verificationPage_whatsNextDesc')}
                 </p>
               </div>
 
@@ -595,7 +595,7 @@ export default function VerificationPage() {
                 variant="outline"
                 className="w-full"
               >
-                Go to Login
+                {t('verificationPage_goToLogin')}
               </Button>
             </CardContent>
           </Card>
@@ -607,18 +607,18 @@ export default function VerificationPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <span>Verification Complete!</span>
+                <span>{t('verificationPage_step4Title')}</span>
               </CardTitle>
               <CardDescription>
-                Your account has been verified and activated.
+                {t('verificationPage_step4Desc1')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 text-center">
               <div className="py-8">
                 <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Welcome to MPU-Focus!</h3>
+                <h3 className="text-lg font-medium mb-2">{t('verificationPage_welcomeHeadline')}</h3>
                 <p className="text-gray-600">
-                  Your account has been successfully verified. You now have full access to all course materials and features.
+                  {t('verificationPage_step4Desc2')}
                 </p>
               </div>
 
@@ -626,7 +626,7 @@ export default function VerificationPage() {
                 onClick={() => router.push('/dashboard')}
                 className="w-full"
               >
-                Access Your Dashboard
+                {t('verificationPage_accessYourDashboard')}
               </Button>
             </CardContent>
           </Card>
