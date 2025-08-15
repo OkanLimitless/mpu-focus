@@ -6,27 +6,17 @@ import { authOptions } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 const MODULE_ORDER = [
-  'onboarding',
-  'grundkurs',
-  'intensivprogramm',
-  'delikt',
-  'konsumgeschichte',
-  'wissen_alkohol',
-  'wissen_drogen',
-  'pruefungsfragen',
-  'nachbesprechung',
+  'alcohol_drugs',
+  'traffic_points',
+  'medicinal_cannabis',
+  'extras',
 ] as const
 
 const MODULE_LABEL: Record<string, string> = {
-  onboarding: 'Onboarding',
-  grundkurs: 'Grundkurs',
-  intensivprogramm: 'Intensivprogramm Alkohol und Drogen',
-  delikt: 'Deliktdetails',
-  konsumgeschichte: 'Konsumgeschichte',
-  wissen_alkohol: 'Wissen zu Alkohol',
-  wissen_drogen: 'Wissen zu Drogen',
-  pruefungsfragen: 'Prüfungsfragen Alkohol & Drogen',
-  nachbesprechung: 'Nachbesprechung der Generalprobe',
+  alcohol_drugs: 'Lernvideos Alkohol & Drogen',
+  traffic_points: 'Lernvideos Verkehrsauffälligkeiten (Punkte in Flensburg)',
+  medicinal_cannabis: 'Lernvideos Medizinalcannabis',
+  extras: 'Zusatzvideos',
 }
 
 export async function GET(request: NextRequest) {
@@ -128,7 +118,7 @@ export async function GET(request: NextRequest) {
         title: chapter.title,
         description: chapter.description,
         order: chapter.order,
-        moduleKey: chapter.moduleKey || 'grundkurs',
+        moduleKey: chapter.moduleKey,
         isUnlocked,
         isCompleted,
         isCurrent,

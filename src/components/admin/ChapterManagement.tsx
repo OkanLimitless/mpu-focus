@@ -23,15 +23,10 @@ interface ChapterData {
 }
 
 const MODULE_OPTIONS = [
-  { key: 'onboarding', label: 'Onboarding' },
-  { key: 'grundkurs', label: 'Grundkurs' },
-  { key: 'intensivprogramm', label: 'Intensivprogramm Alkohol und Drogen' },
-  { key: 'delikt', label: 'Deliktdetails' },
-  { key: 'konsumgeschichte', label: 'Konsumgeschichte' },
-  { key: 'wissen_alkohol', label: 'Wissen zu Alkohol' },
-  { key: 'wissen_drogen', label: 'Wissen zu Drogen' },
-  { key: 'pruefungsfragen', label: 'Prüfungsfragen Alkohol & Drogen' },
-  { key: 'nachbesprechung', label: 'Nachbesprechung der Generalprobe' },
+  { key: 'alcohol_drugs', label: 'Lernvideos Alkohol & Drogen' },
+  { key: 'traffic_points', label: 'Lernvideos Verkehr­sauffälligkeiten (Punkte in Flensburg)' },
+  { key: 'medicinal_cannabis', label: 'Lernvideos Medizinalcannabis' },
+  { key: 'extras', label: 'Zusatzvideos' },
 ]
 
 export default function ChapterManagement() {
@@ -240,9 +235,9 @@ export default function ChapterManagement() {
                         <Textarea id="description" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder={t('chapterDescription')} rows={3} required />
                       </div>
 
-                      {/* Show module as read-only in module view */}
+                      {/* Show category as read-only in category view */}
                       <div className="space-y-2">
-                        <Label>Module</Label>
+                        <Label>Category</Label>
                         <div className="w-full border rounded px-3 py-2 bg-muted text-sm">
                           {getModuleLabel(formData.moduleKey)}
                         </div>
@@ -270,7 +265,7 @@ export default function ChapterManagement() {
           </div>
         </CardTitle>
         <CardDescription>
-          {selectedModuleKey ? t('chaptersWillBePresented') : 'Select a module to manage its chapters'}
+          {selectedModuleKey ? t('chaptersWillBePresented') : 'Select a category to manage its modules'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -285,12 +280,11 @@ export default function ChapterManagement() {
                       <BookOpen className="h-5 w-5" />
                       <h3 className="font-medium">{m.label}</h3>
                     </div>
-                    <p className="text-sm text-gray-600">Chapters: {count}</p>
+                    <p className="text-sm text-gray-600">Modules: {count}</p>
                   </div>
                   <div className="pt-3">
                     <Button className="w-full" onClick={() => {
                       setSelectedModuleKey(m.key)
-                      // Ensure formData has module preselected if user immediately adds
                       setFormData(prev => ({ ...prev, moduleKey: m.key }))
                     }}>
                       Manage
