@@ -373,7 +373,7 @@ const dictionaries: I18nDictionaries = {
     verificationPage_stepLabelReview: "Review",
     verificationPage_stepLabelComplete: "Complete",
 
-  }
+  },
   de: {
     appName: "MPU-Focus",
     adminPanel: "Admin Bereich",
