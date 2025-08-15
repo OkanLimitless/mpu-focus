@@ -67,7 +67,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     } else {
       targetOrder = currentOrder + 1
-      const maxOrder = await Chapter.countDocuments({ courseId: chapter.courseId })
+      const maxOrderChapter = await Chapter.findOne({ courseId: chapter.courseId, moduleKey: chapter.moduleKey }).sort({ order: -1 })
+      const maxOrder = maxOrderChapter ? maxOrderChapter.order : 1
       if (targetOrder > maxOrder) {
         return NextResponse.json(
           { error: 'Chapter is already at the bottom' },
@@ -76,11 +77,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // Find the chapter at the target position
-    const targetChapter = await Chapter.findOne({ 
-      courseId: chapter.courseId, 
-      order: targetOrder 
-    })
+      // Find the chapter at the target position within the same module
+  const targetChapter = await Chapter.findOne({ 
+    courseId: chapter.courseId, 
+    moduleKey: chapter.moduleKey,
+    order: targetOrder 
+  })
 
     if (!targetChapter) {
       return NextResponse.json(

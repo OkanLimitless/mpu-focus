@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { BookOpen, Plus, Edit, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import { BookOpen, Plus, Edit, Trash2, ArrowUp, ArrowDown, ArrowLeft } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 
 interface ChapterData {
@@ -23,15 +23,10 @@ interface ChapterData {
 }
 
 const MODULE_OPTIONS = [
-  { key: 'onboarding', label: 'Onboarding' },
-  { key: 'grundkurs', label: 'Grundkurs' },
-  { key: 'intensivprogramm', label: 'Intensivprogramm Alkohol und Drogen' },
-  { key: 'delikt', label: 'Deliktdetails' },
-  { key: 'konsumgeschichte', label: 'Konsumgeschichte' },
-  { key: 'wissen_alkohol', label: 'Wissen zu Alkohol' },
-  { key: 'wissen_drogen', label: 'Wissen zu Drogen' },
-  { key: 'pruefungsfragen', label: 'Prüfungsfragen Alkohol & Drogen' },
-  { key: 'nachbesprechung', label: 'Nachbesprechung der Generalprobe' },
+  { key: 'alcohol_drugs', label: 'Lernvideos Alkohol & Drogen' },
+  { key: 'traffic_points', label: 'Lernvideos Verkehr­sauffälligkeiten (Punkte in Flensburg)' },
+  { key: 'medicinal_cannabis', label: 'Lernvideos Medizinalcannabis' },
+  { key: 'extras', label: 'Zusatzvideos' },
 ]
 
 export default function ChapterManagement() {
@@ -42,6 +37,8 @@ export default function ChapterManagement() {
   const [formLoading, setFormLoading] = useState(false)
   const { toast } = useToast()
   const { t } = useI18n()
+
+  const [selectedModuleKey, setSelectedModuleKey] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -77,6 +74,12 @@ export default function ChapterManagement() {
       setLoading(false)
     }
   }
+
+  const filteredChapters = selectedModuleKey
+    ? chapters.filter((c) => c.moduleKey === selectedModuleKey)
+    : chapters
+
+  const getModuleLabel = (key: string) => MODULE_OPTIONS.find((m) => m.key === key)?.label || key
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -118,11 +121,12 @@ export default function ChapterManagement() {
   }
 
   const resetForm = () => {
+    const nextOrder = selectedModuleKey ? (filteredChapters.length + 1) : (chapters.length + 1)
     setFormData({
       title: '',
       description: '',
-      order: chapters.length + 1,
-      moduleKey: MODULE_OPTIONS[0].key,
+      order: nextOrder,
+      moduleKey: selectedModuleKey || MODULE_OPTIONS[0].key,
     })
     setEditingChapter(null)
   }
@@ -194,113 +198,151 @@ export default function ChapterManagement() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            {t('chapterManagement')}
+            {selectedModuleKey ? getModuleLabel(selectedModuleKey) : t('chapterManagement')}
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { resetForm(); setDialogOpen(true) }}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t('addChapter')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[560px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingChapter ? t('editChapter') : t('addNewChapter')}
-                </DialogTitle>
-                <DialogDescription>
-                  {t('chaptersWillBePresented')}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">{t('chapterTitle')}</Label>
-                  <Input id="title" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={t('chapterTitle')} required />
-                </div>
+          <div className="flex items-center gap-2">
+            {selectedModuleKey ? (
+              <>
+                <Button variant="outline" onClick={() => setSelectedModuleKey(null)}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { resetForm(); setDialogOpen(true) }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t('addChapter')}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[560px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingChapter ? t('editChapter') : t('addNewChapter')}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {t('chaptersWillBePresented')}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">{t('chapterTitle')}</Label>
+                        <Input id="title" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={t('chapterTitle')} required />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">{t('chapterDescription')}</Label>
-                  <Textarea id="description" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder={t('chapterDescription')} rows={3} required />
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="description">{t('chapterDescription')}</Label>
+                        <Textarea id="description" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder={t('chapterDescription')} rows={3} required />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="moduleKey">Module</Label>
-                  <select id="moduleKey" className="w-full border rounded px-3 py-2" value={formData.moduleKey} onChange={(e) => setFormData(prev => ({ ...prev, moduleKey: e.target.value }))}>
-                    {MODULE_OPTIONS.map(m => (
-                      <option key={m.key} value={m.key}>{m.label}</option>
-                    ))}
-                  </select>
-                </div>
+                      {/* Show category as read-only in category view */}
+                      <div className="space-y-2">
+                        <Label>Category</Label>
+                        <div className="w-full border rounded px-3 py-2 bg-muted text-sm">
+                          {getModuleLabel(formData.moduleKey)}
+                        </div>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="order">{t('chapterOrder')}</Label>
-                  <Input id="order" type="number" value={formData.order} onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))} min="1" />
-                  <p className="text-xs text-gray-500">{t('chaptersWillBePresented')}</p>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="order">{t('chapterOrder')}</Label>
+                        <Input id="order" type="number" value={formData.order} onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))} min="1" />
+                        <p className="text-xs text-gray-500">{t('chaptersWillBePresented')}</p>
+                      </div>
 
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    {t('cancel')}
-                  </Button>
-                  <Button type="submit" disabled={formLoading}>
-                    {formLoading ? t('processing') : (editingChapter ? t('updateChapter') : t('createChapter'))}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                      <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                          {t('cancel')}
+                        </Button>
+                        <Button type="submit" disabled={formLoading}>
+                          {formLoading ? t('processing') : (editingChapter ? t('updateChapter') : t('createChapter'))}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </>
+            ) : null}
+          </div>
         </CardTitle>
         <CardDescription>
-          {t('chaptersWillBePresented')}
+          {selectedModuleKey ? t('chaptersWillBePresented') : 'Select a category to manage its modules'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {chapters.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{t('noChaptersFound')}</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {chapters.map((chapter, index) => (
-              <div key={chapter._id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2 flex-1">
+        {!selectedModuleKey ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {MODULE_OPTIONS.map((m) => {
+              const count = chapters.filter((c) => c.moduleKey === m.key).length
+              return (
+                <div key={m.key} className="border rounded-lg p-4 flex flex-col justify-between">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                        {t('chapter')} {chapter.order}
-                      </span>
-                      <h3 className="font-medium">{chapter.title}</h3>
-                      {chapter.moduleKey && (
-                        <span className="ml-2 text-xs text-gray-500">[{chapter.moduleKey}]</span>
-                      )}
+                      <BookOpen className="h-5 w-5" />
+                      <h3 className="font-medium">{m.label}</h3>
                     </div>
-                    <p className="text-sm text-gray-600">{chapter.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{t('videosCount', { count: chapter.videoCount || 0 })}</span>
-                      <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
-                    </div>
+                    <p className="text-sm text-gray-600">Modules: {count}</p>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'up')} disabled={index === 0}>
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'down')} disabled={index === chapters.length - 1}>
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(chapter)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(chapter._id)}>
-                      <Trash2 className="h-4 w-4" />
+                  <div className="pt-3">
+                    <Button className="w-full" onClick={() => {
+                      setSelectedModuleKey(m.key)
+                      setFormData(prev => ({ ...prev, moduleKey: m.key }))
+                    }}>
+                      Manage
                     </Button>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+        ) : (
+          <>
+            {filteredChapters.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>{t('noChaptersFound')}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredChapters.map((chapter, index) => (
+                  <div key={chapter._id} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                            {t('chapter')} {chapter.order}
+                          </span>
+                          <h3 className="font-medium">{chapter.title}</h3>
+                          {chapter.moduleKey && (
+                            <span className="ml-2 text-xs text-gray-500">[{chapter.moduleKey}]</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">{chapter.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>{t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                          <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'up')} disabled={index === 0}>
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'down')} disabled={index === filteredChapters.length - 1}>
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(chapter)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleDelete(chapter._id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

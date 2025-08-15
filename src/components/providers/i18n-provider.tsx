@@ -125,13 +125,13 @@ const dictionaries: I18nDictionaries = {
     nav_users: "User Management",
     nav_leads: "Lead Management",
     nav_verification: "Verification",
-    nav_chapters: "Chapters",
+    nav_chapters: "Modules",
     nav_videos: "Videos",
     nav_dashboard_desc: "Overview and statistics",
     nav_users_desc: "Manage users and track progress",
     nav_leads_desc: "Manage and convert leads",
     nav_verification_desc: "Review user verification submissions",
-    nav_chapters_desc: "Manage course chapters",
+    nav_chapters_desc: "Manage course modules",
     nav_videos_desc: "Manage course videos",
     adminOverviewTitle: "Dashboard Overview",
     adminOverviewDesc: "Welcome to the admin dashboard. Here's a quick overview of your system.",
@@ -242,9 +242,9 @@ const dictionaries: I18nDictionaries = {
     enterMuxAssetId: "Enter Mux Asset ID (from Mux dashboard)",
     findMuxHint: "Find this in your Mux dashboard under Assets. It looks like: abcd1234efgh5678",
     order: "Order",
-    chapter: "Chapter",
-    selectChapter: "Select a chapter",
-    noChaptersAvailable: "No chapters available. Please create chapters first.",
+    chapter: "Module",
+    selectChapter: "Select a module",
+    noChaptersAvailable: "No modules available. Please create modules first.",
     updateVideo: "Update Video",
     createVideo: "Create Video",
     noVideosFound: "No videos found. Create your first video to get started.",
@@ -259,20 +259,20 @@ const dictionaries: I18nDictionaries = {
     ready: "Ready",
     unknown: "Unknown",
 
-    // Admin: Chapter Management
-    chapterManagement: "Chapter Management",
-    addChapter: "Add Chapter",
-    editChapter: "Edit Chapter",
-    addNewChapter: "Add New Chapter",
-    chapterTitle: "Chapter Title",
+    // Admin: Module Management
+    chapterManagement: "Module Management",
+    addChapter: "Add Module",
+    editChapter: "Edit Module",
+    addNewChapter: "Add New Module",
+    chapterTitle: "Module Title",
     chapterDescription: "Description",
-    chapterOrder: "Chapter Order",
-    chaptersWillBePresented: "Chapters will be presented to students in this order",
-    updateChapter: "Update Chapter",
-    createChapter: "Create Chapter",
-    noChaptersFound: "No chapters found. Create your first chapter to get started.",
-    chapterDeleted: "Chapter deleted successfully",
-    orderUpdated: "Chapter order updated",
+    chapterOrder: "Module Order",
+    chaptersWillBePresented: "Modules will be presented to students in this order",
+    updateChapter: "Update Module",
+    createChapter: "Create Module",
+    noChaptersFound: "No modules found. Create your first module to get started.",
+    chapterDeleted: "Module deleted successfully",
+    orderUpdated: "Module order updated",
 
     // Admin: Verification Management
     verificationManagement: "Verification Management",
@@ -462,13 +462,14 @@ const dictionaries: I18nDictionaries = {
     orSelectVideo: "oder wählen Sie links ein Video aus, um zu beginnen",
     identityDocument: "Ausweisdokument",
     approved: "Genehmigt",
+    rejected: "Abgelehnt - Bitte erneut einreichen",
     underReview: "In Prüfung",
     notUploaded: "Nicht hochgeladen",
     serviceAgreement: "Dienstleistungsvertrag",
-    signed: "Unterschrieben",
-    notSigned: "Nicht unterschrieben",
+    signed: "Unterzeichnet",
+    notSigned: "Nicht unterzeichnet",
     accountVerification: "Kontoverifizierung",
-    complete: "Abgeschlossen",
+    complete: "Abschließen",
     inProgress: "In Bearbeitung",
 
     // Course page
@@ -485,21 +486,21 @@ const dictionaries: I18nDictionaries = {
     resumeCourse: "Kurs fortsetzen",
 
     // Admin
-    nav_dashboard: "Übersicht",
+    nav_dashboard: "Dashboard",
     nav_users: "Benutzerverwaltung",
-    nav_leads: "Lead-Verwaltung",
+    nav_leads: "Leadverwaltung",
     nav_verification: "Verifizierung",
-    nav_chapters: "Kapitel",
+    nav_chapters: "Module",
     nav_videos: "Videos",
-    nav_dashboard_desc: "Überblick und Statistiken",
+    nav_dashboard_desc: "Übersicht und Statistiken",
     nav_users_desc: "Benutzer verwalten und Fortschritt verfolgen",
     nav_leads_desc: "Leads verwalten und konvertieren",
-    nav_verification_desc: "Verifizierungsanfragen prüfen",
-    nav_chapters_desc: "Kurskapitel verwalten",
+    nav_verification_desc: "Verifizierungen prüfen",
+    nav_chapters_desc: "Kursmodule verwalten",
     nav_videos_desc: "Kursvideos verwalten",
-    adminOverviewTitle: "Dashboard-Übersicht",
-    adminOverviewDesc: "Willkommen im Admin-Dashboard. Hier ein kurzer Überblick über das System.",
-    totalUsers: "Gesamte Benutzer",
+    adminOverviewTitle: "Dashboard Übersicht",
+    adminOverviewDesc: "Willkommen im Admin-Dashboard. Hier ist ein kurzer Überblick über Ihr System.",
+    totalUsers: "Gesamtbenutzer",
     activeUsers: "Aktive Benutzer",
     registeredUsers: "Registrierte Benutzer",
     recentlyActive: "Kürzlich aktiv",
@@ -511,7 +512,7 @@ const dictionaries: I18nDictionaries = {
 
     // Admin: User Management
     userManagement: "Benutzerverwaltung",
-    manageUsersDesc: "Verwalten Sie alle Benutzer und verfolgen Sie ihren Fortschritt",
+    manageUsersDesc: "Alle Benutzer verwalten und deren Fortschritt verfolgen",
     searchUsers: "Benutzer suchen",
     role: "Rolle",
     allRoles: "Alle Rollen",
@@ -520,7 +521,7 @@ const dictionaries: I18nDictionaries = {
     verifiedUsers: "Verifizierte Benutzer",
     docsProcessed: "Dokumente verarbeitet",
     admins: "Admins",
-    noUsersFound: "Keine Benutzer entsprechen Ihren Kriterien",
+    noUsersFound: "Keine Benutzer gefunden",
     selectUserToView: "Wählen Sie einen Benutzer aus, um Details anzuzeigen",
     createdLabel: "Erstellt",
     lastLogin: "Letzte Anmeldung",
@@ -540,21 +541,21 @@ const dictionaries: I18nDictionaries = {
     notesBtn: "Notizen",
     deleteBtn: "Löschen",
     confirmDeletionTitle: "Löschen bestätigen",
-    confirmDeletionDesc: "Möchten Sie diesen Benutzer wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    confirmDeletionDesc: "Sind Sie sicher, dass Sie diesen Benutzer löschen möchten? Dies kann nicht rückgängig gemacht werden.",
     deleting: "Lösche...",
-    pdfGenerated: "PDF erstellt",
+    pdfGenerated: "PDF generiert",
     pdfGenerationFailed: "PDF-Erstellung fehlgeschlagen",
     noteAdded: "Notiz hinzugefügt",
     noteDeleted: "Notiz gelöscht",
     updateNotes: "Notizen aktualisieren",
     existingNotes: "Bestehende Notizen",
     addNewNote: "Neue Notiz hinzufügen",
-    noteContent: "Notizinhalt",
-    privateNote: "Private Notiz (nicht für Benutzer sichtbar)",
+    noteContent: "Notizinhalte",
+    privateNote: "Private Notiz (für Benutzer nicht sichtbar)",
     addNote: "Notiz hinzufügen",
 
     // Admin: Lead Management
-    leadManagement: "Lead-Verwaltung",
+    leadManagement: "Leadverwaltung",
     manageLeadsDesc: "Leads aus dem Anmeldeprozess verwalten und zu Benutzern konvertieren.",
     searchLeadsPlaceholder: "Leads nach Name, E-Mail oder Telefon suchen...",
     allStatus: "Alle Status",
@@ -573,7 +574,7 @@ const dictionaries: I18nDictionaries = {
     loadingLeads: "Leads werden geladen...",
     noLeadsFound: "Keine Leads gefunden",
     leadDetails: "Lead-Details",
-    viewAndManageLeadInfo: "Lead-Informationen ansehen und verwalten",
+    viewAndManageLeadInfo: "Lead-Informationen anzeigen und verwalten",
     name: "Name",
     emailLabel: "E-Mail",
     phoneLabel: "Telefon",
@@ -606,9 +607,9 @@ const dictionaries: I18nDictionaries = {
     enterMuxAssetId: "Mux Asset ID (aus dem Mux-Dashboard) eingeben",
     findMuxHint: "Im Mux-Dashboard unter Assets zu finden. Sieht z. B. so aus: abcd1234efgh5678",
     order: "Reihenfolge",
-    chapter: "Kapitel",
-    selectChapter: "Kapitel wählen",
-    noChaptersAvailable: "Keine Kapitel verfügbar. Bitte erstellen Sie zuerst Kapitel.",
+    chapter: "Modul",
+    selectChapter: "Modul wählen",
+    noChaptersAvailable: "Keine Module verfügbar. Bitte erstellen Sie zuerst Module.",
     updateVideo: "Video aktualisieren",
     createVideo: "Video erstellen",
     noVideosFound: "Keine Videos gefunden. Erstellen Sie Ihr erstes Video, um zu starten.",
@@ -623,20 +624,20 @@ const dictionaries: I18nDictionaries = {
     ready: "Bereit",
     unknown: "Unbekannt",
 
-    // Admin: Chapter Management
-    chapterManagement: "Kapitelverwaltung",
-    addChapter: "Kapitel hinzufügen",
-    editChapter: "Kapitel bearbeiten",
-    addNewChapter: "Neues Kapitel hinzufügen",
-    chapterTitle: "Kapiteltitel",
+    // Admin: Modulverwaltung
+    chapterManagement: "Modulverwaltung",
+    addChapter: "Modul hinzufügen",
+    editChapter: "Modul bearbeiten",
+    addNewChapter: "Neues Modul hinzufügen",
+    chapterTitle: "Modultitel",
     chapterDescription: "Beschreibung",
-    chapterOrder: "Kapitelreihenfolge",
-    chaptersWillBePresented: "Kapitel werden den Teilnehmern in dieser Reihenfolge angezeigt",
-    updateChapter: "Kapitel aktualisieren",
-    createChapter: "Kapitel erstellen",
-    noChaptersFound: "Keine Kapitel gefunden. Erstellen Sie Ihr erstes Kapitel, um zu starten.",
-    chapterDeleted: "Kapitel erfolgreich gelöscht",
-    orderUpdated: "Kapitelreihenfolge aktualisiert",
+    chapterOrder: "Modulreihenfolge",
+    chaptersWillBePresented: "Module werden den Teilnehmern in dieser Reihenfolge angezeigt",
+    updateChapter: "Modul aktualisieren",
+    createChapter: "Modul erstellen",
+    noChaptersFound: "Keine Module gefunden. Erstellen Sie Ihr erstes Modul, um zu starten.",
+    chapterDeleted: "Modul erfolgreich gelöscht",
+    orderUpdated: "Modulreihenfolge aktualisiert",
 
     // Admin: Verification Management
     verificationManagement: "Verifizierungsverwaltung",
@@ -767,32 +768,34 @@ export function I18nProvider({ children, initialLang = "de" as LanguageCode }: {
     }
   }, [lang]);
 
-  const setLang = (l: LanguageCode) => setLangState(l);
+  const setLang = (newLang: LanguageCode) => setLangState(newLang);
 
-  const t = useMemo(() => {
-    const dict = dictionaries[lang] || dictionaries.de;
-    return (key: string, vars?: Record<string, string | number>) => {
-      let out = dict[key] ?? key;
-      if (vars) {
-        Object.entries(vars).forEach(([k, v]) => {
-          out = out.replace(new RegExp(`{${k}}`, 'g'), String(v));
-        });
-      }
-      return out;
-    };
-  }, [lang]);
+  const t = (key: string, vars?: Record<string, string | number>) => {
+    const dict = dictionaries[lang] || {};
+    let value = dict[key] || key;
+    if (vars) {
+      Object.keys(vars).forEach((k) => {
+        value = value.replace(`{${k}}`, String(vars[k]));
+      });
+    }
+    return value;
+  };
+
+  const value = useMemo(() => ({ lang, t, setLang }), [lang]);
 
   return (
-    <I18nContext.Provider value={{ lang, t, setLang }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   );
 }
 
 export function useI18n() {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error("useI18n must be used within I18nProvider");
-  return ctx;
+  const context = useContext(I18nContext);
+  if (!context) {
+    throw new Error("useI18n must be used within an I18nProvider");
+  }
+  return context;
 }
 
 export function LanguageSwitcher() {

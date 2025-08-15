@@ -2,15 +2,10 @@ import mongoose, { Schema } from 'mongoose'
 import type { Chapter } from '@/types'
 
 const MODULE_KEYS = [
-  'onboarding',
-  'grundkurs',
-  'intensivprogramm',
-  'delikt',
-  'konsumgeschichte',
-  'wissen_alkohol',
-  'wissen_drogen',
-  'pruefungsfragen',
-  'nachbesprechung',
+  'alcohol_drugs',
+  'traffic_points',
+  'medicinal_cannabis',
+  'extras',
 ] as const
 
 const ChapterSchema = new Schema<Chapter>({

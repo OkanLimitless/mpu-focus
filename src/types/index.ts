@@ -55,15 +55,10 @@ export interface Course extends Document {
 }
 
 export type ModuleKey =
-  | 'onboarding'
-  | 'grundkurs'
-  | 'intensivprogramm'
-  | 'delikt'
-  | 'konsumgeschichte'
-  | 'wissen_alkohol'
-  | 'wissen_drogen'
-  | 'pruefungsfragen'
-  | 'nachbesprechung'
+  | 'alcohol_drugs'
+  | 'traffic_points'
+  | 'medicinal_cannabis'
+  | 'extras'
 
 export interface Chapter extends Document {
   _id: string
