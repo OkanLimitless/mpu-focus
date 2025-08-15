@@ -42,6 +42,13 @@ interface ChapterData {
   isCompleted: boolean
   isCurrent: boolean
   videos: VideoData[]
+  moduleKey?: string
+}
+
+interface ModuleData {
+  key: string
+  label: string
+  chapters: ChapterData[]
 }
 
 interface CourseData {
@@ -51,6 +58,7 @@ interface CourseData {
     description: string
   } | null
   chapters: ChapterData[]
+  modules?: ModuleData[]
   userProgress: {
     currentChapterOrder: number
     completedChapters: number[]
@@ -284,6 +292,8 @@ export default function CoursePage() {
     return { current, total }
   }
 
+  const modules = (courseData.modules && courseData.modules.length > 0) ? courseData.modules : undefined
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient_to-br from-slate-50 to-blue-50 flex items-center justify-center">
@@ -297,7 +307,7 @@ export default function CoursePage() {
 
   if (!courseData.course) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient_to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -384,94 +394,190 @@ export default function CoursePage() {
               
               <CardContent className="p-0 overflow-y-auto max-h-[calc(100vh-16rem)]">
                 <div className="space-y-2 p-4 pt-0">
-                  {courseData.chapters.map((chapter, index) => (
-                    <div key={chapter._id} className="rounded-lg border border-gray-200 overflow-hidden">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start p-4 h-auto font-normal hover:bg-gray-50"
-                        onClick={() => toggleChapter(chapter._id)}
-                      >
-                        <div className="flex items-start gap-3 w-full">
-                          {openChapters.has(chapter._id) ? (
-                            <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
-                          )}
-                          
-                          <div className="text-left flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-900">{chapter.title}</span>
-                              <div className="flex items-center gap-1">
-                                {chapter.isCompleted && (
-                                  <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    {t('completed')}
-                                  </Badge>
-                                )}
-                                {chapter.isCurrent && !chapter.isCompleted && (
-                                  <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
-                                    <PlayCircle className="h-3 w-3 mr-1" />
-                                    {t('current')}
-                                  </Badge>
-                                )}
-                                {!chapter.isUnlocked && (
-                                  <Badge variant="outline" className="text-gray-500">
-                                    <Lock className="h-3 w-3 mr-1" />
-                                    {t('locked')}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {t('videosCount', { count: chapter.videos.length })}
-                            </div>
-                          </div>
+                  {modules ? (
+                    modules.map((mod) => (
+                      <div key={mod.key} className="mb-3">
+                        <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                          {mod.label}
                         </div>
-                      </Button>
-                      
-                      {openChapters.has(chapter._id) && (
-                        <div className="border-t border-gray-100 bg-gray-50/50">
-                          {chapter.videos.map((video, videoIndex) => (
+                        {mod.chapters.map((chapter) => (
+                          <div key={chapter._id} className="rounded-lg border border-gray-200 overflow-hidden mt-1">
                             <Button
-                              key={video._id}
                               variant="ghost"
-                              size="sm"
-                              className={`w-full justify-start p-3 h-auto font-normal border-none rounded-none
-                                ${selectedVideo?._id === video._id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
-                                ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}
-                              `}
-                              onClick={() => handleVideoSelect(video)}
-                              disabled={!video.isAccessible}
+                              className="w-full justify-start p-4 h-auto font-normal hover:bg-gray-50"
+                              onClick={() => toggleChapter(chapter._id)}
                             >
-                              <div className="flex items-center gap-3 w-full pl-7">
-                                <div className="flex-shrink-0">
-                                  {!video.isAccessible ? (
-                                    <Lock className="h-4 w-4 text-gray-400" />
-                                  ) : video.progress?.isCompleted ? (
-                                    <CheckCircle className="h-4 w-4 text-green-500" />
-                                  ) : selectedVideo?._id === video._id ? (
-                                    <PlayCircle className="h-4 w-4 text-blue-500" />
-                                  ) : (
-                                    <Play className="h-4 w-4 text-gray-400" />
-                                  )}
-                                </div>
-                                
-                                <div className="text-left flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-900 truncate">
-                                    {video.title}
+                              <div className="flex items-start gap-3 w-full">
+                                {openChapters.has(chapter._id) ? (
+                                  <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
+                                )}
+                                <div className="text-left flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-gray-900">{chapter.title}</span>
+                                    <div className="flex items-center gap-1">
+                                      {chapter.isCompleted && (
+                                        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          {t('completed')}
+                                        </Badge>
+                                      )}
+                                      {chapter.isCurrent && !chapter.isCompleted && (
+                                        <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
+                                          <PlayCircle className="h-3 w-3 mr-1" />
+                                          {t('current')}
+                                        </Badge>
+                                      )}
+                                      {!chapter.isUnlocked && (
+                                        <Badge variant="outline" className="text-gray-500">
+                                          <Lock className="h-3 w-3 mr-1" />
+                                          {t('locked')}
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                                    <Clock className="h-3 w-3" />
-                                    {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                  <div className="text-xs text-gray-500">
+                                    {t('videosCount', { count: chapter.videos.length })}
                                   </div>
                                 </div>
                               </div>
                             </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                            {openChapters.has(chapter._id) && (
+                              <div className="border-t border-gray-100 bg-gray-50/50">
+                                {chapter.videos.map((video) => (
+                                  <Button
+                                    key={video._id}
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`w-full justify-start p-3 h-auto font-normal border-none rounded-none
+                                      ${selectedVideo?._id === video._id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
+                                      ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}
+                                    `}
+                                    onClick={() => handleVideoSelect(video)}
+                                    disabled={!video.isAccessible}
+                                  >
+                                    <div className="flex items-center gap-3 w-full pl-7">
+                                      <div className="flex-shrink-0">
+                                        {!video.isAccessible ? (
+                                          <Lock className="h-4 w-4 text-gray-400" />
+                                        ) : video.progress?.isCompleted ? (
+                                          <CheckCircle className="h-4 w-4 text-green-500" />
+                                        ) : selectedVideo?._id === video._id ? (
+                                          <PlayCircle className="h-4 w-4 text-blue-500" />
+                                        ) : (
+                                          <Play className="h-4 w-4 text-gray-400" />
+                                        )}
+                                      </div>
+                                      
+                                      <div className="text-left flex-1 min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                          {video.title}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                                          <Clock className="h-3 w-3" />
+                                          {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  ) : (
+                    courseData.chapters.map((chapter, index) => (
+                      <div key={chapter._id} className="rounded-lg border border-gray-200 overflow-hidden">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start p-4 h-auto font-normal hover:bg-gray-50"
+                          onClick={() => toggleChapter(chapter._id)}
+                        >
+                          <div className="flex items-start gap-3 w-full">
+                            {openChapters.has(chapter._id) ? (
+                              <ChevronDown className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 mt-1 flex-shrink-0 text-gray-400" />
+                            )}
+                            
+                            <div className="text-left flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-gray-900">{chapter.title}</span>
+                                <div className="flex items-center gap-1">
+                                  {chapter.isCompleted && (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      {t('completed')}
+                                    </Badge>
+                                  )}
+                                  {chapter.isCurrent && !chapter.isCompleted && (
+                                    <Badge variant="default" className="bg-blue-100 text-blue-700 border-blue-200">
+                                      <PlayCircle className="h-3 w-3 mr-1" />
+                                      {t('current')}
+                                    </Badge>
+                                  )}
+                                  {!chapter.isUnlocked && (
+                                    <Badge variant="outline" className="text-gray-500">
+                                      <Lock className="h-3 w-3 mr-1" />
+                                      {t('locked')}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {t('videosCount', { count: chapter.videos.length })}
+                              </div>
+                            </div>
+                          </div>
+                        </Button>
+                        
+                        {openChapters.has(chapter._id) && (
+                          <div className="border-t border-gray-100 bg-gray-50/50">
+                            {chapter.videos.map((video, videoIndex) => (
+                              <Button
+                                key={video._id}
+                                variant="ghost"
+                                size="sm"
+                                className={`w-full justify-start p-3 h-auto font-normal border-none rounded-none
+                                  ${selectedVideo?._id === video._id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
+                                  ${!video.isAccessible ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}
+                                `}
+                                onClick={() => handleVideoSelect(video)}
+                                disabled={!video.isAccessible}
+                              >
+                                <div className="flex items-center gap-3 w-full pl-7">
+                                  <div className="flex-shrink-0">
+                                    {!video.isAccessible ? (
+                                      <Lock className="h-4 w-4 text-gray-400" />
+                                    ) : video.progress?.isCompleted ? (
+                                      <CheckCircle className="h-4 w-4 text-green-500" />
+                                    ) : selectedVideo?._id === video._id ? (
+                                      <PlayCircle className="h-4 w-4 text-blue-500" />
+                                    ) : (
+                                      <Play className="h-4 w-4 text-gray-400" />
+                                    )}
+                                  </div>
+                                  
+                                  <div className="text-left flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                      {video.title}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                      <Clock className="h-3 w-3" />
+                                      {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
+                                    </div>
+                                  </div>
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

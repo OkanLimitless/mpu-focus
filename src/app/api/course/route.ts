@@ -5,6 +5,30 @@ import { authOptions } from '@/lib/auth'
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
+const MODULE_ORDER = [
+  'onboarding',
+  'grundkurs',
+  'intensivprogramm',
+  'delikt',
+  'konsumgeschichte',
+  'wissen_alkohol',
+  'wissen_drogen',
+  'pruefungsfragen',
+  'nachbesprechung',
+] as const
+
+const MODULE_LABEL: Record<string, string> = {
+  onboarding: 'Onboarding',
+  grundkurs: 'Grundkurs',
+  intensivprogramm: 'Intensivprogramm Alkohol und Drogen',
+  delikt: 'Deliktdetails',
+  konsumgeschichte: 'Konsumgeschichte',
+  wissen_alkohol: 'Wissen zu Alkohol',
+  wissen_drogen: 'Wissen zu Drogen',
+  pruefungsfragen: 'Prüfungsfragen Alkohol & Drogen',
+  nachbesprechung: 'Nachbesprechung der Generalprobe',
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -41,6 +65,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         course: null,
         chapters: [],
+        modules: [],
         message: 'No course available'
       })
     }
@@ -93,40 +118,50 @@ export async function GET(request: NextRequest) {
     }
 
     // Structure the course data
+    const chapterPayload = chapters.map((chapter: any) => {
+      const isUnlocked = getChapterUnlockStatus(chapter.order)
+      const isCompleted = userProgress.completedChapters.includes(chapter.order)
+      const isCurrent = chapter.order === userProgress.currentChapterOrder
+      
+      return {
+        _id: chapter._id,
+        title: chapter.title,
+        description: chapter.description,
+        order: chapter.order,
+        moduleKey: chapter.moduleKey || 'grundkurs',
+        isUnlocked,
+        isCompleted,
+        isCurrent,
+        videos: videos
+          .filter(video => video.chapterId.toString() === (chapter._id as any).toString())
+          .map(video => ({
+            _id: video._id,
+            title: video.title,
+            description: video.description,
+            duration: video.duration,
+            order: video.order,
+            muxPlaybackId: video.muxPlaybackId,
+            status: video.status,
+            isAccessible: isUnlocked, // Videos are only accessible if chapter is unlocked
+            progress: progressLookup[(video._id as any).toString()] || null
+          }))
+      }
+    })
+
+    const modules = MODULE_ORDER.map((key) => ({
+      key,
+      label: MODULE_LABEL[key],
+      chapters: chapterPayload.filter(c => (c as any).moduleKey === key)
+    }))
+
     const courseData = {
       course: {
         _id: course._id,
         title: course.title,
         description: course.description
       },
-      chapters: chapters.map((chapter: any) => {
-        const isUnlocked = getChapterUnlockStatus(chapter.order)
-        const isCompleted = userProgress.completedChapters.includes(chapter.order)
-        const isCurrent = chapter.order === userProgress.currentChapterOrder
-        
-        return {
-          _id: chapter._id,
-          title: chapter.title,
-          description: chapter.description,
-          order: chapter.order,
-          isUnlocked,
-          isCompleted,
-          isCurrent,
-          videos: videos
-            .filter(video => video.chapterId.toString() === (chapter._id as any).toString())
-            .map(video => ({
-              _id: video._id,
-              title: video.title,
-              description: video.description,
-              duration: video.duration,
-              order: video.order,
-              muxPlaybackId: video.muxPlaybackId,
-              status: video.status,
-              isAccessible: isUnlocked, // Videos are only accessible if chapter is unlocked
-              progress: progressLookup[(video._id as any).toString()] || null
-            }))
-        }
-      }),
+      chapters: chapterPayload,
+      modules,
       userProgress: {
         currentChapterOrder: userProgress.currentChapterOrder,
         completedChapters: userProgress.completedChapters

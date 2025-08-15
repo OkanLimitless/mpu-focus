@@ -278,7 +278,7 @@ export default function ChapterManagement() {
                     </div>
                     <p className="text-sm text-gray-600">{chapter.description}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{chapter.videoCount || 0} {t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                      <span>{t('videosCount', { count: chapter.videoCount || 0 })}</span>
                       <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
