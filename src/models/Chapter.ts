@@ -1,10 +1,27 @@
 import mongoose, { Schema } from 'mongoose'
 import type { Chapter } from '@/types'
 
+const MODULE_KEYS = [
+  'onboarding',
+  'grundkurs',
+  'intensivprogramm',
+  'delikt',
+  'konsumgeschichte',
+  'wissen_alkohol',
+  'wissen_drogen',
+  'pruefungsfragen',
+  'nachbesprechung',
+] as const
+
 const ChapterSchema = new Schema<Chapter>({
   courseId: {
     type: Schema.Types.ObjectId,
     ref: 'Course',
+    required: true,
+  },
+  moduleKey: {
+    type: String,
+    enum: MODULE_KEYS as any,
     required: true,
   },
   title: {
@@ -31,5 +48,6 @@ const ChapterSchema = new Schema<Chapter>({
 
 // Index for efficient querying
 ChapterSchema.index({ courseId: 1, order: 1 })
+ChapterSchema.index({ moduleKey: 1, order: 1 })
 
 export default mongoose.models.Chapter || mongoose.model<Chapter>('Chapter', ChapterSchema)

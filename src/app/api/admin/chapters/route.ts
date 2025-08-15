@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
           order: 1,
           isActive: 1,
           videoCount: 1,
+          moduleKey: 1,
           createdAt: 1
         }
       }
@@ -100,11 +101,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { title, description, order } = await request.json()
+    const { title, description, order, moduleKey } = await request.json()
 
-    if (!title || !description) {
+    if (!title || !description || !moduleKey) {
       return NextResponse.json(
-        { error: 'Title and description are required' },
+        { error: 'Title, description and moduleKey are required' },
         { status: 400 }
       )
     }
@@ -119,16 +120,17 @@ export async function POST(request: NextRequest) {
       await course.save()
     }
 
-    // If order is not specified, get the next available order
+    // If order is not specified, get the next available order within module
     let chapterOrder = order
     if (!chapterOrder) {
-      const lastChapter = await Chapter.findOne({ courseId: course._id }).sort({ order: -1 })
+      const lastChapter = await Chapter.findOne({ courseId: course._id, moduleKey }).sort({ order: -1 })
       chapterOrder = lastChapter ? lastChapter.order + 1 : 1
     }
 
     // Create new chapter
     const chapter = new Chapter({
       courseId: course._id,
+      moduleKey,
       title: title.trim(),
       description: description.trim(),
       order: chapterOrder,

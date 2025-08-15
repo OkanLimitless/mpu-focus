@@ -18,8 +18,21 @@ interface ChapterData {
   order: number
   isActive: boolean
   videoCount?: number
+  moduleKey?: string
   createdAt: Date
 }
+
+const MODULE_OPTIONS = [
+  { key: 'onboarding', label: 'Onboarding' },
+  { key: 'grundkurs', label: 'Grundkurs' },
+  { key: 'intensivprogramm', label: 'Intensivprogramm Alkohol und Drogen' },
+  { key: 'delikt', label: 'Deliktdetails' },
+  { key: 'konsumgeschichte', label: 'Konsumgeschichte' },
+  { key: 'wissen_alkohol', label: 'Wissen zu Alkohol' },
+  { key: 'wissen_drogen', label: 'Wissen zu Drogen' },
+  { key: 'pruefungsfragen', label: 'Prüfungsfragen Alkohol & Drogen' },
+  { key: 'nachbesprechung', label: 'Nachbesprechung der Generalprobe' },
+]
 
 export default function ChapterManagement() {
   const [chapters, setChapters] = useState<ChapterData[]>([])
@@ -33,7 +46,8 @@ export default function ChapterManagement() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    order: 1
+    order: 1,
+    moduleKey: MODULE_OPTIONS[0].key,
   })
 
   useEffect(() => {
@@ -68,22 +82,8 @@ export default function ChapterManagement() {
     e.preventDefault()
     setFormLoading(true)
 
-    if (!formData.title.trim()) {
-      toast({
-        title: t('error'),
-        description: t('chapterTitle') + ' ' + (t('isRequired' as any) || ''),
-        variant: 'destructive',
-      })
-      setFormLoading(false)
-      return
-    }
-
-    if (!formData.description.trim()) {
-      toast({
-        title: t('error'),
-        description: t('chapterDescription') + ' ' + (t('isRequired' as any) || ''),
-        variant: 'destructive',
-      })
+    if (!formData.title.trim() || !formData.description.trim() || !formData.moduleKey) {
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
       setFormLoading(false)
       return
     }
@@ -103,26 +103,15 @@ export default function ChapterManagement() {
       const data = await response.json()
 
       if (response.ok) {
-        toast({
-          title: t('success'),
-          description: `${t('chapterManagement')} ${editingChapter ? t('update') : t('create')} ${t('success').toLowerCase()}`,
-        })
+        toast({ title: t('success'), description: `${t('chapterManagement')} ${editingChapter ? t('update') : t('create')} ${t('success').toLowerCase()}` })
         setDialogOpen(false)
         resetForm()
         fetchChapters()
       } else {
-        toast({
-          title: t('error'),
-          description: data.error || t('unexpectedError'),
-          variant: 'destructive',
-        })
+        toast({ title: t('error'), description: data.error || t('unexpectedError'), variant: 'destructive' })
       }
     } catch (error) {
-      toast({
-        title: t('error'),
-        description: t('unexpectedError'),
-        variant: 'destructive',
-      })
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
     } finally {
       setFormLoading(false)
     }
@@ -132,18 +121,15 @@ export default function ChapterManagement() {
     setFormData({
       title: '',
       description: '',
-      order: chapters.length + 1
+      order: chapters.length + 1,
+      moduleKey: MODULE_OPTIONS[0].key,
     })
     setEditingChapter(null)
   }
 
   const handleEdit = (chapter: ChapterData) => {
     setEditingChapter(chapter)
-    setFormData({
-      title: chapter.title,
-      description: chapter.description,
-      order: chapter.order
-    })
+    setFormData({ title: chapter.title, description: chapter.description, order: chapter.order, moduleKey: chapter.moduleKey || MODULE_OPTIONS[0].key })
     setDialogOpen(true)
   }
 
@@ -153,30 +139,17 @@ export default function ChapterManagement() {
     }
 
     try {
-      const response = await fetch(`/api/admin/chapters/${chapterId}`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(`/api/admin/chapters/${chapterId}`, { method: 'DELETE' })
 
       if (response.ok) {
-        toast({
-          title: t('success'),
-          description: t('chapterDeleted'),
-        })
+        toast({ title: t('success'), description: t('chapterDeleted') })
         fetchChapters()
       } else {
         const data = await response.json()
-        toast({
-          title: t('error'),
-          description: data.error || t('unexpectedError'),
-          variant: 'destructive',
-        })
+        toast({ title: t('error'), description: data.error || t('unexpectedError'), variant: 'destructive' })
       }
     } catch (error) {
-      toast({
-        title: t('error'),
-        description: t('unexpectedError'),
-        variant: 'destructive',
-      })
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
     }
   }
 
@@ -184,32 +157,19 @@ export default function ChapterManagement() {
     try {
       const response = await fetch(`/api/admin/chapters/${chapterId}/move`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ direction }),
       })
 
       if (response.ok) {
-        toast({
-          title: t('success'),
-          description: t('orderUpdated'),
-        })
+        toast({ title: t('success'), description: t('orderUpdated') })
         fetchChapters()
       } else {
         const data = await response.json()
-        toast({
-          title: t('error'),
-          description: data.error || t('unexpectedError'),
-          variant: 'destructive',
-        })
+        toast({ title: t('error'), description: data.error || t('unexpectedError'), variant: 'destructive' })
       }
     } catch (error) {
-      toast({
-        title: t('error'),
-        description: t('unexpectedError'),
-        variant: 'destructive',
-      })
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
     }
   }
 
@@ -243,7 +203,7 @@ export default function ChapterManagement() {
                 {t('addChapter')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[560px]">
               <DialogHeader>
                 <DialogTitle>
                   {editingChapter ? t('editChapter') : t('addNewChapter')}
@@ -256,36 +216,26 @@ export default function ChapterManagement() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">{t('chapterTitle')}</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder={t('chapterTitle')}
-                    required
-                  />
+                  <Input id="title" value={formData.title} onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={t('chapterTitle')} required />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">{t('chapterDescription')}</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder={t('chapterDescription')}
-                    rows={3}
-                    required
-                  />
+                  <Textarea id="description" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder={t('chapterDescription')} rows={3} required />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="moduleKey">Module</Label>
+                  <select id="moduleKey" className="w-full border rounded px-3 py-2" value={formData.moduleKey} onChange={(e) => setFormData(prev => ({ ...prev, moduleKey: e.target.value }))}>
+                    {MODULE_OPTIONS.map(m => (
+                      <option key={m.key} value={m.key}>{m.label}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="order">{t('chapterOrder')}</Label>
-                  <Input
-                    id="order"
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))}
-                    min="1"
-                  />
+                  <Input id="order" type="number" value={formData.order} onChange={(e) => setFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))} min="1" />
                   <p className="text-xs text-gray-500">{t('chaptersWillBePresented')}</p>
                 </div>
 
@@ -322,39 +272,28 @@ export default function ChapterManagement() {
                         {t('chapter')} {chapter.order}
                       </span>
                       <h3 className="font-medium">{chapter.title}</h3>
+                      {chapter.moduleKey && (
+                        <span className="ml-2 text-xs text-gray-500">[{chapter.moduleKey}]</span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600">{chapter.description}</p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{(chapter.videoCount || 0)} {t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                      <span>{chapter.videoCount || 0} {t('videosCount', { count: chapter.videoCount || 0 })}</span>
                       <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => moveChapter(chapter._id, 'up')}
-                      disabled={index === 0}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'up')} disabled={index === 0}>
                       <ArrowUp className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => moveChapter(chapter._id, 'down')}
-                      disabled={index === chapters.length - 1}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => moveChapter(chapter._id, 'down')} disabled={index === chapters.length - 1}>
                       <ArrowDown className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => handleEdit(chapter)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      onClick={() => handleDelete(chapter._id)}
-                    >
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(chapter._id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

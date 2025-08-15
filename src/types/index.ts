@@ -54,9 +54,21 @@ export interface Course extends Document {
   updatedAt: Date
 }
 
+export type ModuleKey =
+  | 'onboarding'
+  | 'grundkurs'
+  | 'intensivprogramm'
+  | 'delikt'
+  | 'konsumgeschichte'
+  | 'wissen_alkohol'
+  | 'wissen_drogen'
+  | 'pruefungsfragen'
+  | 'nachbesprechung'
+
 export interface Chapter extends Document {
   _id: string
   courseId: Types.ObjectId | string
+  moduleKey: ModuleKey
   title: string
   description: string
   order: number
