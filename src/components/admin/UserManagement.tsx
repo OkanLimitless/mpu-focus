@@ -459,13 +459,8 @@ export default function UserManagement() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            {t('userManagement')}
-          </CardTitle>
-          <CardDescription>
-            {t('manageUsersDesc')}
-          </CardDescription>
+          <CardTitle className="text-lg font-medium text-foreground">{t('userManagement')}</CardTitle>
+          <CardDescription className="text-sm text-muted-foreground">{t('manageUsersDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Filters */}

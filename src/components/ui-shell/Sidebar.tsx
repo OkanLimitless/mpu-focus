@@ -67,7 +67,7 @@ export function Sidebar({
 
   return (
     <aside className={cn(
-      "h-full bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-r",
+      "h-full bg-white/90 dark:bg-[#0b0e11]/90 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#0b0e11]/60 backdrop-blur border-r",
       collapsed ? "w-16" : "w-72"
     )}>
       <nav className="p-2">
@@ -81,13 +81,13 @@ export function Sidebar({
                 <Link
                   href={item.href}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2",
-                    isActive ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+                    "group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 border-l-2",
+                    isActive ? "bg-primary/10 text-primary border-primary" : "text-foreground hover:bg-muted border-transparent"
                   )}
                 >
-                  <Icon className={cn("h-5 w-5", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")}/>
+                  <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}/>
                   {!collapsed && (
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className={cn("flex-1 truncate", isActive ? "font-semibold" : undefined)}>{item.label}</span>
                   )}
                   {typeof count === "number" && count > 0 && (
                     <span className={cn(

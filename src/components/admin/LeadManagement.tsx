@@ -324,42 +324,49 @@ export default function LeadManagement() {
         </div>
 
         {/* Leads Table */}
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-xl overflow-hidden bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 dark:bg-gray-800/80">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('contactHeader')}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('statusHeader')}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('timeframeHeader')}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('createdHeader')}</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">{t('actionsHeader')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{t('contactHeader')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{t('statusHeader')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{t('timeframeHeader')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{t('createdHeader')}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">{t('actionsHeader')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                       {t('loadingLeads')}
                     </td>
                   </tr>
                 ) : leads.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      {t('noLeadsFound')}
+                    <td colSpan={5} className="px-4 py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="mx-auto mb-2 h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-inbox"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                          </div>
+                          <div className="text-muted-foreground">{t('noLeadsFound')}</div>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  leads.map((lead) => (
-                    <tr key={lead._id} className="hover:bg-gray-50">
+                  leads.map((lead, idx) => (
+                    <tr key={lead._id} className="even:bg-gray-50 dark:even:bg-gray-900/40 hover:bg-muted/30">
                       <td className="px-4 py-3">
                         <div>
-                          <div className="font-medium">{lead.firstName} {lead.lastName}</div>
-                          <div className="text-sm text-gray-500 flex items-center space-x-2">
+                          <div className="font-medium text-foreground">{lead.firstName} {lead.lastName}</div>
+                          <div className="text-sm text-muted-foreground flex items-center space-x-2">
                             <Mail className="h-3 w-3" />
                             <span>{lead.email}</span>
                           </div>
-                          <div className="text-sm text-gray-500 flex items-center space-x-2">
+                          <div className="text-sm text-muted-foreground flex items-center space-x-2">
                             <Phone className="h-3 w-3" />
                             <span>{lead.phone}</span>
                           </div>
@@ -372,7 +379,7 @@ export default function LeadManagement() {
                         <span className="text-sm">{lead.timeframe}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-muted-foreground">
                           {formatDate(lead.createdAt.toString())}
                         </span>
                       </td>

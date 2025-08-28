@@ -15,7 +15,7 @@ export function Topbar({
   actions?: ReactNode
 }) {
   return (
-    <header className="bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur shadow-sm border-b px-4 lg:px-6 py-3">
+    <header className="bg-white/80 dark:bg-[#0e1116]/90 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#0e1116]/60 backdrop-blur shadow-sm border-b px-4 lg:px-6 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <Breadcrumbs baseLabel="Admin" baseHref="/admin" />
@@ -30,7 +30,7 @@ export function Topbar({
             <Input
               id="global-search-input"
               aria-label="Global search"
-              className="pl-8 w-72"
+              className="pl-8 w-72 bg-background border border-border"
               placeholder="Search... (/ to focus)"
             />
           </div>
