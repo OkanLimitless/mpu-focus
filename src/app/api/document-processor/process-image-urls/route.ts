@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { VISION_ANALYSIS_PROMPT } from '@/lib/document-processor';
+import { VISION_ANALYSIS_PROMPT, VISION_ANALYSIS_SYSTEM_PROMPT } from '@/lib/document-processor';
 import OpenAI from 'openai';
 
 // Helper function to retry OpenAI calls with exponential backoff
@@ -21,17 +21,21 @@ async function retryOpenAICall(
         model: "gpt-5-mini", // GPT-5 Mini with 200k TPM - perfect for large document processing
         messages: [
           {
+            role: "system",
+            content: VISION_ANALYSIS_SYSTEM_PROMPT,
+          },
+          {
             role: "user",
             content: [
               {
                 type: "text",
-                text: `${VISION_ANALYSIS_PROMPT}\n\nCOMPLETE DOCUMENT ANALYSIS: You are analyzing a complete ${imageUrls.length}-page German legal document for MPU assessment. This contains the ENTIRE document, so you can see all pages and make connections across the full content. Please provide a comprehensive analysis of ALL visible information, connecting related data across all pages for a complete MPU evaluation report.`
+                text: `${VISION_ANALYSIS_PROMPT}\n\nVOLLEDIGE DOCUMENTANALYSE: Dit betreft een document van ${imageUrls.length} pagina's (compleet). Geef een volledige, samenhangende analyse met paginaverwijzingen.`
               },
               ...imageMessages
             ],
           },
         ],
-        max_completion_tokens: 16000, // Maximized for GPT-5 Mini's comprehensive analysis capabilities
+        max_tokens: 16000,
       });
 
       return completion.choices[0]?.message?.content || '';
@@ -116,17 +120,21 @@ export async function POST(request: NextRequest) {
                 model: "gpt-5-mini",
                 messages: [
                   {
+                    role: "system",
+                    content: VISION_ANALYSIS_SYSTEM_PROMPT,
+                  },
+                  {
                     role: "user",
                     content: [
                       {
                         type: "text",
-                        text: `${VISION_ANALYSIS_PROMPT}\n\nCOMPLETE DOCUMENT ANALYSIS (OPTIMIZED MODE): You are analyzing a complete ${imageUrls.length}-page German legal document for MPU assessment. Due to technical constraints, images are provided in optimized quality. Please provide the most comprehensive analysis possible of ALL visible information across all pages.`
+                        text: `${VISION_ANALYSIS_PROMPT}\n\nVOLLEDIGE DOCUMENTANALYSE (GEOPTIMALISEERD): Document van ${imageUrls.length} pagina's in geoptimaliseerde afbeeldingskwaliteit. Lever alsnog zo volledig mogelijke resultaten met paginaverwijzingen.`
                       },
                       ...imageMessages
                     ],
                   },
                 ],
-                                 max_completion_tokens: 16000,
+                max_tokens: 16000,
               });
 
               allExtractedData = completion.choices[0]?.message?.content || '';
@@ -146,6 +154,31 @@ export async function POST(request: NextRequest) {
               
               throw new Error(`AI processing failed: ${fallbackError.message}. Try uploading a smaller document or check your internet connection.`);
             }
+          }
+
+          // Consolidation pass to improve completeness
+          try {
+            const consolidation = await openai.chat.completions.create({
+              model: "gpt-5-mini",
+              messages: [
+                {
+                  role: "system",
+                  content: VISION_ANALYSIS_SYSTEM_PROMPT,
+                },
+                {
+                  role: "user",
+                  content: `Controleer en consolideer onderstaande extractie op volledigheid. Voeg ontbrekende velden of delicten toe als deze impliciet/expliciet zichtbaar zijn in de gegevens; geen hallucinaties. Behoud Nederlands output, voeg paginaverwijzingen en korte Duitse citaten toe waar mogelijk.\n\nEXTRACTIE:\n\n${allExtractedData}`,
+                }
+              ],
+              max_tokens: 8000,
+              temperature: 0.2,
+            });
+            const consolidated = consolidation.choices[0]?.message?.content;
+            if (consolidated && consolidated.length >= (allExtractedData?.length || 0) * 0.8) {
+              allExtractedData = consolidated;
+            }
+          } catch (e) {
+            console.warn('Consolidation step skipped due to error:', e);
           }
 
           sendStatus({
