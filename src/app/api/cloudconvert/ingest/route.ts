@@ -81,10 +81,23 @@ export async function POST(request: NextRequest) {
               throw new Error('CloudConvert job failed');
             }
             if (status === 'finished') {
-              // Find export task
-              const exportTask = statusJson.included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
-              const files = exportTask?.attributes?.result?.files || [];
-              const imageUrls: string[] = files.map((f: any) => f.url).filter(Boolean);
+              // Find export task id and fetch its result explicitly
+              const exportTask = (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
+              let imageUrls: string[] = [];
+              if (exportTask?.id) {
+                const taskResp = await fetch(`${CC_API}/tasks/${exportTask.id}`, {
+                  headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+                });
+                if (taskResp.ok) {
+                  const taskJson: any = await taskResp.json();
+                  const files = taskJson?.data?.result?.files || [];
+                  imageUrls = files.map((f: any) => f.url).filter(Boolean);
+                }
+              }
+              if (!imageUrls.length) {
+                const files = exportTask?.attributes?.result?.files || [];
+                imageUrls = files.map((f: any) => f.url).filter(Boolean);
+              }
               if (!imageUrls.length) {
                 throw new Error('No image URLs returned by CloudConvert');
               }

@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
-// Minimal webhook receiver: verifies secret (if provided) and returns 200.
-// Optional: could trigger follow-up processing here if not polling.
+// Verify CloudConvert webhook via HMAC SHA256 of raw body using CLOUDCONVERT_WEBHOOK_SIGNING_SECRET.
+function verifySignature(rawBody: string, header: string | null, secret: string): boolean {
+  if (!header) return false;
+  const digest = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  // Accept exact match or v1=... format
+  const normalized = header.trim().toLowerCase();
+  if (normalized === digest) return true;
+  const v1Match = normalized.match(/v1=([a-f0-9]{64})/);
+  if (v1Match && v1Match[1] === digest) return true;
+  return false;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const signature = request.headers.get('CloudConvert-Signature');
     const secret = process.env.CLOUDCONVERT_WEBHOOK_SIGNING_SECRET;
+    const raw = await request.text();
     if (secret) {
-      if (!signature || signature !== secret) {
+      const signature = request.headers.get('CloudConvert-Signature');
+      const valid = verifySignature(raw, signature, secret);
+      if (!valid) {
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     }
 
-    const payload = await request.json();
+    // Safe to parse now
+    const payload = JSON.parse(raw);
     console.log('CloudConvert webhook:', JSON.stringify(payload));
 
     return NextResponse.json({ ok: true });
