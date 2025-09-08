@@ -222,9 +222,6 @@ export default function VerificationManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">{t('verificationManagement')}</h1>
-      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -333,10 +330,6 @@ export default function VerificationManagement() {
 
       {/* Users List */}
       <Card>
-        <CardHeader>
-          <CardTitle>{t('verificationManagement')}</CardTitle>
-          <CardDescription>{t('manageVerificationDesc')}</CardDescription>
-        </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {loading ? (

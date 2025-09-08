@@ -22,6 +22,21 @@ interface ChapterData {
   createdAt: Date
 }
 
+interface VideoData {
+  _id: string
+  title: string
+  description: string
+  muxAssetId?: string
+  muxPlaybackId?: string
+  duration: number
+  order: number
+  isActive: boolean
+  chapterId: string
+  chapterTitle?: string
+  status?: string
+  createdAt: Date
+}
+
 const MODULE_OPTIONS = [
   { key: 'alcohol_drugs', label: 'Lernvideos Alkohol & Drogen' },
   { key: 'traffic_points', label: 'Lernvideos Verkehr­sauffälligkeiten (Punkte in Flensburg)' },
@@ -35,6 +50,10 @@ export default function ChapterManagement() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingChapter, setEditingChapter] = useState<ChapterData | null>(null)
   const [formLoading, setFormLoading] = useState(false)
+  const [videos, setVideos] = useState<VideoData[]>([])
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false)
+  const [editingVideo, setEditingVideo] = useState<VideoData | null>(null)
+  const [videoFormLoading, setVideoFormLoading] = useState(false)
   const { toast } = useToast()
   const { t } = useI18n()
 
@@ -47,8 +66,19 @@ export default function ChapterManagement() {
     moduleKey: MODULE_OPTIONS[0].key,
   })
 
+  const [videoFormData, setVideoFormData] = useState({
+    title: '',
+    description: '',
+    muxAssetId: '',
+    order: 1,
+    chapterId: '' as string,
+  })
+
+  const [activeVideoChapter, setActiveVideoChapter] = useState<ChapterData | null>(null)
+
   useEffect(() => {
     fetchChapters()
+    fetchVideos()
   }, [])
 
   const fetchChapters = async () => {
@@ -72,6 +102,20 @@ export default function ChapterManagement() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchVideos = async () => {
+    try {
+      const response = await fetch('/api/admin/videos')
+      const data = await response.json()
+      if (response.ok) {
+        setVideos(data.videos)
+      } else {
+        console.error('Failed to fetch videos:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error)
     }
   }
 
@@ -177,6 +221,90 @@ export default function ChapterManagement() {
     }
   }
 
+  // Video actions
+  const openAddVideo = (chapter: ChapterData) => {
+    setActiveVideoChapter(chapter)
+    const chapterVideos = videos.filter(v => v.chapterId === chapter._id)
+    setVideoFormData({ title: '', description: '', muxAssetId: '', order: (chapterVideos.length + 1), chapterId: chapter._id })
+    setEditingVideo(null)
+    setVideoDialogOpen(true)
+  }
+
+  const handleEditVideo = (video: VideoData) => {
+    setEditingVideo(video)
+    setActiveVideoChapter(chapters.find(c => c._id === video.chapterId) || null)
+    setVideoFormData({ title: video.title, description: video.description, muxAssetId: video.muxAssetId || '', order: video.order, chapterId: video.chapterId })
+    setVideoDialogOpen(true)
+  }
+
+  const handleDeleteVideo = async (videoId: string) => {
+    if (!confirm(t('confirmDeleteVideo'))) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/videos/${videoId}`, { method: 'DELETE' })
+      if (response.ok) {
+        toast({ title: t('success'), description: t('videoDeleted') })
+        fetchVideos()
+      } else {
+        const data = await response.json()
+        toast({ title: t('error'), description: data.error || t('unexpectedError'), variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
+    }
+  }
+
+  const syncMuxAsset = async (videoId: string) => {
+    try {
+      const response = await fetch(`/api/admin/videos/${videoId}/sync-mux`, { method: 'POST' })
+      if (response.ok) {
+        toast({ title: t('success'), description: t('muxSynced') })
+        fetchVideos()
+      } else {
+        const data = await response.json()
+        toast({ title: t('error'), description: data.error || t('failedToSyncMux'), variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
+    }
+  }
+
+  const handleSubmitVideo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setVideoFormLoading(true)
+
+    if (!videoFormData.description.trim() || !videoFormData.chapterId) {
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
+      setVideoFormLoading(false)
+      return
+    }
+
+    try {
+      const url = editingVideo ? `/api/admin/videos/${editingVideo._id}` : '/api/admin/videos'
+      const method = editingVideo ? 'PUT' : 'POST'
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(videoFormData),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        toast({ title: t('success'), description: `Video ${editingVideo ? t('update') : t('create')} ${t('success').toLowerCase()}` })
+        setVideoDialogOpen(false)
+        setEditingVideo(null)
+        fetchVideos()
+      } else {
+        toast({ title: t('error'), description: data.error || t('unexpectedError'), variant: 'destructive' })
+      }
+    } catch (error) {
+      toast({ title: t('error'), description: t('unexpectedError'), variant: 'destructive' })
+    } finally {
+      setVideoFormLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <Card>
@@ -193,6 +321,7 @@ export default function ChapterManagement() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
@@ -303,7 +432,11 @@ export default function ChapterManagement() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredChapters.map((chapter, index) => (
+                {filteredChapters.map((chapter, index) => {
+                  const videosForChapter = videos
+                    .filter((v: any) => (typeof v.chapterId === 'string' ? v.chapterId === chapter._id : v.chapterId?._id === chapter._id))
+                    .sort((a, b) => a.order - b.order)
+                  return (
                   <div key={chapter._id} className="border rounded-lg p-4">
                     <div className="flex items-start justify-between">
                       <div className="space-y-2 flex-1">
@@ -318,8 +451,59 @@ export default function ChapterManagement() {
                         </div>
                         <p className="text-sm text-gray-600">{chapter.description}</p>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                          <span>{t('videosCount', { count: videosForChapter.length })}</span>
                           <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
+                        </div>
+
+                        {/* Videos for this module */}
+                        <div className="mt-3 border-t pt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold">{t('videos')}</h4>
+                            <Button size="sm" onClick={() => openAddVideo(chapter)}>
+                              {t('addVideo')}
+                            </Button>
+                          </div>
+                          {videosForChapter.length === 0 ? (
+                            <p className="text-xs text-gray-500">{t('noVideosFound')}</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {videosForChapter.map((video) => (
+                                <div key={video._id} className="border rounded p-3">
+                                  <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-2">
+                                        <h5 className="font-medium">{video.title}</h5>
+                                        {video.status === 'ready' ? (
+                                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">{t('ready')}</span>
+                                        ) : video.status === 'preparing' ? (
+                                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">{t('processing')}</span>
+                                        ) : (
+                                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">{t('unknown')}</span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-gray-600">{video.description}</p>
+                                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                                        <span>{t('orderLabel')} {video.order}</span>
+                                        {video.duration > 0 && <span>{t('duration')} {Math.round(video.duration)}s</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {video.muxPlaybackId && (
+                                        <Button size="sm" variant="outline" asChild>
+                                          <a href={`https://stream.mux.com/${video.muxPlaybackId}`} target="_blank" rel="noopener noreferrer">View</a>
+                                        </Button>
+                                      )}
+                                      {video.muxAssetId && (
+                                        <Button size="sm" variant="outline" onClick={() => syncMuxAsset(video._id)}>Sync</Button>
+                                      )}
+                                      <Button size="sm" variant="outline" onClick={() => handleEditVideo(video)}>{t('editVideo')}</Button>
+                                      <Button size="sm" variant="outline" onClick={() => handleDeleteVideo(video._id)}>{t('deleteBtn')}</Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -339,12 +523,66 @@ export default function ChapterManagement() {
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </>
         )}
       </CardContent>
     </Card>
+    
+    {/* Add/Edit Video Dialog */}
+    <Dialog open={videoDialogOpen} onOpenChange={setVideoDialogOpen}>
+      <DialogContent className="sm:max-w-[560px]">
+        <DialogHeader>
+          <DialogTitle>
+            {editingVideo ? t('editVideo') : t('addNewVideo')}
+          </DialogTitle>
+          <DialogDescription>
+            {activeVideoChapter ? `${t('chapter')} ${activeVideoChapter.order}: ${activeVideoChapter.title}` : ''}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(e) => handleSubmitVideo(e)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="video-title">{t('videoTitle')}</Label>
+            <Input id="video-title" value={videoFormData.title} onChange={(e) => setVideoFormData(prev => ({ ...prev, title: e.target.value }))} placeholder={t('enterVideoTitle')} required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="video-description">{t('description')}</Label>
+            <Textarea id="video-description" value={videoFormData.description} onChange={(e) => setVideoFormData(prev => ({ ...prev, description: e.target.value }))} placeholder={t('enterDescription')} rows={3} required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="video-mux">{t('muxAssetId')}</Label>
+            <Input id="video-mux" value={videoFormData.muxAssetId} onChange={(e) => setVideoFormData(prev => ({ ...prev, muxAssetId: e.target.value }))} placeholder={t('enterMuxAssetId')} />
+            <p className="text-xs text-gray-500">{t('findMuxHint')}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="video-order">{t('order')}</Label>
+              <Input id="video-order" type="number" value={videoFormData.order} onChange={(e) => setVideoFormData(prev => ({ ...prev, order: parseInt(e.target.value) || 1 }))} min="1" />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('chapter')}</Label>
+              <div className="w-full border rounded px-3 py-2 bg-muted text-sm">
+                {activeVideoChapter ? `${t('chapter')} ${activeVideoChapter.order}: ${activeVideoChapter.title}` : ''}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setVideoDialogOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" disabled={videoFormLoading}>
+              {videoFormLoading ? t('processing') : (editingVideo ? t('updateVideo') : t('createVideo'))}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

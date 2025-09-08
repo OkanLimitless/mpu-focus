@@ -17,10 +17,7 @@ const UserManagement = dynamic(() => import('@/components/admin/UserManagement')
   loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
 })
 
-const VideoManagement = dynamic(() => import('@/components/admin/VideoManagement'), {
-  ssr: false,
-  loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
-})
+// Removed Videos management in favor of managing videos within Modules (Chapters)
 
 const ChapterManagement = dynamic(() => import('@/components/admin/ChapterManagement'), {
   ssr: false,
@@ -37,7 +34,7 @@ const VerificationManagement = dynamic(() => import('@/components/admin/Verifica
   loading: () => <div className="flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
 })
 
-type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters' | 'videos'
+type AdminSection = 'dashboard' | 'users' | 'leads' | 'verification' | 'chapters'
 
 const navigationItems = [
   {
@@ -69,12 +66,6 @@ const navigationItems = [
     nameKey: 'nav_chapters',
     icon: BookOpen,
     descriptionKey: 'nav_chapters_desc'
-  },
-  {
-    id: 'videos' as AdminSection,
-    nameKey: 'nav_videos',
-    icon: Video,
-    descriptionKey: 'nav_videos_desc'
   }
 ]
 
@@ -149,10 +140,6 @@ export default function AdminDashboardPage() {
       case 'dashboard':
         return (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('adminOverviewTitle')}</h2>
-              <p className="text-gray-600">{t('adminOverviewDesc')}</p>
-            </div>
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -227,8 +214,7 @@ export default function AdminDashboardPage() {
         return <VerificationManagement />
       case 'chapters':
         return <ChapterManagement />
-      case 'videos':
-        return <VideoManagement />
+      // 'videos' removed; videos are managed within 'chapters'
       default:
         return null
     }
