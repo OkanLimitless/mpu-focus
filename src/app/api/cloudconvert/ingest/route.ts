@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
       const run = async () => {
         try {
-          const { fileUrl, fileName } = await request.json();
+          const { fileUrl, fileName, jobId: providedJobId } = await request.json();
           if (!process.env.CLOUDCONVERT_API_KEY) {
             throw new Error('CLOUDCONVERT_API_KEY is not configured');
           }
@@ -34,22 +34,24 @@ export async function POST(request: NextRequest) {
             throw new Error('fileUrl is required');
           }
 
-          log('Request received', { fileName, fileUrl });
-          send({ step: 'Conversion', progress: 5, message: 'Starting CloudConvert job...' });
+          log('Request received', { fileName, fileUrl, providedJobId });
+          send({ step: 'Conversion', progress: 5, message: providedJobId ? 'Using existing CloudConvert job...' : 'Starting CloudConvert job...' });
 
           // Optional preflight: verify the file URL is reachable
-          try {
-            const headResp = await fetch(fileUrl, { method: 'HEAD' });
-            log('Preflight HEAD status for fileUrl:', headResp.status);
-            if (!headResp.ok) {
-              log('Preflight HEAD failed body (truncated)');
+          if (!providedJobId && fileUrl) {
+            try {
+              const headResp = await fetch(fileUrl, { method: 'HEAD' });
+              log('Preflight HEAD status for fileUrl:', headResp.status);
+              if (!headResp.ok) {
+                log('Preflight HEAD failed body (truncated)');
+              }
+            } catch (e: any) {
+              log('Preflight HEAD error (non-fatal):', e?.message || e);
             }
-          } catch (e: any) {
-            log('Preflight HEAD error (non-fatal):', e?.message || e);
           }
 
           // Create job: import -> convert(pdf->jpg) -> export
-          const jobResp = await fetch(`${CC_API}/jobs`, {
+          const jobResp = providedJobId ? null : await fetch(`${CC_API}/jobs`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}`,
@@ -72,25 +74,31 @@ export async function POST(request: NextRequest) {
             })
           });
 
-          if (!jobResp.ok) {
-            const err = await jobResp.text();
-            throw new Error(`CloudConvert job creation failed: ${err}`);
+          let jobId = providedJobId as string | undefined;
+          if (!jobId) {
+            if (!jobResp || !jobResp.ok) {
+              const err = jobResp ? await jobResp.text() : 'No response';
+              throw new Error(`CloudConvert job creation failed: ${err}`);
+            }
+            const job: CloudConvertJobResponse = await jobResp.json();
+            jobId = job.data.id;
+            log('Job created', { jobId, status: job?.data?.status });
+            send({ step: 'Conversion', progress: 10, message: `Job created (${jobId}). Converting PDF to images...` });
+          } else {
+            log('Using provided jobId', { jobId });
           }
-
-          const job: CloudConvertJobResponse = await jobResp.json();
-          const jobId = job.data.id;
-          log('Job created', { jobId, status: job?.data?.status });
-          send({ step: 'Conversion', progress: 10, message: `Job created (${jobId}). Converting PDF to images...` });
 
           // Helper to fetch export file URLs robustly
           const fetchExportFileUrls = async (jobId: string): Promise<string[]> => {
-            // 1) Try listing tasks by job and filter export/url
-            const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}&filter[operation]=export/url`, {
+            // 1) List all tasks for the job and filter client-side to avoid server filter issues
+            const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, {
               headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
             });
             if (listResp.ok) {
               const listJson: any = await listResp.json();
-              const exportTasks = (listJson?.data || []).filter((t: any) => t?.attributes?.operation === 'export/url');
+              const allTasks: any[] = listJson?.data || [];
+              const exportTasks = allTasks.filter((t: any) => t?.attributes?.operation === 'export/url');
+              log('Tasks listed', { total: allTasks.length, exportTasks: exportTasks.length });
               // Prefer finished tasks
               const finished = exportTasks.find((t: any) => t?.attributes?.status === 'finished') || exportTasks[0];
               if (finished?.id) {
@@ -99,11 +107,21 @@ export async function POST(request: NextRequest) {
                 });
                 if (taskResp.ok) {
                   const taskJson: any = await taskResp.json();
-                  const files = taskJson?.data?.result?.files || [];
-                  const urls = files.map((f: any) => f.url).filter(Boolean);
+                  // CloudConvert v2: result files live under data.attributes.result.files
+                  const files = taskJson?.data?.attributes?.result?.files
+                    || taskJson?.data?.result?.files
+                    || [];
+                  const urls = (files as any[]).map((f: any) => f.url).filter(Boolean);
+                  log('Export task detail', { taskId: finished.id, status: taskJson?.data?.attributes?.status, files: (files as any[]).length, urlsFound: urls.length });
                   if (urls.length) return urls;
+                } else {
+                  log('Export task fetch failed', { status: taskResp.status });
                 }
+              } else {
+                log('No export/url task found in job task list');
               }
+            } else {
+              log('Tasks list fetch failed', { status: listResp.status });
             }
             return [];
           };
@@ -182,8 +200,8 @@ export async function POST(request: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-cache',
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive'
     }
   });
