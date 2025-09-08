@@ -164,8 +164,30 @@ export async function POST(request: NextRequest) {
               const exportTask = (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
               let files = exportTask?.attributes?.result?.files || [];
               let imageUrls: string[] = (files || []).map((f: any) => f.url).filter(Boolean);
-              
-              // Fallback: explicit query to tasks endpoint
+
+              // Fallback A: fetch export task detail directly by ID if present
+              if ((!imageUrls.length) && exportTask?.id) {
+                try {
+                  log('Fetching export task detail by id from included', { taskId: exportTask.id });
+                  const taskResp = await fetch(`${CC_API}/tasks/${exportTask.id}`, {
+                    headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+                  });
+                  if (taskResp.ok) {
+                    const taskJson: any = await taskResp.json();
+                    const detailFiles = taskJson?.data?.attributes?.result?.files
+                      || taskJson?.data?.result?.files
+                      || [];
+                    imageUrls = (detailFiles as any[]).map((f: any) => f.url).filter(Boolean);
+                    log('Export task detail (included-id fetch)', { files: (detailFiles as any[]).length, urlsFound: imageUrls.length });
+                  } else {
+                    log('Export task detail fetch failed', { status: taskResp.status });
+                  }
+                } catch (e: any) {
+                  log('Failed to fetch export task by id', { error: e?.message || e });
+                }
+              }
+
+              // Fallback B: explicit query to tasks endpoint
               if (!imageUrls.length) {
                 log('No image URLs in included data; entering retry loop...');
                 imageUrls = await getImageUrlsWithRetries(jobId);
