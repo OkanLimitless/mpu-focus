@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
                   ],
                 },
               ],
-              max_tokens: 4000,
+              max_completion_tokens: 4000,
             });
 
             allExtractedData = completion.choices[0]?.message?.content || '';
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 ],
-                max_tokens: 4000,
+                max_completion_tokens: 4000,
               });
 
               const batchData = completion.choices[0]?.message?.content || '';

@@ -35,7 +35,7 @@ async function retryOpenAICall(
             ],
           },
         ],
-        max_tokens: 16000,
+        max_completion_tokens: 16000,
       });
 
       return completion.choices[0]?.message?.content || '';
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 ],
-                max_tokens: 16000,
+                max_completion_tokens: 16000,
               });
 
               allExtractedData = completion.choices[0]?.message?.content || '';
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
                   content: `Controleer en consolideer onderstaande extractie op volledigheid. Voeg ontbrekende velden of delicten toe als deze impliciet/expliciet zichtbaar zijn in de gegevens; geen hallucinaties. Behoud Nederlands output, voeg paginaverwijzingen en korte Duitse citaten toe waar mogelijk.\n\nEXTRACTIE:\n\n${allExtractedData}`,
                 }
               ],
-              max_tokens: 8000,
+              max_completion_tokens: 8000,
               temperature: 0.2,
             });
             const consolidated = consolidation.choices[0]?.message?.content;
