@@ -233,158 +233,114 @@ export default function DocumentProcessor() {
     setIsProcessing(true);
     setError(null);
     setResult(null);
-
     try {
-      // First, convert PDF to images on the client side
-      setProcessingStatus({ step: 'Converting PDF', progress: 0, message: 'Converting PDF to images...' });
-      
-      const { convertPdfToImages } = await import('@/lib/pdf-to-images-client');
-      
-      const images = await convertPdfToImages(file, {
-        scale: file.size > 15 * 1024 * 1024 ? 1.2 : 1.5, // Lower scale for larger files
-        onProgress: (progress, message) => {
-          setProcessingStatus({
-            step: 'Converting PDF',
-            progress: Math.round(progress * 0.4), // Use 40% of progress for conversion
-            message
-          });
-        }
-      });
-
-      if (images.length === 0) {
-        throw new Error('No images were extracted from the PDF');
-      }
-
-      // Upload images to UploadThing to bypass Vercel limits
-      setProcessingStatus({
-        step: 'Uploading images',
-        progress: 40,
-        message: `Uploading ${images.length} converted pages to cloud storage...`
-      });
-
-      // Convert base64 images to File objects for UploadThing
-      const imageFiles: File[] = [];
-      for (let i = 0; i < images.length; i++) {
-        const base64Data = images[i].split(',')[1]; // Remove data:image/png;base64, prefix
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let j = 0; j < byteCharacters.length; j++) {
-          byteNumbers[j] = byteCharacters.charCodeAt(j);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'image/jpeg' });
-        const imageFile = new File([blob], `page-${i + 1}.jpg`, { type: 'image/jpeg' });
-        imageFiles.push(imageFile);
-      }
-
-      // Upload all images to UploadThing
-      const { uploadImagesToUploadThing } = await import('@/lib/uploadthing-upload');
-      
-      const uploadedImages = await uploadImagesToUploadThing(imageFiles, {
-        onProgress: (progress) => {
-          setProcessingStatus({
-            step: 'Uploading images',
-            progress: 40 + Math.round(progress * 0.3), // 30% of progress for uploads
-            message: `Uploading to cloud storage... ${Math.round(progress)}%`
-          });
-        }
-      });
-
-      if (!uploadedImages || uploadedImages.length === 0) {
-        throw new Error('Failed to upload images to cloud storage');
-      }
-
-      // Check for any failed uploads
-      const validUrls = uploadedImages.map(img => {
-        const url = img.serverData?.fileUrl || img.url;
-        return url;
-      }).filter(Boolean);
-
-      if (validUrls.length === 0) {
-        throw new Error('No valid image URLs received from cloud storage. Check UploadThing callback status.');
-      }
-
-      if (validUrls.length < uploadedImages.length) {
-        console.warn(`Warning: Only ${validUrls.length} out of ${uploadedImages.length} images have valid URLs`);
-      }
-
-      // Now send just the image URLs to the server for AI processing
-      setProcessingStatus({
-        step: 'AI Analysis',
-        progress: 70,
-        message: `Starting AI analysis of ${uploadedImages.length} pages...`
-      });
-
-      const response = await fetch('/api/document-processor/process-image-urls', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Upload original PDF to UploadThing to obtain a public URL
+      setProcessingStatus({ step: 'Uploading PDF', progress: 10, message: 'Uploading PDF to secure storage...' });
+      const uploadResult = await uploadToUploadThing(file, {
+        onUploadBegin: () => {
+          setProcessingStatus({ step: 'Uploading PDF', progress: 15, message: 'Upload started...' });
         },
-        body: JSON.stringify({
-          imageUrls: uploadedImages.map(img => {
-            // Handle different UploadThing response formats
-            const url = img.serverData?.fileUrl || img.url;
-            return url;
-          }).filter(Boolean), // Remove any undefined URLs
-          fileName: file.name
-        }),
+        onUploadProgress: ({ progress }) => {
+          setProcessingStatus({ step: 'Uploading PDF', progress: 15 + Math.round(progress * 0.35), message: `Uploading... ${Math.round(progress)}%` });
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process document');
+      if (!uploadResult) {
+        throw new Error('Upload failed - no response received');
       }
 
-      const reader = response.body?.getReader();
+      const fileUrl = (uploadResult as any).ufsUrl || (uploadResult as any).url;
+      if (!fileUrl) {
+        throw new Error('No public URL returned after upload');
+      }
+
+      // Start CloudConvert ingest (SSE)
+      setProcessingStatus({ step: 'Conversion', progress: 50, message: 'Converting PDF to images (server)...' });
+      const ingestResp = await fetch('/api/cloudconvert/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUrl, fileName: file.name })
+      });
+
+      if (!ingestResp.ok || !ingestResp.body) {
+        throw new Error('Failed to start conversion');
+      }
+
+      const ingestReader = ingestResp.body.getReader();
       const decoder = new TextDecoder();
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                if (data.error) {
-                  throw new Error(data.message || 'Processing failed');
-                }
-                
-                // Adjust progress to account for client-side conversion and upload
-                const adjustedProgress = 70 + (data.progress || 0) * 0.3;
-                
-                const status = {
-                  step: data.step || 'Processing',
-                  progress: Math.round(adjustedProgress),
-                  message: data.message || 'Processing...'
-                };
-                
-                setProcessingStatus(status);
-
-                if (data.result) {
-                  setResult(data.result);
-                  setIsProcessing(false);
-                  
-                  // If processing for a specific user, save the results to their account
-                  if (targetUserId && data.result.extractedData) {
-                    saveResultsToUser(data.result);
-                  }
-                }
-              } catch (e) {
-                // Ignore JSON parse errors for incomplete chunks
-              }
+      let foundImages = false;
+      while (true) {
+        const { done, value } = await ingestReader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.error) throw new Error(data.message || 'Conversion failed');
+            if (typeof data.progress === 'number') {
+              setProcessingStatus({ step: data.step || 'Conversion', progress: Math.min(90, Math.max(50, Math.round(data.progress))), message: data.message || 'Converting...' });
             }
-          }
+            if (data.imageUrls && Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
+              foundImages = true;
+              // Kick off AI analysis with the returned image URLs
+              await runAnalysisWithImageUrls(data.imageUrls, file.name);
+            }
+          } catch {}
         }
+      }
+
+      if (!foundImages) {
+        throw new Error('Conversion completed but no images were returned');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsProcessing(false);
       toast({ title: 'Verarbeitung fehlgeschlagen', description: err instanceof Error ? err.message : 'Unbekannter Fehler', variant: 'destructive' })
+    }
+  };
+
+  const runAnalysisWithImageUrls = async (imageUrls: string[], fileName: string) => {
+    setProcessingStatus({ step: 'AI Analysis', progress: 75, message: `Starting AI analysis of ${imageUrls.length} pages...` });
+
+    const response = await fetch('/api/document-processor/process-image-urls', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrls, fileName })
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error('Failed to process document');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.error) throw new Error(data.message || 'Processing failed');
+          const adjustedProgress = 75 + (data.progress || 0) * 0.25;
+          setProcessingStatus({
+            step: data.step || 'Processing',
+            progress: Math.min(100, Math.round(adjustedProgress)),
+            message: data.message || 'Processing...'
+          });
+          if (data.result) {
+            setResult(data.result);
+            setIsProcessing(false);
+            if (targetUserId && data.result.extractedData) {
+              saveResultsToUser(data.result);
+            }
+          }
+        } catch {}
+      }
     }
   };
 
