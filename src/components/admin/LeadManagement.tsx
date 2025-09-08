@@ -267,15 +267,6 @@ export default function LeadManagement() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Users className="h-5 w-5" />
-          <span>{t('leadManagement')}</span>
-        </CardTitle>
-        <CardDescription>
-          {t('manageLeadsDesc')}
-        </CardDescription>
-      </CardHeader>
       <CardContent className="space-y-6">
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

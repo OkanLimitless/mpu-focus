@@ -443,9 +443,6 @@ export default function UserManagement() {
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>{t('userManagement')}</CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -458,15 +455,6 @@ export default function UserManagement() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            {t('userManagement')}
-          </CardTitle>
-          <CardDescription>
-            {t('manageUsersDesc')}
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           {/* Filters */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
