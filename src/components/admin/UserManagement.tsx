@@ -498,42 +498,7 @@ export default function UserManagement() {
             </div>
           </div>
 
-          {/* User Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{t('verifiedUsers')}</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified').length}</p>
-                  </div>
-                  <CheckCircle2 className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{t('docsProcessedHeader')}</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.verificationStatus === 'verified' && u.documentProcessing).length}</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-blue-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{t('admins')}</p>
-                    <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
-                  </div>
-                  <Shield className="h-8 w-8 text-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Removed: High-level metrics that are not useful here */}
 
           {/* Master-Detail Layout */}
           {filteredUsers.length === 0 ? (
@@ -541,16 +506,16 @@ export default function UserManagement() {
               {t('noUsersFound')}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {/* User List */}
-              <div className="space-y-2 lg:col-span-1">
+              <div className="space-y-2 lg:col-span-1 rounded-lg border bg-white p-2 max-h-[70vh] overflow-y-auto">
                 {filteredUsers.map((user) => {
                   const isSelected = selectedUser?._id === user._id
                   return (
                     <button
                       key={user._id}
                       onClick={() => setSelectedUser(user)}
-                      className={`w-full text-left p-3 border rounded-lg transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
+                      className={`w-full text-left p-3 border rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-200 ${isSelected ? 'bg-blue-50 border-blue-300 shadow-sm' : 'hover:bg-slate-50'}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -574,168 +539,172 @@ export default function UserManagement() {
               </div>
 
               {/* Detail Panel */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-3">
                 {!selectedUser ? (
-                  <div className="border rounded-lg p-6 text-center text-muted-foreground">
-                    {t('selectUserToView')}
-                  </div>
+                  <Card>
+                    <CardContent className="p-6 text-center text-muted-foreground">
+                      {t('selectUserToView')}
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <div className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</h3>
-                          {/* Removed Active/Inactive and Verification badges in detail header */}
-                        </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Mail className="h-4 w-4" /> {selectedUser.email}
-                        </p>
-                        <div className="text-xs text-muted-foreground">
-                          <p>{t('createdLabel')}: {formatDate(new Date(selectedUser.createdAt))}</p>
-                          {selectedUser.lastLoginAt && (
-                            <p>{t('lastLogin')}: {formatDate(new Date(selectedUser.lastLoginAt))}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {selectedUser.role === 'user' && selectedUser.progress && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span>{t('progressLabel')}</span>
-                          <span>{selectedUser.progress.averageProgress}%</span>
-                        </div>
-                        <Progress value={selectedUser.progress.averageProgress} className="h-2" />
-                        <div className="text-xs text-muted-foreground">
-                          {selectedUser.progress.completedChapters}/{selectedUser.progress.totalChapters} {t('chaptersCompleted')}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedUser.role === 'user' && (
-                      <div className="space-y-3 pt-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{t('documentProcessingLabel')}</span>
-                          {selectedUser.documentProcessing ? (
-                            <Badge variant="success">
-                              <FileText className="w-3 h-3 mr-1" />
-                              {t('processedLabel')}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">{t('noData')}</Badge>
-                          )}
-                        </div>
-
-                        {selectedUser.documentProcessing && (
-                          <div className="text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-1">
-                            <p className="flex items-center gap-1">
-                              <FileText className="w-3 h-3" />
-                              {t('fileLabel')}: {selectedUser.documentProcessing.fileName}
-                            </p>
-                            <p className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {t('processedAt')}: {formatDate(new Date(selectedUser.documentProcessing.processedAt))}
-                            </p>
-                            <p className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3" />
-                              {t('pagesLabel')}: {selectedUser.documentProcessing.totalPages}
-                            </p>
+                  <Card>
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</h3>
+                            {/* Removed Active/Inactive and Verification badges in detail header */}
                           </div>
-                        )}
-
-                        {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <StickyNote className="w-3 h-3" />
-                            {selectedUser.adminNotes.length} {t('adminNotesCount')}
+                          <p className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Mail className="h-4 w-4" /> {selectedUser.email}
+                          </p>
+                          <div className="text-xs text-muted-foreground">
+                            <p>{t('createdLabel')}: {formatDate(new Date(selectedUser.createdAt))}</p>
+                            {selectedUser.lastLoginAt && (
+                              <p>{t('lastLogin')}: {formatDate(new Date(selectedUser.lastLoginAt))}</p>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    )}
 
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <Button size="sm" variant="outline" onClick={() => viewUserProgress(selectedUser)}>
-                        <BarChart3 className="w-4 h-4 mr-1" />
-                        {t('progressBtn')}
-                      </Button>
+                      {selectedUser.role === 'user' && selectedUser.progress && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span>{t('progressLabel')}</span>
+                            <span>{selectedUser.progress.averageProgress}%</span>
+                          </div>
+                          <Progress value={selectedUser.progress.averageProgress} className="h-2" />
+                          <div className="text-xs text-muted-foreground">
+                            {selectedUser.progress.completedChapters}/{selectedUser.progress.totalChapters} {t('chaptersCompleted')}
+                          </div>
+                        </div>
+                      )}
 
                       {selectedUser.role === 'user' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => viewDocumentData(selectedUser)}
-                            className="bg-blue-50 hover:bg-blue-100"
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            {t('documentsBtn')}
-                          </Button>
+                        <div className="space-y-3 pt-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">{t('documentProcessingLabel')}</span>
+                            {selectedUser.documentProcessing ? (
+                              <Badge variant="success">
+                                <FileText className="w-3 h-3 mr-1" />
+                                {t('processedLabel')}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline">{t('noData')}</Badge>
+                            )}
+                          </div>
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openDocumentProcessor(selectedUser)}
-                            className="bg-purple-50 hover:bg-purple-100"
-                          >
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            {t('processBtn')}
-                          </Button>
+                          {selectedUser.documentProcessing && (
+                            <div className="text-xs text-muted-foreground grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              <p className="flex items-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                {t('fileLabel')}: {selectedUser.documentProcessing.fileName}
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {t('processedAt')}: {formatDate(new Date(selectedUser.documentProcessing.processedAt))}
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" />
+                                {t('pagesLabel')}: {selectedUser.documentProcessing.totalPages}
+                              </p>
+                            </div>
+                          )}
 
-                          {selectedUser.documentProcessing?.extractedData && (
+                          {selectedUser.adminNotes && selectedUser.adminNotes.length > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <StickyNote className="w-3 h-3" />
+                              {selectedUser.adminNotes.length} {t('adminNotesCount')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <Button size="sm" variant="outline" onClick={() => viewUserProgress(selectedUser)}>
+                          <BarChart3 className="w-4 h-4 mr-1" />
+                          {t('progressBtn')}
+                        </Button>
+
+                        {selectedUser.role === 'user' && (
+                          <>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => generatePDFFromData(selectedUser)}
-                              disabled={isGeneratingPDF}
-                              className="bg-green-50 hover:bg-green-100"
+                              onClick={() => viewDocumentData(selectedUser)}
+                              className="bg-blue-50 hover:bg-blue-100"
                             >
-                              <Download className="w-4 h-4 mr-1" />
-                              {t('pdfBtn')}
+                              <FileText className="w-4 h-4 mr-1" />
+                              {t('documentsBtn')}
                             </Button>
-                          )}
 
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDocumentProcessor(selectedUser)}
+                              className="bg-purple-50 hover:bg-purple-100"
+                            >
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              {t('processBtn')}
+                            </Button>
+
+                            {selectedUser.documentProcessing?.extractedData && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => generatePDFFromData(selectedUser)}
+                                disabled={isGeneratingPDF}
+                                className="bg-green-50 hover:bg-green-100"
+                              >
+                                <Download className="w-4 h-4 mr-1" />
+                                {t('pdfBtn')}
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => viewNotes(selectedUser)}
+                              className="bg-yellow-50 hover:bg-yellow-100"
+                            >
+                              <StickyNote className="w-4 h-4 mr-1" />
+                              {t('notesBtn')}
+                            </Button>
+                          </>
+                        )}
+
+                        {selectedUser.role !== 'admin' && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => viewNotes(selectedUser)}
-                            className="bg-yellow-50 hover:bg-yellow-100"
+                            onClick={() => {
+                              setUserToDelete(selectedUser);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={actionLoading}
                           >
-                            <StickyNote className="w-4 h-4 mr-1" />
-                            {t('notesBtn')}
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            {t('deleteBtn')}
                           </Button>
-                        </>
-                      )}
-
-                      {selectedUser.role !== 'admin' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setUserToDelete(selectedUser);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={actionLoading}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          {t('deleteBtn')}
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Verification Status Detail */}
-                    {selectedUser.role === 'user' && (
-                      <div className="space-y-2">
-                        {selectedUser.verifiedAt && (
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p className="flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {t('status_verified')}: {formatDate(new Date(selectedUser.verifiedAt))}
-                            </p>
-                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
+
+                      {/* Verification Status Detail */}
+                      {selectedUser.role === 'user' && (
+                        <div className="space-y-2">
+                          {selectedUser.verifiedAt && (
+                            <div className="text-xs text-muted-foreground space-y-1">
+                              <p className="flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                {t('status_verified')}: {formatDate(new Date(selectedUser.verifiedAt))}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             </div>
