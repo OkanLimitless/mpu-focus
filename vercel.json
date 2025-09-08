@@ -10,6 +10,12 @@
     },
     "src/app/api/document-processor/generate-pdf/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/cloudconvert/ingest/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/cloudconvert/webhook/route.ts": {
+      "maxDuration": 60
     }
   }
 }
