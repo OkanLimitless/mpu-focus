@@ -321,6 +321,7 @@ export default function ChapterManagement() {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
@@ -580,7 +581,6 @@ export default function ChapterManagement() {
         </form>
       </DialogContent>
     </Dialog>
-    
-    
+    </>
   )
 }
