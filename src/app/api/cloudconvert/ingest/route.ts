@@ -61,6 +61,32 @@ export async function POST(request: NextRequest) {
           const jobId = job.data.id;
           send({ step: 'Conversion', progress: 10, message: `Job created (${jobId}). Converting PDF to images...` });
 
+          // Helper to fetch export file URLs robustly
+          const fetchExportFileUrls = async (jobId: string): Promise<string[]> => {
+            // 1) Try listing tasks by job and filter export/url
+            const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}&filter[operation]=export/url`, {
+              headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+            });
+            if (listResp.ok) {
+              const listJson: any = await listResp.json();
+              const exportTasks = (listJson?.data || []).filter((t: any) => t?.attributes?.operation === 'export/url');
+              // Prefer finished tasks
+              const finished = exportTasks.find((t: any) => t?.attributes?.status === 'finished') || exportTasks[0];
+              if (finished?.id) {
+                const taskResp = await fetch(`${CC_API}/tasks/${finished.id}`, {
+                  headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+                });
+                if (taskResp.ok) {
+                  const taskJson: any = await taskResp.json();
+                  const files = taskJson?.data?.result?.files || [];
+                  const urls = files.map((f: any) => f.url).filter(Boolean);
+                  if (urls.length) return urls;
+                }
+              }
+            }
+            return [];
+          };
+
           // Poll job status
           let done = false;
           const startedAt = Date.now();
@@ -81,23 +107,22 @@ export async function POST(request: NextRequest) {
               throw new Error('CloudConvert job failed');
             }
             if (status === 'finished') {
-              // Find export task id and fetch its result explicitly
+              // Try immediate extraction from included
               const exportTask = (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
-              let imageUrls: string[] = [];
-              if (exportTask?.id) {
-                const taskResp = await fetch(`${CC_API}/tasks/${exportTask.id}`, {
-                  headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
-                });
-                if (taskResp.ok) {
-                  const taskJson: any = await taskResp.json();
-                  const files = taskJson?.data?.result?.files || [];
-                  imageUrls = files.map((f: any) => f.url).filter(Boolean);
-                }
-              }
+              let files = exportTask?.attributes?.result?.files || [];
+              let imageUrls: string[] = (files || []).map((f: any) => f.url).filter(Boolean);
+              
+              // Fallback: explicit query to tasks endpoint
               if (!imageUrls.length) {
-                const files = exportTask?.attributes?.result?.files || [];
-                imageUrls = files.map((f: any) => f.url).filter(Boolean);
+                imageUrls = await fetchExportFileUrls(jobId);
               }
+              
+              // Final retry after short delay (some backends delay file availability)
+              if (!imageUrls.length) {
+                await new Promise(r => setTimeout(r, 1500));
+                imageUrls = await fetchExportFileUrls(jobId);
+              }
+
               if (!imageUrls.length) {
                 throw new Error('No image URLs returned by CloudConvert');
               }
