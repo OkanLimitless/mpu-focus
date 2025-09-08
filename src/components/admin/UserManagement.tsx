@@ -608,75 +608,99 @@ export default function UserManagement() {
                         </div>
                       )}
 
-                      {/* Actions */}
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <Button size="sm" variant="outline" onClick={() => viewUserProgress(selectedUser)}>
-                          <BarChart3 className="w-4 h-4 mr-1" />
-                          {t('progressBtn')}
-                        </Button>
+                      {/* Actions (as cards) */}
+                      <div className="pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Progress */}
+                          <Card className="hover:shadow-md transition-shadow">
+                            <CardContent className="p-4">
+                              <button onClick={() => viewUserProgress(selectedUser)} className="w-full flex items-center justify-between text-left">
+                                <div className="flex items-center gap-2">
+                                  <BarChart3 className="w-4 h-4" />
+                                  <span className="font-medium">{t('progressBtn')}</span>
+                                </div>
+                              </button>
+                            </CardContent>
+                          </Card>
 
-                        {selectedUser.role === 'user' && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => viewDocumentData(selectedUser)}
-                              className="bg-blue-50 hover:bg-blue-100"
-                            >
-                              <FileText className="w-4 h-4 mr-1" />
-                              {t('documentsBtn')}
-                            </Button>
+                          {selectedUser.role === 'user' && (
+                            <>
+                              {/* Documents */}
+                              <Card className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-4">
+                                  <button onClick={() => viewDocumentData(selectedUser)} className="w-full flex items-center justify-between text-left">
+                                    <div className="flex items-center gap-2">
+                                      <FileText className="w-4 h-4" />
+                                      <span className="font-medium">{t('documentsBtn')}</span>
+                                    </div>
+                                  </button>
+                                </CardContent>
+                              </Card>
 
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openDocumentProcessor(selectedUser)}
-                              className="bg-purple-50 hover:bg-purple-100"
-                            >
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              {t('processBtn')}
-                            </Button>
+                              {/* Process Documents */}
+                              <Card className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-4">
+                                  <button onClick={() => openDocumentProcessor(selectedUser)} className="w-full flex items-center justify-between text-left">
+                                    <div className="flex items-center gap-2">
+                                      <ExternalLink className="w-4 h-4" />
+                                      <span className="font-medium">{t('processBtn')}</span>
+                                    </div>
+                                  </button>
+                                </CardContent>
+                              </Card>
 
-                            {selectedUser.documentProcessing?.extractedData && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => generatePDFFromData(selectedUser)}
-                                disabled={isGeneratingPDF}
-                                className="bg-green-50 hover:bg-green-100"
-                              >
-                                <Download className="w-4 h-4 mr-1" />
-                                {t('pdfBtn')}
-                              </Button>
-                            )}
+                              {/* Generate PDF */}
+                              <Card className={`transition-shadow ${selectedUser.documentProcessing?.extractedData ? 'hover:shadow-md' : 'opacity-60'}`}>
+                                <CardContent className="p-4">
+                                  <button
+                                    onClick={() => generatePDFFromData(selectedUser)}
+                                    disabled={!selectedUser.documentProcessing?.extractedData || isGeneratingPDF}
+                                    className="w-full flex items-center justify-between text-left disabled:cursor-not-allowed"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Download className="w-4 h-4" />
+                                      <span className="font-medium">{t('pdfBtn')}</span>
+                                    </div>
+                                  </button>
+                                </CardContent>
+                              </Card>
 
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => viewNotes(selectedUser)}
-                              className="bg-yellow-50 hover:bg-yellow-100"
-                            >
-                              <StickyNote className="w-4 h-4 mr-1" />
-                              {t('notesBtn')}
-                            </Button>
-                          </>
-                        )}
-
-                        {selectedUser.role !== 'admin' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setUserToDelete(selectedUser);
-                              setDeleteDialogOpen(true);
-                            }}
-                            disabled={actionLoading}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            {t('deleteBtn')}
-                          </Button>
-                        )}
+                              {/* Notes */}
+                              <Card className="hover:shadow-md transition-shadow">
+                                <CardContent className="p-4">
+                                  <button onClick={() => viewNotes(selectedUser)} className="w-full flex items-center justify-between text-left">
+                                    <div className="flex items-center gap-2">
+                                      <StickyNote className="w-4 h-4" />
+                                      <span className="font-medium">{t('notesBtn')}</span>
+                                    </div>
+                                  </button>
+                                </CardContent>
+                              </Card>
+                            </>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Danger Zone */}
+                      {selectedUser.role !== 'admin' && (
+                        <Card className="border-red-200 bg-red-50">
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <div className="text-sm font-medium text-red-800">{t('deleteBtn')}</div>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setUserToDelete(selectedUser);
+                                setDeleteDialogOpen(true);
+                              }}
+                              disabled={actionLoading}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              {t('deleteBtn')}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Verification Status Detail */}
                       {selectedUser.role === 'user' && (
