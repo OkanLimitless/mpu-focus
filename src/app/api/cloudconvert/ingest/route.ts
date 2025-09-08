@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      const log = (...args: any[]) => {
+        try {
+          console.log('[CloudConvert Ingest]', ...args);
+        } catch {}
+      };
+
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
       const run = async () => {
         try {
           const { fileUrl, fileName } = await request.json();
@@ -26,7 +34,19 @@ export async function POST(request: NextRequest) {
             throw new Error('fileUrl is required');
           }
 
+          log('Request received', { fileName, fileUrl });
           send({ step: 'Conversion', progress: 5, message: 'Starting CloudConvert job...' });
+
+          // Optional preflight: verify the file URL is reachable
+          try {
+            const headResp = await fetch(fileUrl, { method: 'HEAD' });
+            log('Preflight HEAD status for fileUrl:', headResp.status);
+            if (!headResp.ok) {
+              log('Preflight HEAD failed body (truncated)');
+            }
+          } catch (e: any) {
+            log('Preflight HEAD error (non-fatal):', e?.message || e);
+          }
 
           // Create job: import -> convert(pdf->jpg) -> export
           const jobResp = await fetch(`${CC_API}/jobs`, {
@@ -59,6 +79,7 @@ export async function POST(request: NextRequest) {
 
           const job: CloudConvertJobResponse = await jobResp.json();
           const jobId = job.data.id;
+          log('Job created', { jobId, status: job?.data?.status });
           send({ step: 'Conversion', progress: 10, message: `Job created (${jobId}). Converting PDF to images...` });
 
           // Helper to fetch export file URLs robustly
@@ -87,6 +108,19 @@ export async function POST(request: NextRequest) {
             return [];
           };
 
+          const getImageUrlsWithRetries = async (jobId: string): Promise<string[]> => {
+            const maxAttempts = 15; // ~30-45s depending on backoff
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+              const urls = await fetchExportFileUrls(jobId);
+              log(`Export fetch attempt ${attempt}/${maxAttempts}: ${urls.length} urls`);
+              send({ step: 'Conversion', progress: Math.min(85, 60 + attempt), message: `Waiting for export files (attempt ${attempt})...` });
+              if (urls.length) return urls;
+              const delayMs = Math.min(5000, 1000 + attempt * 1000); // 2s,3s,... up to 5s
+              await sleep(delayMs);
+            }
+            return [];
+          };
+
           // Poll job status
           let done = false;
           const startedAt = Date.now();
@@ -102,6 +136,7 @@ export async function POST(request: NextRequest) {
             }
             const statusJson: CloudConvertJobResponse = await statusResp.json();
             const status = statusJson.data.status;
+            log('Polling status', { jobId, status });
 
             if (status === 'error') {
               throw new Error('CloudConvert job failed');
@@ -114,18 +149,15 @@ export async function POST(request: NextRequest) {
               
               // Fallback: explicit query to tasks endpoint
               if (!imageUrls.length) {
-                imageUrls = await fetchExportFileUrls(jobId);
-              }
-              
-              // Final retry after short delay (some backends delay file availability)
-              if (!imageUrls.length) {
-                await new Promise(r => setTimeout(r, 1500));
-                imageUrls = await fetchExportFileUrls(jobId);
+                log('No image URLs in included data; entering retry loop...');
+                imageUrls = await getImageUrlsWithRetries(jobId);
               }
 
               if (!imageUrls.length) {
+                log('No image URLs after retries');
                 throw new Error('No image URLs returned by CloudConvert');
               }
+              log('Image URLs ready', { count: imageUrls.length });
               send({ step: 'Converted', progress: 70, message: `Converted to ${imageUrls.length} pages.`, imageUrls, fileName });
               done = true;
               break;
@@ -138,6 +170,7 @@ export async function POST(request: NextRequest) {
           send({ step: 'ReadyForAnalysis', progress: 75, message: 'Images ready. Client will start AI analysis.' });
           controller.close();
         } catch (error: any) {
+          log('Error:', error?.message || error);
           send({ step: 'Error', progress: 0, message: `CloudConvert ingest failed: ${error?.message || 'Unknown error'}`, error: true });
           controller.close();
         }
