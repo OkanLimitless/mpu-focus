@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { VISION_ANALYSIS_PROMPT } from '@/lib/document-processor';
+import { VISION_ANALYSIS_PROMPT, VISION_ANALYSIS_SYSTEM_PROMPT } from '@/lib/document-processor';
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -60,6 +60,10 @@ export async function POST(request: NextRequest) {
               model: "gpt-4o",
               messages: [
                 {
+                  role: "system",
+                  content: VISION_ANALYSIS_SYSTEM_PROMPT,
+                },
+                {
                   role: "user",
                   content: [
                     { type: "text", text: VISION_ANALYSIS_PROMPT },
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
                   ],
                 },
               ],
-              max_tokens: 4000,
+              max_completion_tokens: 4000,
             });
 
             allExtractedData = completion.choices[0]?.message?.content || '';
@@ -95,17 +99,21 @@ export async function POST(request: NextRequest) {
                 model: "gpt-4o",
                 messages: [
                   {
+                    role: "system",
+                    content: VISION_ANALYSIS_SYSTEM_PROMPT,
+                  },
+                  {
                     role: "user",
                     content: [
                       { 
                         type: "text", 
-                        text: `${VISION_ANALYSIS_PROMPT}\n\nThis is batch ${batchNumber} of ${totalBatches}. Please extract data from these pages and format it clearly.`
+                        text: `${VISION_ANALYSIS_PROMPT}\n\nDit is batch ${batchNumber} van ${totalBatches}. Extraheer alle informatie uit deze pagina's en formatteer duidelijk met paginaverwijzingen.`
                       },
                       ...imageMessages
                     ],
                   },
                 ],
-                max_tokens: 4000,
+                max_completion_tokens: 4000,
               });
 
               const batchData = completion.choices[0]?.message?.content || '';
