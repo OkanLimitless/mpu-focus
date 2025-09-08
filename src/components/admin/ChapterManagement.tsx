@@ -433,7 +433,9 @@ export default function ChapterManagement() {
             ) : (
               <div className="space-y-4">
                 {filteredChapters.map((chapter, index) => {
-                  const videosForChapter = videos.filter(v => v.chapterId === chapter._id).sort((a, b) => a.order - b.order)
+                  const videosForChapter = videos
+                    .filter((v: any) => (typeof v.chapterId === 'string' ? v.chapterId === chapter._id : v.chapterId?._id === chapter._id))
+                    .sort((a, b) => a.order - b.order)
                   return (
                   <div key={chapter._id} className="border rounded-lg p-4">
                     <div className="flex items-start justify-between">
@@ -449,7 +451,7 @@ export default function ChapterManagement() {
                         </div>
                         <p className="text-sm text-gray-600">{chapter.description}</p>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{t('videosCount', { count: chapter.videoCount || 0 })}</span>
+                          <span>{t('videosCount', { count: videosForChapter.length })}</span>
                           <span>{t('createdLabel')}: {new Date(chapter.createdAt).toLocaleDateString()}</span>
                         </div>
 
