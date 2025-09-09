@@ -79,10 +79,15 @@ export async function POST(request: NextRequest) {
             throw new Error('No image URLs provided');
           }
 
+          // Build absolute base URL for proxying image URLs (helps external fetchers like OpenAI)
+          const baseOrigin = process.env.NEXT_PUBLIC_APP_URL
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin);
+          const proxiedUrls: string[] = imageUrls.map((u: string) => `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`);
+
           sendStatus({
             step: 'Processing images',
             progress: 0,
-            message: `Analyzing ${imageUrls.length} pages with AI...`
+            message: `Analyzing ${proxiedUrls.length} pages with AI...`
           });
 
           // Process with GPT-5 Mini Vision
@@ -94,13 +99,13 @@ export async function POST(request: NextRequest) {
           sendStatus({
             step: 'AI Analysis',
             progress: 20,
-            message: `Analyzing complete document: ${imageUrls.length} pages with GPT-5 Mini (200k TPM)...`
+            message: `Analyzing complete document: ${proxiedUrls.length} pages with GPT-5 Mini (200k TPM)...`
           });
 
           // Retry logic for handling OpenAI timeouts
           let allExtractedData: string;
           try {
-            allExtractedData = await retryOpenAICall(openai, imageUrls, 3);
+            allExtractedData = await retryOpenAICall(openai, proxiedUrls, 3);
           } catch (error: any) {
             // If all retries failed, try with lower detail to reduce load
             sendStatus({
@@ -111,7 +116,7 @@ export async function POST(request: NextRequest) {
 
             try {
               // Fallback: Use lower detail to reduce image download load
-              const imageMessages = imageUrls.map((imageUrl) => ({
+              const imageMessages = proxiedUrls.map((imageUrl) => ({
                 type: "image_url" as const,
                 image_url: { url: imageUrl, detail: "low" as const }
               } as any));
@@ -171,7 +176,6 @@ export async function POST(request: NextRequest) {
                 }
               ],
               max_completion_tokens: 8000,
-              temperature: 0.2,
             });
             const consolidated = consolidation.choices[0]?.message?.content;
             if (consolidated && consolidated.length >= (allExtractedData?.length || 0) * 0.8) {
@@ -190,7 +194,7 @@ export async function POST(request: NextRequest) {
           // Structure the final result (no consolidation needed - single unified analysis)
           const result = {
             fileName: fileName || 'document.pdf',
-            totalPages: imageUrls.length,
+            totalPages: proxiedUrls.length,
             extractedData: allExtractedData,
             processingMethod: 'UploadThing + GPT-5 Mini Single Request Analysis',
             timestamp: new Date().toISOString(),
@@ -206,26 +210,25 @@ export async function POST(request: NextRequest) {
           });
 
           try {
-            // Import cleanup function with timeout
-            const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-            
-            // Add timeout to cleanup operation (10 seconds max)
-            const cleanupPromise = deleteUploadThingFiles(imageUrls);
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Cleanup timeout')), 10000)
-            );
-            
-            const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]) as any;
-            
-            if (cleanupResult.success) {
-              console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
+            // Only attempt cleanup for UploadThing-hosted URLs
+            const uploadThingUrls = (imageUrls as string[]).filter(u => /\.(utfs\.io|ufs\.sh)$/.test(new URL(u).hostname));
+            if (uploadThingUrls.length > 0) {
+              const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
+              const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Cleanup timeout')), 10000)
+              );
+              const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]) as any;
+              if (cleanupResult.success) {
+                console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
+              } else {
+                console.warn(`Cleanup partial: ${cleanupResult.deletedCount} deleted, errors:`, cleanupResult.errors);
+              }
             } else {
-              console.warn(`Cleanup partial: ${cleanupResult.deletedCount} deleted, errors:`, cleanupResult.errors);
+              console.log('Cleanup skipped: No UploadThing URLs to delete');
             }
           } catch (cleanupError) {
-            // Don't fail the whole process if cleanup fails
             console.error('Cleanup failed (non-critical):', cleanupError);
-            // If cleanup times out or fails, just log it and continue
           }
 
           sendStatus({
@@ -243,14 +246,19 @@ export async function POST(request: NextRequest) {
           // Try to clean up files even on error (with timeout)
           try {
             const { imageUrls: urlsToClean } = await request.clone().json();
-            if (urlsToClean && Array.isArray(urlsToClean) && urlsToClean.length > 0) {
+            const uploadThingUrls = (urlsToClean as string[] || []).filter((u: string) => {
+              try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh'; } catch { return false; }
+            });
+            if (uploadThingUrls.length > 0) {
               const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-              const cleanupPromise = deleteUploadThingFiles(urlsToClean);
+              const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
               const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
               );
               await Promise.race([cleanupPromise, timeoutPromise]);
               console.log('Cleaned up temporary files after error');
+            } else {
+              console.log('Cleanup skipped after error: No UploadThing URLs to delete');
             }
           } catch (cleanupError) {
             console.error('Failed to cleanup files after error:', cleanupError);

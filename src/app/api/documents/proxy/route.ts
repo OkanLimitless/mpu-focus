@@ -45,11 +45,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Validate that the URL is from UploadThing (including v7 patterns)
+    // Validate that the URL is from allowed sources (UploadThing and CloudConvert storage)
     const allowedDomains = [
       'utfs.io',                    // Legacy pattern
       'uploadthing.com',           // General UploadThing domain
-      'ufs.sh'                     // New v7 pattern (*.ufs.sh)
+      'ufs.sh',                    // New v7 pattern (*.ufs.sh)
+      'storage.cloudconvert.com',  // CloudConvert storage
+      'us-east.storage.cloudconvert.com',
+      'eu-central-1.storage.cloudconvert.com'
     ]
     let urlObj: URL
     
@@ -63,7 +66,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check if the hostname matches any allowed domain or is a subdomain of ufs.sh
+    // Check if the hostname matches any allowed domain or is a subdomain of allowed domains
     const isValidDomain = allowedDomains.some(domain => 
       urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
     )
