@@ -126,7 +126,8 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = {
       'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
       'Cache-Control': 'private, max-age=60',
-      'Content-Disposition': 'inline',
+      // Preserve origin content-disposition when present; fallback to inline
+      'Content-Disposition': response.headers.get('content-disposition') || 'inline',
       ...corsHeaders,
     }
     const contentLength = response.headers.get('content-length')
@@ -164,4 +165,44 @@ export async function OPTIONS(request: NextRequest) {
     status: 200,
     headers: corsHeaders,
   })
+}
+
+// Handle HEAD requests (some clients preflight with HEAD)
+export async function HEAD(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const fileUrl = searchParams.get('url')
+    if (!fileUrl) return new NextResponse(null, { status: 400 })
+
+    let urlObj: URL
+    try { urlObj = new URL(fileUrl) } catch { return new NextResponse(null, { status: 400 }) }
+
+    const allowedDomains = [
+      'utfs.io',
+      'uploadthing.com',
+      'ufs.sh',
+      'storage.cloudconvert.com',
+      'us-east.storage.cloudconvert.com',
+      'eu-central-1.storage.cloudconvert.com'
+    ]
+    const isValidDomain = allowedDomains.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+    )
+    if (!isValidDomain) return new NextResponse(null, { status: 403 })
+
+    const originResp = await fetch(fileUrl, { method: 'HEAD', headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
+    const origin = request.headers.get('origin')
+    const corsHeaders = getCorsHeaders(origin)
+    const headers: Record<string, string> = {
+      'Content-Type': originResp.headers.get('content-type') || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=60',
+      'Content-Disposition': originResp.headers.get('content-disposition') || 'inline',
+      ...corsHeaders,
+    }
+    const len = originResp.headers.get('content-length')
+    if (len) headers['Content-Length'] = len
+    return new NextResponse(null, { status: originResp.ok ? 200 : originResp.status, headers })
+  } catch {
+    return new NextResponse(null, { status: 500 })
+  }
 }

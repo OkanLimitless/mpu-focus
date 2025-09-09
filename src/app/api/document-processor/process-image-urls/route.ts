@@ -62,6 +62,8 @@ async function retryOpenAICall(
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
+  // Keep a reference to parsed payload for later cleanup without cloning the request
+  let parsedBody: { imageUrls?: string[]; fileName?: string } | null = null;
 
   // Create a readable stream for Server-Sent Events
   const stream = new ReadableStream({
@@ -73,7 +75,9 @@ export async function POST(request: NextRequest) {
 
       const processImageUrls = async () => {
         try {
-          const { imageUrls, fileName } = await request.json();
+          parsedBody = await request.json();
+          const imageUrls = parsedBody.imageUrls as string[];
+          const fileName = parsedBody.fileName as string;
 
           if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
             throw new Error('No image URLs provided');
@@ -84,7 +88,21 @@ export async function POST(request: NextRequest) {
             || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin);
           const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
           const isR2Url = (u: string) => r2PublicBase && u.startsWith(r2PublicBase);
-          const proxiedUrls: string[] = imageUrls.map((u: string) => isR2Url(u) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`);
+          const isCloudConvertUrl = (u: string) => {
+            try {
+              const h = new URL(u).hostname;
+              return (
+                h === 'storage.cloudconvert.com' ||
+                h.endsWith('.storage.cloudconvert.com')
+              );
+            } catch {
+              return false;
+            }
+          };
+          // Only proxy when necessary (e.g., UploadThing). CloudConvert + R2 are public and stable.
+          const proxiedUrls: string[] = imageUrls.map((u: string) =>
+            (isR2Url(u) || isCloudConvertUrl(u)) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`
+          );
 
           sendStatus({
             step: 'Processing images',
@@ -149,7 +167,10 @@ export async function POST(request: NextRequest) {
               // Try to clean up files even if processing fails (with timeout)
               try {
                 const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-                const cleanupPromise = deleteUploadThingFiles(imageUrls);
+                const uploadThingUrls = (parsedBody?.imageUrls || []).filter((u: string) => {
+                  try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh'; } catch { return false; }
+                });
+                const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
                 const timeoutPromise = new Promise((_, reject) => 
                   setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
                 );
@@ -247,8 +268,8 @@ export async function POST(request: NextRequest) {
           
           // Try to clean up files even on error (with timeout)
           try {
-            const { imageUrls: urlsToClean } = await request.clone().json();
-            const uploadThingUrls = (urlsToClean as string[] || []).filter((u: string) => {
+            const urlsToClean = (parsedBody?.imageUrls || []) as string[];
+            const uploadThingUrls = (urlsToClean || []).filter((u: string) => {
               try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh'; } catch { return false; }
             });
             if (uploadThingUrls.length > 0) {
