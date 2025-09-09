@@ -12,6 +12,12 @@ export async function POST(request: NextRequest) {
       const logStep = (step: string, progress: number, message: string) => send({ step, progress, message })
 
       const run = async () => {
+        // Hoist variables for cleanup access in catch
+        let inputBucket: string | undefined
+        let outputBucket: string | undefined
+        let inputKey: string | undefined
+        let outPrefix: string | undefined
+        let jobId: string | undefined
         try {
           const { pdfUrl, gcsUri, fileName } = await request.json()
           if (!pdfUrl && !gcsUri) throw new Error('pdfUrl or gcsUri is required')
@@ -20,14 +26,14 @@ export async function POST(request: NextRequest) {
           const storage = await getStorageClient()
           // Sanitize bucket envs (strip gs:// and slashes)
           const sanitizeBucket = (v?: string) => (v || '').replace(/^gs:\/\//, '').replace(/^\//, '').replace(/\/$/, '')
-          const inputBucket = sanitizeBucket(process.env.GCS_INPUT_BUCKET)
-          const outputBucket = sanitizeBucket(process.env.GCS_OUTPUT_BUCKET)
+          inputBucket = sanitizeBucket(process.env.GCS_INPUT_BUCKET)
+          outputBucket = sanitizeBucket(process.env.GCS_OUTPUT_BUCKET)
           if (!inputBucket || !outputBucket) throw new Error('GCS_INPUT_BUCKET and GCS_OUTPUT_BUCKET must be set')
 
-          const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-          const inputKey = `uploads/${jobId}/${(fileName || 'document').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`
+          jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          inputKey = `uploads/${jobId}/${(fileName || 'document').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`
           const gcsInputUri = gcsUri && gcsUri.startsWith('gs://') ? gcsUri : `gs://${inputBucket}/${inputKey}`
-          const outPrefix = (process.env.GCS_OUTPUT_PREFIX || 'vision-out').replace(/\/$/, '')
+          outPrefix = (process.env.GCS_OUTPUT_PREFIX || 'vision-out').replace(/\/$/, '')
           const gcsOutputUri = `gs://${outputBucket}/${outPrefix}/${jobId}/`
           console.log('[VisionOCR] inputBucket:', inputBucket, 'outputBucket:', outputBucket)
           console.log('[VisionOCR] gcsInputUri:', gcsInputUri)
@@ -64,7 +70,7 @@ export async function POST(request: NextRequest) {
             const probeData = new TextEncoder().encode('ok')
             let probeOk = false
             try {
-              await storage.bucket(inputBucket).file(probePath).save(probeData, { contentType: 'text/plain', resumable: false, public: false })
+            await storage.bucket(inputBucket!).file(probePath).save(probeData, { contentType: 'text/plain', resumable: false, public: false })
               probeOk = true
               console.log('[VisionOCR] Probe write succeeded (stream)')
               send({ step: 'Upload', progress: 12, message: 'GCS write probe succeeded.' })
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
               console.error('[VisionOCR] Probe write failed (stream):', e?.message || e)
               // Fallback: Signed URL write
               try {
-                const fileRef = storage.bucket(inputBucket).file(probePath)
+                const fileRef = storage.bucket(inputBucket!).file(probePath)
                 // @ts-ignore - getSignedUrl supports v4 write
                 const [signedUrl] = await fileRef.getSignedUrl({ version: 'v4', action: 'write', expires: Date.now() + 5 * 60 * 1000, contentType: 'text/plain' })
                 const putResp = await fetch(signedUrl, { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: probeData })
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
             const uploadTimeoutMs = 180_000
             let uploaded = false
             try {
-              const uploadPromise = storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
+              const uploadPromise = storage.bucket(inputBucket!).file(inputKey!).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
               const timedOut = new Promise((_, rej) => setTimeout(() => rej(new Error(`GCS upload timeout after ${uploadTimeoutMs}ms`)), uploadTimeoutMs))
               await Promise.race([uploadPromise, timedOut])
               uploaded = true
@@ -100,7 +106,7 @@ export async function POST(request: NextRequest) {
               console.error('[VisionOCR] Stream upload failed:', e?.message || e)
               // Fallback to signed URL upload
               try {
-                const fileRef = storage.bucket(inputBucket).file(inputKey)
+                const fileRef = storage.bucket(inputBucket!).file(inputKey!)
                 // @ts-ignore
                 const [signedUrl] = await fileRef.getSignedUrl({ version: 'v4', action: 'write', expires: Date.now() + 5 * 60 * 1000, contentType: 'application/pdf' })
                 const putResp = await fetch(signedUrl, { method: 'PUT', headers: { 'Content-Type': 'application/pdf' }, body: new Uint8Array(buf) })
@@ -132,7 +138,7 @@ export async function POST(request: NextRequest) {
 
           logStep('AI Analysis', 80, 'Structuring OCR text with AI...')
           const completion = await openai.chat.completions.create({
-            model: process.env.OCR_LLM_MODEL || 'gpt-4o-mini',
+            model: process.env.OCR_LLM_MODEL || 'gpt-4o',
             messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
             max_completion_tokens: Math.max(1000, Math.min(12000, parseInt(process.env.OCR_LLM_MAX_TOKENS || '7000', 10) || 7000)),
           })
