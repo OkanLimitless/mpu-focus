@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { uploadBufferToR2 } from '@/lib/r2';
 
 interface CloudConvertJobResponse {
   data: { id: string; status: string };
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Create job: import -> convert(pdf->jpg) -> export (to R2 if configured)
+          // Create job: import -> convert(pdf->jpg) -> export via URL (we will mirror to R2)
           const jobResp = providedJobId ? null : await fetch(`${CC_API}/jobs`, {
             method: 'POST',
             headers: {
@@ -70,21 +71,7 @@ export async function POST(request: NextRequest) {
                   page_range: '1-',
                   filename: 'page.jpg'
                 },
-                // Prefer exporting directly to Cloudflare R2 if configured
-                'export-1': (process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) ? {
-                  operation: 'export/s3',
-                  input: 'convert-1',
-                  bucket: process.env.R2_BUCKET,
-                  endpoint: process.env.R2_S3_ENDPOINT,
-                  region: 'auto',
-                  force_path_style: true,
-                  access_key_id: process.env.R2_ACCESS_KEY_ID,
-                  secret_access_key: process.env.R2_SECRET_ACCESS_KEY,
-                  key: 'tmp/cloudconvert/{job_id}/{filename}',
-                  acl: 'public-read',
-                  content_type: 'image/jpeg',
-                  cache_control: 'public, max-age=86400'
-                } : { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+                'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
               }
             })
           });
@@ -250,31 +237,40 @@ export async function POST(request: NextRequest) {
 
               let imageUrls: string[] = [];
 
-              // If exporting to R2 (export/s3), construct public URLs using configured base
+              // Mirror export URLs to R2 with deterministic keys
               const r2PublicBase = process.env.R2_PUBLIC_BASE_URL;
-              if (r2PublicBase && process.env.R2_BUCKET) {
-                try {
-                  // Prefer querying the convert task explicitly to get exact filenames
-                  const filenames = await fetchConvertFilenames(jobId);
-                  if (Array.isArray(filenames) && filenames.length > 0) {
-                    imageUrls = filenames.map((name: string) => `${r2PublicBase.replace(/\/$/, '')}/tmp/cloudconvert/${jobId}/${encodeURIComponent(name)}`);
-                    log('Constructed R2 image URLs', { count: imageUrls.length });
-                  } else {
-                    log('No convert filenames found for R2 construction');
-                  }
-                } catch (e: any) {
-                  log('R2 URL construction failed; will fallback', { error: e?.message || e });
-                }
-              }
+              const haveR2 = r2PublicBase && process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY;
 
-              // If not R2 or construction failed, fallback to export/url discovery
+              // Discover export/url files
               let exportTask: any = null;
               if (!imageUrls.length) {
                 exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
                   || includedTasks.find((t: any) => ((t?.attributes?.operation || '').includes('export')))
                   || (statusJson as any).included?.find((t: any) => t.type === 'task' && (t.attributes?.operation || '').includes('export'));
                 const files = exportTask?.attributes?.result?.files || [];
-                imageUrls = (files || []).map((f: any) => f.url).filter(Boolean);
+                const exportUrls = (files || []).map((f: any) => f.url).filter(Boolean);
+                if (haveR2 && exportUrls.length) {
+                  const filenames = await fetchConvertFilenames(jobId);
+                  const pairs = exportUrls.map((url: string, idx: number) => ({ url, name: filenames[idx] || `page-${idx + 1}.jpg` }));
+                  // Download and upload sequentially to control load
+                  const uploaded: string[] = [];
+                  for (const { url, name } of pairs) {
+                    try {
+                      const res = await fetch(url);
+                      if (!res.ok) throw new Error(`download ${res.status}`);
+                      const arr = new Uint8Array(await res.arrayBuffer());
+                      const key = `tmp/cloudconvert/${jobId}/${name}`;
+                      await uploadBufferToR2(key, arr, 'image/jpeg');
+                      uploaded.push(`${r2PublicBase!.replace(/\/$/, '')}/${key}`);
+                      send({ step: 'Uploading to R2', progress: 70, message: `Uploaded ${uploaded.length}/${pairs.length} pages...` });
+                    } catch (e: any) {
+                      log('Mirror to R2 failed for one file', { error: e?.message || e });
+                    }
+                  }
+                  imageUrls = uploaded;
+                } else {
+                  imageUrls = exportUrls;
+                }
               }
 
               // Fallback A: fetch export task detail directly by ID if present

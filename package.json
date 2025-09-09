@@ -11,6 +11,7 @@
     "setup": "node scripts/setup.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.665.0",
     "@hookform/resolvers": "^3.3.2",
     "@mux/mux-node": "^8.2.0",
     "@mux/mux-player-react": "^2.4.0",
