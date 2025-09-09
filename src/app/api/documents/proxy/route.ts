@@ -29,8 +29,8 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 export async function GET(request: NextRequest) {
   try {
-    // Rate limit: moderate to prevent abuse (60/min)
-    const limited = await rateLimit({ request, limit: 60, windowMs: 60 * 1000, keyPrefix: 'doc-proxy' })
+    // Rate limit: increased to support multi-image downloads by AI (1000/min)
+    const limited = await rateLimit({ request, limit: 1000, windowMs: 60 * 1000, keyPrefix: 'doc-proxy' })
     if (!limited.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
@@ -79,19 +79,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('Attempting to fetch document from:', fileUrl)
+    console.log('Proxy fetching:', fileUrl)
 
-    // Fetch the file from UploadThing
-    const response = await fetch(fileUrl, {
-      headers: {
-        'User-Agent': 'MPU-Focus-App/1.0'
-      }
-    })
+    // Fetch the file from origin and stream it back
+    const response = await fetch(fileUrl, { headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
 
-    console.log('UploadThing response status:', response.status)
+    console.log('Origin response status:', response.status)
 
     if (!response.ok) {
-      console.error(`Failed to fetch file from UploadThing. Status: ${response.status}, URL: ${fileUrl}`)
+      console.error(`Failed to fetch file from origin. Status: ${response.status}, URL: ${fileUrl}`)
       
       // Provide more specific error messages based on status
       if (response.status === 404) {
@@ -124,29 +120,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get the file data
-    const fileBuffer = await response.arrayBuffer()
-    const contentType = response.headers.get('content-type') || 'application/octet-stream'
-    const contentLength = response.headers.get('content-length')
-
-    console.log(`Successfully fetched document. Size: ${fileBuffer.byteLength} bytes, Type: ${contentType}`)
-
+    // Stream body through
     const origin = request.headers.get('origin')
     const corsHeaders = getCorsHeaders(origin)
-
-    // Create response with proper headers
-    const proxyResponse = new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': contentLength || fileBuffer.byteLength.toString(),
-        ...corsHeaders,
-        'Cache-Control': 'private, max-age=60',
-        'Content-Disposition': 'inline',
-      }
-    })
-
-    return proxyResponse
+    const headers: Record<string, string> = {
+      'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=60',
+      'Content-Disposition': 'inline',
+      ...corsHeaders,
+    }
+    const contentLength = response.headers.get('content-length')
+    if (contentLength) headers['Content-Length'] = contentLength
+    return new NextResponse(response.body as any, { status: 200, headers })
 
   } catch (error: any) {
     console.error('Document proxy error:', {
