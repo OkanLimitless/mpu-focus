@@ -245,8 +245,9 @@ export async function POST(request: NextRequest) {
               }
 
               // If not R2 or construction failed, fallback to export/url discovery
+              let exportTask: any = null;
               if (!imageUrls.length) {
-                const exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
+                exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
                   || includedTasks.find((t: any) => ((t?.attributes?.operation || '').includes('export')))
                   || (statusJson as any).included?.find((t: any) => t.type === 'task' && (t.attributes?.operation || '').includes('export'));
                 const files = exportTask?.attributes?.result?.files || [];
