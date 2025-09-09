@@ -90,20 +90,9 @@ export async function POST(request: NextRequest) {
             || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin);
           const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
           const isR2Url = (u: string) => r2PublicBase && u.startsWith(r2PublicBase);
-          const isCloudConvertUrl = (u: string) => {
-            try {
-              const h = new URL(u).hostname;
-              return (
-                h === 'storage.cloudconvert.com' ||
-                h.endsWith('.storage.cloudconvert.com')
-              );
-            } catch {
-              return false;
-            }
-          };
-          // Only proxy when necessary (e.g., UploadThing). CloudConvert + R2 are public and stable.
+          // Only pass through R2 URLs. Proxy everything else (including CloudConvert) for stability.
           const proxiedUrls: string[] = imageUrls.map((u: string) =>
-            (isR2Url(u) || isCloudConvertUrl(u)) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`
+            isR2Url(u) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`
           );
 
           sendStatus({

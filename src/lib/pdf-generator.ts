@@ -178,3 +178,92 @@ export async function generatePdfFromExtractedData(params: GenerateParams) {
   }
 }
 
+export async function convertHtmlToPdf(params: { htmlContent: string; fileName?: string; userName?: string }) {
+  const { htmlContent, fileName, userName } = params
+  const ccApiKey = process.env.CLOUDCONVERT_API_KEY
+  if (!ccApiKey) {
+    return { success: false, error: 'CLOUDCONVERT_API_KEY not configured' }
+  }
+
+  const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '')
+  const haveR2 = r2PublicBase && process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
+
+  const CC_API = 'https://api.cloudconvert.com/v2'
+  const safeBase = (fileName || 'MPU_Document').toString().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60)
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const pdfName = `${safeBase || 'document'}_report.pdf`
+
+  // Upload HTML to R2 for import/url if available; otherwise import/base64
+  let importUrlForCC: string | null = null
+  const sanitizedHtml = DOMPurify.sanitize(htmlContent, { ALLOW_UNKNOWN_PROTOCOLS: false })
+  if (haveR2) {
+    const htmlKey = `tmp/pdfgen/${id}/${safeBase || 'document'}.html`
+    const htmlBytes = new TextEncoder().encode(sanitizedHtml)
+    await uploadBufferToR2(htmlKey, htmlBytes, 'text/html; charset=utf-8')
+    importUrlForCC = `${r2PublicBase}/${htmlKey}`
+  }
+
+  const tasks: any = importUrlForCC
+    ? {
+        'import-1': { operation: 'import/url', url: importUrlForCC },
+        'convert-1': { operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName, page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10 },
+        'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+      }
+    : {
+        'import-1': { operation: 'import/base64', file: Buffer.from(sanitizedHtml, 'utf8').toString('base64'), filename: `${safeBase || 'document'}.html` },
+        'convert-1': { operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName, page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10 },
+        'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+      }
+
+  const jobResp = await fetch(`${CC_API}/jobs`, { method: 'POST', headers: { 'Authorization': `Bearer ${ccApiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }) })
+  if (!jobResp.ok) {
+    const errText = await jobResp.text().catch(() => '')
+    return { success: false, error: `CloudConvert job creation failed: ${errText}` }
+  }
+  const jobJson: any = await jobResp.json()
+  const jobId: string = jobJson?.data?.id
+
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  const fetchExportUrls = async (): Promise<string[]> => {
+    const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!listResp.ok) return []
+    const listJson: any = await listResp.json()
+    const allTasks: any[] = listJson?.data || []
+    const exportTasks = allTasks.filter((t: any) => (t?.attributes?.operation || t?.operation || '').includes('export'))
+    const finished = exportTasks.find((t: any) => (t?.attributes?.status || t?.status) === 'finished') || exportTasks[0]
+    if (!finished?.id) return []
+    const detailResp = await fetch(`${CC_API}/tasks/${finished.id}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!detailResp.ok) return []
+    const detailJson: any = await detailResp.json()
+    const files = detailJson?.data?.attributes?.result?.files || detailJson?.data?.result?.files || []
+    return (files as any[]).map((f: any) => f.url).filter(Boolean)
+  }
+
+  let exportUrls: string[] = []
+  const started = Date.now()
+  while (!exportUrls.length && (Date.now() - started) < 90_000) {
+    const statusResp = await fetch(`${CC_API}/jobs/${jobId}?include=tasks`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!statusResp.ok) break
+    const statusJson: any = await statusResp.json()
+    const status = statusJson?.data?.status
+    if (status === 'error') return { success: false, error: 'CloudConvert job failed' }
+    if (status === 'finished') { exportUrls = await fetchExportUrls(); break }
+    await sleep(2000)
+  }
+
+  if (!exportUrls.length) return { success: false, error: 'CloudConvert did not return export URLs in time' }
+
+  let pdfUrl: string
+  if (haveR2) {
+    const pdfResp = await fetch(exportUrls[0])
+    if (!pdfResp.ok) return { success: false, error: `Failed to download PDF: ${pdfResp.status}` }
+    const pdfArr = new Uint8Array(await pdfResp.arrayBuffer())
+    const pdfKey = `generated/pdfs/${Date.now()}/${pdfName}`
+    await uploadBufferToR2(pdfKey, pdfArr, 'application/pdf')
+    pdfUrl = `${r2PublicBase}/${pdfKey}`
+  } else {
+    pdfUrl = exportUrls[0]
+  }
+
+  return { success: true, pdfUrl }
+}

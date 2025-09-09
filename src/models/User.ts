@@ -70,6 +70,7 @@ const UserSchema = new Schema<User>({
   // Document processing results from MPU documents
   documentProcessing: {
     extractedData: { type: String }, // The extracted text data from GPT analysis
+    htmlContent: { type: String }, // Cached HTML report for reuse
     fileName: { type: String }, // Original filename of processed document
     totalPages: { type: Number }, // Number of pages processed
     processedAt: { type: Date }, // When the document was processed

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { generatePdfFromExtractedData } from '@/lib/pdf-generator'
+import { generatePdfFromExtractedData, convertHtmlToPdf } from '@/lib/pdf-generator'
 
 
 export async function POST(
@@ -60,20 +60,39 @@ export async function POST(
       })
     }
 
-    // Generate HTML and PDF using shared library (no external fetch to protected URL)
-    const result = await generatePdfFromExtractedData({
-      extractedData: user.documentProcessing.extractedData,
-      fileName: user.documentProcessing.fileName || 'MPU_Document',
-      userName: `${user.firstName} ${user.lastName}`
-    })
+    let html = user.documentProcessing.htmlContent
+    let pdfUrl = user.documentProcessing.pdfUrl
 
-    // Persist pdfUrl for future reuse (avoid regenerating)
-    if (result.pdfUrl) {
-      user.documentProcessing.pdfUrl = result.pdfUrl
-      await user.save()
+    // If HTML not cached yet, generate once with GPT
+    if (!html) {
+      const gen = await generatePdfFromExtractedData({
+        extractedData: user.documentProcessing.extractedData,
+        fileName: user.documentProcessing.fileName || 'MPU_Document',
+        userName: `${user.firstName} ${user.lastName}`
+      })
+      html = gen.htmlContent
+      pdfUrl = gen.pdfUrl || pdfUrl
+    } else if (!pdfUrl) {
+      // If we have HTML but no PDF yet, convert HTML to PDF via CloudConvert
+      const conv = await convertHtmlToPdf({ htmlContent: html, fileName: user.documentProcessing.fileName || 'MPU_Document', userName: `${user.firstName} ${user.lastName}` })
+      if (conv.success && conv.pdfUrl) {
+        pdfUrl = conv.pdfUrl
+      }
     }
 
-    return NextResponse.json({ ...result, userName: `${user.firstName} ${user.lastName}` })
+    // Persist html and pdfUrl for future reuse (avoid regenerating)
+    user.documentProcessing.htmlContent = html || user.documentProcessing.htmlContent
+    user.documentProcessing.pdfUrl = pdfUrl || user.documentProcessing.pdfUrl
+    await user.save()
+
+    return NextResponse.json({
+      success: true,
+      htmlContent: html,
+      pdfUrl,
+      fileName: user.documentProcessing.fileName || 'MPU_Document',
+      userName: `${user.firstName} ${user.lastName}`,
+      generatedAt: new Date().toISOString()
+    })
 
   } catch (error) {
     console.error('PDF generation error:', error);

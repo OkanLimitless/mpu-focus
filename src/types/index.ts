@@ -27,6 +27,7 @@ export interface User extends Document {
   // Document processing results from MPU documents
   documentProcessing?: {
     extractedData: string
+    htmlContent?: string
     fileName: string
     totalPages: number
     processedAt: Date
