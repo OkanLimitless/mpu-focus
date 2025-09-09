@@ -46,11 +46,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate that the URL is from allowed sources (UploadThing and CloudConvert storage)
+    // Keep this list broad enough to include regional subdomains
     const allowedDomains = [
       'utfs.io',                    // Legacy pattern
       'uploadthing.com',           // General UploadThing domain
       'ufs.sh',                    // New v7 pattern (*.ufs.sh)
-      'storage.cloudconvert.com',  // CloudConvert storage
+      'cloudconvert.com',          // Any CloudConvert subdomain (includes storage.cloudconvert.com and regional variants)
+      'storage.cloudconvert.com',  // Explicit storage domain (kept for clarity)
       'us-east.storage.cloudconvert.com',
       'eu-central-1.storage.cloudconvert.com'
     ]
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
     if (!isValidDomain) {
       console.error('Unauthorized domain:', urlObj.hostname)
       return NextResponse.json(
-        { error: 'Invalid file source - only UploadThing URLs are allowed' },
+        { error: 'Invalid file source', details: 'Only UploadThing and CloudConvert URLs are allowed' },
         { status: 403 }
       )
     }
@@ -181,6 +183,7 @@ export async function HEAD(request: NextRequest) {
       'utfs.io',
       'uploadthing.com',
       'ufs.sh',
+      'cloudconvert.com',
       'storage.cloudconvert.com',
       'us-east.storage.cloudconvert.com',
       'eu-central-1.storage.cloudconvert.com'
