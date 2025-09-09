@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getStorageClient, runVisionPdfOcr } from '@/lib/gcp'
+import { getStorageClient, runVisionPdfOcr, deleteGcsFilesByPrefix, deleteGcsFile } from '@/lib/gcp'
 import OpenAI from 'openai'
 
 export const dynamic = 'force-dynamic'
@@ -147,11 +147,36 @@ export async function POST(request: NextRequest) {
             supportsPDFGeneration: true,
           }
 
+          // Best-effort cleanup of temporary artifacts (time-bounded)
+          try {
+            logStep('Cleanup', 90, 'Cleaning up temporary OCR artifacts...')
+            const outputPrefix = `${outPrefix}/${jobId}/`.replace(/\/+/, '/').replace(/^\//, '')
+            const cleanupOutput = deleteGcsFilesByPrefix(outputBucket, outputPrefix)
+            const cleanupInput = deleteGcsFile(inputBucket, inputKey)
+            const withTimeout = (p: Promise<any>, ms: number) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('cleanup-timeout')), ms))])
+            await Promise.all([
+              withTimeout(cleanupOutput, 8000).catch(e => console.warn('[VisionOCR] output cleanup:', e?.message || e)),
+              withTimeout(cleanupInput, 5000).catch(e => console.warn('[VisionOCR] input cleanup:', e?.message || e)),
+            ])
+          } catch (e) {
+            console.warn('[VisionOCR] Cleanup step failed (ignored):', (e as any)?.message || e)
+          }
+
           logStep('Complete', 100, 'Processing completed successfully.')
           send({ result })
           controller.close()
         } catch (e: any) {
           send({ step: 'Error', progress: 0, message: e?.message || 'Processing failed', error: true })
+          // Attempt cleanup on failure (best-effort)
+          try {
+            if (typeof inputBucket === 'string' && typeof inputKey === 'string') {
+              await deleteGcsFile(inputBucket, inputKey)
+            }
+            if (typeof outputBucket === 'string' && typeof outPrefix === 'string' && typeof jobId === 'string') {
+              const outputPrefix = `${outPrefix}/${jobId}/`.replace(/\/+/, '/').replace(/^\//, '')
+              await deleteGcsFilesByPrefix(outputBucket, outputPrefix)
+            }
+          } catch {}
           controller.close()
         }
       }

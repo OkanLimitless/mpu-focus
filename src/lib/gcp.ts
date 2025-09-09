@@ -98,3 +98,30 @@ export async function runVisionPdfOcr(params: { gcsInputUri: string; gcsOutputUr
   const fullText = texts.join('\n\n')
   return { texts, fullText, pages: texts.length } as VisionOcrResult
 }
+
+// Best-effort cleanup helpers
+export async function deleteGcsFilesByPrefix(bucketName: string, prefix: string) {
+  const storage = await getStorageClient()
+  const normalized = prefix.replace(/^\//, '')
+  console.log('[VisionOCR] Deleting files by prefix:', `gs://${bucketName}/${normalized}`)
+  try {
+    await storage.bucket(bucketName).deleteFiles({ prefix: normalized })
+    return { success: true }
+  } catch (e: any) {
+    console.warn('[VisionOCR] deleteFiles failed:', e?.message || e)
+    return { success: false, error: e?.message || String(e) }
+  }
+}
+
+export async function deleteGcsFile(bucketName: string, key: string) {
+  const storage = await getStorageClient()
+  const normalized = key.replace(/^\//, '')
+  console.log('[VisionOCR] Deleting file:', `gs://${bucketName}/${normalized}`)
+  try {
+    await storage.bucket(bucketName).file(normalized).delete({ ignoreNotFound: true } as any)
+    return { success: true }
+  } catch (e: any) {
+    console.warn('[VisionOCR] delete file failed:', e?.message || e)
+    return { success: false, error: e?.message || String(e) }
+  }
+}
