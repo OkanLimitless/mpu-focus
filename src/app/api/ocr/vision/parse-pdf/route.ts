@@ -59,20 +59,6 @@ export async function POST(request: NextRequest) {
             const buf = await resp.arrayBuffer()
             console.log('[VisionOCR] Downloaded PDF bytes:', buf.byteLength)
             logStep('Upload', 10, `Downloaded ${Math.round(buf.byteLength / 1024 / 1024)} MB. Uploading to GCS...`)
-            // Probe: check bucket exists
-            try {
-              const [exists] = await storage.bucket(inputBucket).exists()
-              console.log('[VisionOCR] Input bucket exists:', exists)
-              send({ step: 'Upload', progress: 11, message: `Input bucket exists: ${exists}` })
-              if (!exists) {
-                throw new Error(`Input bucket not found: ${inputBucket}`)
-              }
-            } catch (e: any) {
-              console.error('[VisionOCR] Bucket exists check failed:', e?.message || e)
-              send({ step: 'Error', progress: 0, message: `Bucket check failed: ${e?.message || e}`, error: true })
-              return
-            }
-
             // Probe write to verify permissions (fallback to signed URL if stream upload fails)
             const probePath = `uploads/${jobId}/_probe.txt`
             const probeData = new TextEncoder().encode('ok')
