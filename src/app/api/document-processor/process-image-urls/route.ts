@@ -43,11 +43,11 @@ async function retryOpenAICall(
     } catch (error: any) {
       console.error(`OpenAI call attempt ${attempt} failed:`, error.message);
       
-      // Check if it's a timeout/download error
-      if (error.code === 'invalid_image_url' && error.message?.includes('Timeout while downloading')) {
+      // Retry on any invalid_image_url download failures (timeout or other fetch errors)
+      if (error.code === 'invalid_image_url') {
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 2000; // Exponential backoff: 4s, 8s, 16s
-          console.log(`Retrying in ${delay}ms due to image download timeout...`);
+          console.log(`Retrying in ${delay}ms due to image download error...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -85,9 +85,16 @@ export async function POST(request: NextRequest) {
             throw new Error('No image URLs provided');
           }
 
-          // Build absolute base URL for proxying image URLs (helps external fetchers like OpenAI)
-          const baseOrigin = process.env.NEXT_PUBLIC_APP_URL
-            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin);
+          // Build absolute base URL for proxying image URLs (must be publicly accessible for external fetchers like OpenAI)
+          // Preference: EXTERNAL_PUBLIC_BASE_URL -> NEXT_PUBLIC_APP_URL -> VERCEL_PROJECT_PRODUCTION_URL -> VERCEL_BRANCH_URL -> VERCEL_URL -> request origin
+          const baseOrigin = (
+            process.env.EXTERNAL_PUBLIC_BASE_URL
+            || process.env.NEXT_PUBLIC_APP_URL
+            || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')
+            || (process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : '')
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+            || new URL(request.url).origin
+          );
           const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
           const isR2Url = (u: string) => r2PublicBase && u.startsWith(r2PublicBase);
           // Only pass through R2 URLs. Proxy everything else (including CloudConvert) for stability.
