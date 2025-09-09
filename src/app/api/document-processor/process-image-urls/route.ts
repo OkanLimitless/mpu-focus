@@ -19,7 +19,7 @@ async function retryOpenAICall(
 
       // Single comprehensive analysis of the entire document using GPT-5 Mini
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini", // GPT-5 Mini with 200k TPM - perfect for large document processing
+        model: "gpt-4o", // Use vision-capable model to ensure image parts are consumed
         messages: [
           {
             role: "system",
@@ -102,6 +102,12 @@ export async function POST(request: NextRequest) {
             isR2Url(u) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`
           );
 
+          // Quick debug: confirm URL host source for first few images
+          try {
+            const sampleHosts = proxiedUrls.slice(0, 3).map(u => { try { return new URL(u).hostname } catch { return 'invalid' } })
+            console.log('[process-image-urls] firstHosts', sampleHosts)
+          } catch {}
+
           sendStatus({
             step: 'Processing images',
             progress: 0,
@@ -140,7 +146,7 @@ export async function POST(request: NextRequest) {
               } as any));
 
               const completion = await openai.chat.completions.create({
-                model: "gpt-5-mini",
+                model: "gpt-4o",
                 messages: [
                   {
                     role: "system",
