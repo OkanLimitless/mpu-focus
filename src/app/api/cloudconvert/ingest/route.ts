@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
                   input_format: 'pdf',
                   density: 200,
                   quality: 85,
-                  page_range: '1-'
+                  page_range: '1-',
+                  filename: 'page-{page}.jpg'
                 },
                 // Prefer exporting directly to Cloudflare R2 if configured
                 'export-1': (process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) ? {
