@@ -59,24 +59,78 @@ export async function POST(request: NextRequest) {
             const buf = await resp.arrayBuffer()
             console.log('[VisionOCR] Downloaded PDF bytes:', buf.byteLength)
             logStep('Upload', 10, `Downloaded ${Math.round(buf.byteLength / 1024 / 1024)} MB. Uploading to GCS...`)
-            // Probe write to verify permissions
+            // Probe: check bucket exists
             try {
-              await storage.bucket(inputBucket).file(`uploads/${jobId}/_probe.txt`).save(new TextEncoder().encode('ok'), { contentType: 'text/plain', resumable: false, public: false })
-              console.log('[VisionOCR] Probe write succeeded')
-              send({ step: 'Upload', progress: 11, message: 'GCS write probe succeeded.' })
+              const [exists] = await storage.bucket(inputBucket).exists()
+              console.log('[VisionOCR] Input bucket exists:', exists)
+              send({ step: 'Upload', progress: 11, message: `Input bucket exists: ${exists}` })
+              if (!exists) {
+                throw new Error(`Input bucket not found: ${inputBucket}`)
+              }
             } catch (e: any) {
-              console.error('[VisionOCR] Probe write failed:', e?.message || e)
-              send({ step: 'Error', progress: 0, message: `GCS write probe failed: ${e?.message || e}`, error: true })
-              controller.abort()
+              console.error('[VisionOCR] Bucket exists check failed:', e?.message || e)
+              send({ step: 'Error', progress: 0, message: `Bucket check failed: ${e?.message || e}`, error: true })
               return
             }
-            // Upload with timeout guard
+
+            // Probe write to verify permissions (fallback to signed URL if stream upload fails)
+            const probePath = `uploads/${jobId}/_probe.txt`
+            const probeData = new TextEncoder().encode('ok')
+            let probeOk = false
+            try {
+              await storage.bucket(inputBucket).file(probePath).save(probeData, { contentType: 'text/plain', resumable: false, public: false })
+              probeOk = true
+              console.log('[VisionOCR] Probe write succeeded (stream)')
+              send({ step: 'Upload', progress: 12, message: 'GCS write probe succeeded.' })
+            } catch (e: any) {
+              console.error('[VisionOCR] Probe write failed (stream):', e?.message || e)
+              // Fallback: Signed URL write
+              try {
+                const fileRef = storage.bucket(inputBucket).file(probePath)
+                // @ts-ignore - getSignedUrl supports v4 write
+                const [signedUrl] = await fileRef.getSignedUrl({ version: 'v4', action: 'write', expires: Date.now() + 5 * 60 * 1000, contentType: 'text/plain' })
+                const putResp = await fetch(signedUrl, { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: probeData })
+                if (!putResp.ok) throw new Error(`Signed URL probe write failed: ${putResp.status}`)
+                probeOk = true
+                console.log('[VisionOCR] Probe write via signed URL succeeded')
+                send({ step: 'Upload', progress: 12, message: 'GCS write probe via signed URL succeeded.' })
+              } catch (e2: any) {
+                console.error('[VisionOCR] Probe write via signed URL failed:', e2?.message || e2)
+                send({ step: 'Error', progress: 0, message: `GCS probe failed: ${e?.message || e} | ${e2?.message || e2}`, error: true })
+                return
+              }
+            }
+
+            // Upload PDF with timeout guard; fallback to signed URL if needed
             const uploadTimeoutMs = 180_000
-            const uploadPromise = storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
-            const timedOut = new Promise((_, rej) => setTimeout(() => rej(new Error(`GCS upload timeout after ${uploadTimeoutMs}ms`)), uploadTimeoutMs))
-            await Promise.race([uploadPromise, timedOut])
-            console.log('[VisionOCR] Saved to GCS:', `gs://${inputBucket}/${inputKey}`)
-            logStep('Upload', 15, 'Upload to GCS complete.')
+            let uploaded = false
+            try {
+              const uploadPromise = storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
+              const timedOut = new Promise((_, rej) => setTimeout(() => rej(new Error(`GCS upload timeout after ${uploadTimeoutMs}ms`)), uploadTimeoutMs))
+              await Promise.race([uploadPromise, timedOut])
+              uploaded = true
+              console.log('[VisionOCR] Saved to GCS (stream):', `gs://${inputBucket}/${inputKey}`)
+            } catch (e: any) {
+              console.error('[VisionOCR] Stream upload failed:', e?.message || e)
+              // Fallback to signed URL upload
+              try {
+                const fileRef = storage.bucket(inputBucket).file(inputKey)
+                // @ts-ignore
+                const [signedUrl] = await fileRef.getSignedUrl({ version: 'v4', action: 'write', expires: Date.now() + 5 * 60 * 1000, contentType: 'application/pdf' })
+                const putResp = await fetch(signedUrl, { method: 'PUT', headers: { 'Content-Type': 'application/pdf' }, body: new Uint8Array(buf) })
+                if (!putResp.ok) throw new Error(`Signed URL upload failed: ${putResp.status}`)
+                uploaded = true
+                console.log('[VisionOCR] Saved to GCS via signed URL:', `gs://${inputBucket}/${inputKey}`)
+              } catch (e2: any) {
+                console.error('[VisionOCR] Signed URL upload failed:', e2?.message || e2)
+                send({ step: 'Error', progress: 0, message: `GCS upload failed: ${e?.message || e} | ${e2?.message || e2}`, error: true })
+                return
+              }
+            }
+
+            if (uploaded) {
+              logStep('Upload', 15, 'Upload to GCS complete.')
+            }
           }
 
           logStep('Vision OCR', 20, 'Starting Google Cloud Vision OCR (PDF)...')
