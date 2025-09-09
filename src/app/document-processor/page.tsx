@@ -269,25 +269,32 @@ export default function DocumentProcessor() {
       const ingestReader = ingestResp.body.getReader();
       const decoder = new TextDecoder();
       let foundImages = false;
+      let buffer = '';
       while (true) {
         const { done, value } = await ingestReader.read();
         if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.error) throw new Error(data.message || 'Conversion failed');
-            if (typeof data.progress === 'number') {
-              setProcessingStatus({ step: data.step || 'Conversion', progress: Math.min(90, Math.max(50, Math.round(data.progress))), message: data.message || 'Converting...' });
-            }
-            if (data.imageUrls && Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
-              foundImages = true;
-              // Kick off AI analysis with the returned image URLs
-              await runAnalysisWithImageUrls(data.imageUrls, file.name);
-            }
-          } catch {}
+        buffer += decoder.decode(value, { stream: true });
+        // SSE events are separated by a blank line
+        let sepIndex;
+        while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+          const eventBlock = buffer.slice(0, sepIndex);
+          buffer = buffer.slice(sepIndex + 2);
+          const eventLines = eventBlock.split('\n');
+          for (const rawLine of eventLines) {
+            const line = rawLine.trim();
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.error) throw new Error(data.message || 'Conversion failed');
+              if (typeof data.progress === 'number') {
+                setProcessingStatus({ step: data.step || 'Conversion', progress: Math.min(90, Math.max(50, Math.round(data.progress))), message: data.message || 'Converting...' });
+              }
+              if (data.imageUrls && Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
+                foundImages = true;
+                await runAnalysisWithImageUrls(data.imageUrls, file.name);
+              }
+            } catch {}
+          }
         }
       }
 
