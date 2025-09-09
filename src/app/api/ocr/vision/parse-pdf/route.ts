@@ -30,10 +30,28 @@ export async function POST(request: NextRequest) {
 
           if (!gcsUri) {
             logStep('Upload', 5, 'Uploading PDF to Google Cloud Storage...')
-            const resp = await fetch(pdfUrl)
+            // Prefer proxy to avoid protected hosts
+            const baseOrigin = (
+              process.env.EXTERNAL_PUBLIC_BASE_URL
+              || process.env.NEXT_PUBLIC_APP_URL
+              || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')
+              || (process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : '')
+              || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+              || new URL(request.url).origin
+            )
+            const proxied = `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(pdfUrl)}`
+            const controller = new AbortController()
+            const to = setTimeout(() => controller.abort(), 120_000)
+            let resp: Response
+            try {
+              resp = await fetch(proxied, { signal: controller.signal, headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
+            } finally {
+              clearTimeout(to)
+            }
             if (!resp.ok) throw new Error(`Failed to download PDF: ${resp.status}`)
             const arr = new Uint8Array(await resp.arrayBuffer())
             await storage.bucket(inputBucket).file(inputKey).save(arr, { contentType: 'application/pdf', resumable: false, public: false })
+            logStep('Upload', 12, 'Upload to GCS complete.')
           }
 
           logStep('Vision OCR', 15, 'Starting Google Cloud Vision OCR (PDF)...')
@@ -76,4 +94,3 @@ export async function POST(request: NextRequest) {
 
   return new Response(stream, { headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' } })
 }
-
