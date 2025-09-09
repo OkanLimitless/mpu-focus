@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
                   force_path_style: true,
                   access_key_id: process.env.R2_ACCESS_KEY_ID,
                   secret_access_key: process.env.R2_SECRET_ACCESS_KEY,
-                  key: 'tmp/cloudconvert/${job_id}/${filename}',
+                  key: 'tmp/cloudconvert/{job_id}/{filename}',
                   acl: 'public-read',
                   content_type: 'image/jpeg',
                   cache_control: 'public, max-age=86400'
@@ -185,6 +185,27 @@ export async function POST(request: NextRequest) {
             return [];
           };
 
+          // Helper to fetch filenames from the convert task (for R2 URL construction)
+          const fetchConvertFilenames = async (jobId: string): Promise<string[]> => {
+            const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, {
+              headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+            });
+            if (!listResp.ok) return [];
+            const listJson: any = await listResp.json();
+            const allTasks: any[] = listJson?.data || [];
+            const convertTask = allTasks.find((t: any) => (t?.attributes?.operation || t?.operation) === 'convert');
+            if (!convertTask?.id) return [];
+            const taskResp = await fetch(`${CC_API}/tasks/${convertTask.id}`, {
+              headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+            });
+            if (!taskResp.ok) return [];
+            const taskJson: any = await taskResp.json();
+            const files = taskJson?.data?.attributes?.result?.files
+              || taskJson?.data?.result?.files
+              || [];
+            return (files as any[]).map((f: any) => f.filename).filter(Boolean);
+          };
+
           const getImageUrlsWithRetries = async (jobId: string): Promise<string[]> => {
             const maxAttempts = 15; // ~30-45s depending on backoff
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -232,12 +253,13 @@ export async function POST(request: NextRequest) {
               const r2PublicBase = process.env.R2_PUBLIC_BASE_URL;
               if (r2PublicBase && process.env.R2_BUCKET) {
                 try {
-                  const convertTask = includedTasks.find((t: any) => (t?.attributes?.operation || '') === 'convert');
-                  const convertFiles = convertTask?.attributes?.result?.files || [];
-                  if (Array.isArray(convertFiles) && convertFiles.length > 0) {
-                    imageUrls = convertFiles
-                      .map((f: any) => `${r2PublicBase.replace(/\/$/, '')}/tmp/cloudconvert/${jobId}/${encodeURIComponent(f.filename)}`);
+                  // Prefer querying the convert task explicitly to get exact filenames
+                  const filenames = await fetchConvertFilenames(jobId);
+                  if (Array.isArray(filenames) && filenames.length > 0) {
+                    imageUrls = filenames.map((name: string) => `${r2PublicBase.replace(/\/$/, '')}/tmp/cloudconvert/${jobId}/${encodeURIComponent(name)}`);
                     log('Constructed R2 image URLs', { count: imageUrls.length });
+                  } else {
+                    log('No convert filenames found for R2 construction');
                   }
                 } catch (e: any) {
                   log('R2 URL construction failed; will fallback', { error: e?.message || e });
