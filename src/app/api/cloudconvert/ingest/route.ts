@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
                   input: 'import-1',
                   output_format: 'jpg',
                   input_format: 'pdf',
-                  density: 200,
-                  quality: 85,
+                  density: Math.max(72, parseInt(process.env.CC_JPEG_DENSITY || '150', 10) || 150),
+                  quality: Math.min(95, Math.max(50, parseInt(process.env.CC_JPEG_QUALITY || '70', 10) || 70)),
                   page_range: '1-',
                   filename: 'page.jpg'
                 },
@@ -336,4 +336,3 @@ export async function POST(request: NextRequest) {
     }
   });
 }
-

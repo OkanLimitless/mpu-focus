@@ -8,12 +8,13 @@ async function retryOpenAICall(
   imageUrls: string[],
   maxRetries: number = 3
 ): Promise<string> {
+  const defaultDetail = (process.env.VISION_DEFAULT_DETAIL || 'low').toLowerCase() === 'high' ? 'high' : 'low'
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       // Prepare all images for single request
       const imageMessages = imageUrls.map((imageUrl) => ({
         type: "image_url" as const,
-        image_url: { url: imageUrl, detail: "high" as const }
+        image_url: { url: imageUrl, detail: defaultDetail as 'low' | 'high' }
       } as any));
 
       // Single comprehensive analysis of the entire document using GPT-5 Mini
@@ -128,18 +129,18 @@ export async function POST(request: NextRequest) {
           try {
             allExtractedData = await retryOpenAICall(openai, proxiedUrls, 3);
           } catch (error: any) {
-            // If all retries failed, try with lower detail to reduce load
+            // If all retries failed, try with higher detail to improve accuracy (second attempt)
             sendStatus({
               step: 'AI Analysis - Fallback',
               progress: 50,
-              message: `Retrying with optimized settings due to download timeouts...`
+              message: `Retrying with high detail to improve completeness...`
             });
 
             try {
-              // Fallback: Use lower detail to reduce image download load
+              // Fallback: Use high detail
               const imageMessages = proxiedUrls.map((imageUrl) => ({
                 type: "image_url" as const,
-                image_url: { url: imageUrl, detail: "low" as const }
+                image_url: { url: imageUrl, detail: "high" as const }
               } as any));
 
               const completion = await openai.chat.completions.create({

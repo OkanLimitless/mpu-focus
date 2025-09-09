@@ -74,7 +74,8 @@ const UserSchema = new Schema<User>({
     totalPages: { type: Number }, // Number of pages processed
     processedAt: { type: Date }, // When the document was processed
     processingMethod: { type: String }, // Method used for processing (e.g., "GPT-5 Mini")
-    processingNotes: { type: String } // Additional processing metadata
+    processingNotes: { type: String }, // Additional processing metadata
+    pdfUrl: { type: String } // Cached URL to generated PDF (when available)
   },
   // Admin notes for this user
   adminNotes: [{

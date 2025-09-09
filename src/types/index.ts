@@ -32,6 +32,7 @@ export interface User extends Document {
     processedAt: Date
     processingMethod: string
     processingNotes: string
+    pdfUrl?: string
   }
   // Admin notes for this user
   adminNotes?: Array<{

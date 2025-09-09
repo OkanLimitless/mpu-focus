@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { generatePdfFromExtractedData } from '@/lib/pdf-generator'
 
 
 export async function POST(
@@ -47,32 +48,32 @@ export async function POST(
       )
     }
 
-    // Delegate to the shared document-processor PDF generator
-    const baseOrigin = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin)
-
-    const dpResp = await fetch(`${baseOrigin}/api/document-processor/generate-pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        extractedData: user.documentProcessing.extractedData,
-        fileName: user.documentProcessing.fileName || 'MPU_Document'
+    // If we already have a cached PDF URL, return it immediately
+    if (user.documentProcessing?.pdfUrl) {
+      return NextResponse.json({
+        success: true,
+        htmlContent: undefined,
+        pdfUrl: user.documentProcessing.pdfUrl,
+        fileName: user.documentProcessing.fileName || 'MPU_Document',
+        userName: `${user.firstName} ${user.lastName}`,
+        generatedAt: new Date().toISOString()
       })
-    })
-
-    if (!dpResp.ok) {
-      const err = await dpResp.text().catch(() => '')
-      return NextResponse.json(
-        { error: 'Failed to generate PDF', details: err || `Status ${dpResp.status}` },
-        { status: 500 }
-      )
     }
 
-    const payload = await dpResp.json()
-    return NextResponse.json({
-      ...payload,
+    // Generate HTML and PDF using shared library (no external fetch to protected URL)
+    const result = await generatePdfFromExtractedData({
+      extractedData: user.documentProcessing.extractedData,
+      fileName: user.documentProcessing.fileName || 'MPU_Document',
       userName: `${user.firstName} ${user.lastName}`
     })
+
+    // Persist pdfUrl for future reuse (avoid regenerating)
+    if (result.pdfUrl) {
+      user.documentProcessing.pdfUrl = result.pdfUrl
+      await user.save()
+    }
+
+    return NextResponse.json({ ...result, userName: `${user.firstName} ${user.lastName}` })
 
   } catch (error) {
     console.error('PDF generation error:', error);
