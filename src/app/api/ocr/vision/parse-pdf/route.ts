@@ -124,16 +124,17 @@ export async function POST(request: NextRequest) {
           console.log('[VisionOCR] OCR pages extracted:', pages)
           logStep('Vision OCR', 70, `OCR complete. ${pages} pages extracted.`)
 
-          // LLM structuring (text mode)
+          // LLM structuring (text mode) with page markers for better references
           const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-          const systemPrompt = `Je bent een professionele analist van Duitse officiële juridische documenten (MPU-context). Gebruik de GEGEVEN OCR-TEKST hieronder (geen afbeeldingen) als bron. Rapporteer de output in het Nederlands. Voeg paginaverwijzingen toe indien duidelijk, markeer ontbrekende gegevens als "Niet vermeld" en voeg korte Duitse citaten waar relevant.`
-          const userPrompt = `OCR-TEKST (geconcateneerd over ${pages} pagina's):\n\n${fullText}\n\nOPDRACHT: Structureer deze gegevens zoals eerder afgesproken (Overzicht van delicten, Algemene gegevens, citaten, paginaverwijzingen). Wees volledig en systematisch.`
+          const markedText = texts.map((t, idx) => `--- PAGINA ${idx + 1} ---\n${(t || '').trim()}`).join('\n\n')
+          const systemPrompt = `Je bent een professionele analist van Duitse juridische/bestuursrechtelijke documenten (MPU-context). Baseer ALLES uitsluitend op de OCR-tekst. Output in het Nederlands. Gebruik korte exacte Duitse citaten. Voeg bij elk feit paginaverwijzingen toe (gebruik de PAGINA-markers). Markeer ontbrekende gegevens als "Niet vermeld" of "Onzeker". Geen hallucinaties.`
+          const userPrompt = `OCR-INVOER MET PAGINAMARKERS (totaal ${pages} pagina's):\n\n${markedText}\n\nOPDRACHT: Maak een gestructureerd rapport volgens dit strikte format:\n\nMPU Rapport / Dossieroverzicht\nDocumentinformatie\n- Bestandsnaam: …\n- Datum generatie rapport: …\n- Opmerking extractie: Systematische inventarisatie van meegeleverde pagina’s; ontbrekende gegevens gemarkeerd als \"Niet vermeld\".\n\nPersoonlijke Gegevens / Identificatie\n- Naam: …\n- Geboortedatum: …\n- Adres (vermeld in dossier): …\n- Rijbewijsnummer(s) in dossier: …\n- Totaal aantal punten (FAER): …\n- Belangrijkste aktenzeichen / dossiernummers: …\n\nOverzicht van Delicten / Sachverhalt (één blok per delict)\nDelict N: [korte titel + jaartal]\n- Pagina(s) bron: …\n- Wat is er gebeurd? …\n- Duits citaat ter onderbouwing: \"…\"\n- Wanneer? … (datums)\n- Waar / bevoegde instantie? …\n- Aktenzeichen: …\n- Wetsverwijzing(en): … (bijv. §-verwijzingen BtMG/StVG/StGB)\n- Boete / straf / maatregelen: … (geldstraf, Freiheitsstrafe, Fahrverbot/Entzug, MPU-verplichting)\n- Punten (Flensburg): …\n- Alcohol / Drugs / Bloedwaarden: … (met exacte waarden en citaten)\n- Overige maatregelen / status: … (kort)\n\nAlgemene Gegevens & Aanvullende Documenten\n- Overzicht overige relevante stukken (toxicologie, Führungszeugnis, ordonnanties, correspondentie) met kerncitaat + pagina.\n\nBelangrijke geciteerde fragmenten (kort)\n- \"…\" — Pagina X\n- \"…\" — Pagina Y\n\nSamenvatting & Aanbevelingen\n- Chronologische kernpunten (kort)\n- Belangrijk voor MPU-voorbereiding: …\n- Aanbevolen vervolg: …\n\nRegels:\n1) Geen verzinsels; schrijf \"Niet vermeld\" waar data ontbreekt.\n2) Voeg bij elk feit een Pagina-verwijzing (op basis van inputmarkers).\n3) Gebruik korte Duitse citaten om cruciale velden te staven.\n4) Wees volledig en systematisch zoals in het format.`
 
           logStep('AI Analysis', 80, 'Structuring OCR text with AI...')
           const completion = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
-            max_completion_tokens: 6000,
+            max_completion_tokens: 7000,
           })
           const extractedData = completion.choices[0]?.message?.content || ''
 
