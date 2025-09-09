@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import DOMPurify from 'isomorphic-dompurify'
+import { uploadBufferToR2 } from '@/lib/r2'
 
 // GPT prompt for generating professional PDF template
 const PDF_GENERATION_PROMPT = `
@@ -115,10 +116,145 @@ Please generate a complete, professional HTML document that will create a beauti
 
     console.log('Generated HTML length (sanitized):', sanitizedHtml.length);
 
-    // Return the HTML content for client-side PDF generation
+    // Attempt CloudConvert HTML->PDF conversion if configured
+    let pdfUrl: string | null = null;
+    const ccApiKey = process.env.CLOUDCONVERT_API_KEY;
+    const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+    const haveR2 = r2PublicBase && process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY;
+
+    if (ccApiKey) {
+      try {
+        // 1) Upload HTML to R2 (or fallback to direct import/base64 if no R2)
+        const safeBase = (fileName || 'MPU_Document')
+          .toString()
+          .replace(/\.[^.]+$/, '')
+          .replace(/[^a-z0-9_-]+/gi, '_')
+          .slice(0, 60);
+        const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        let importUrlForCC: string | null = null;
+        let htmlUploaded = false;
+
+        if (haveR2) {
+          const htmlKey = `tmp/pdfgen/${id}/${safeBase || 'document'}.html`;
+          const htmlBytes = new TextEncoder().encode(sanitizedHtml);
+          await uploadBufferToR2(htmlKey, htmlBytes, 'text/html; charset=utf-8');
+          importUrlForCC = `${r2PublicBase}/${htmlKey}`;
+          htmlUploaded = true;
+        }
+
+        // 2) Create CloudConvert job: import -> convert(html->pdf) -> export/url
+        const CC_API = 'https://api.cloudconvert.com/v2';
+        const pdfName = `${safeBase || 'document'}_report.pdf`;
+
+        const tasks: any = htmlUploaded
+          ? {
+              'import-1': { operation: 'import/url', url: importUrlForCC },
+              'convert-1': {
+                operation: 'convert',
+                input: 'import-1',
+                input_format: 'html',
+                output_format: 'pdf',
+                engine: 'chrome',
+                filename: pdfName,
+                // Reasonable defaults for PDF rendering
+                page_size: 'A4',
+                margin_top: 10,
+                margin_bottom: 10,
+                margin_left: 10,
+                margin_right: 10,
+              },
+              'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+            }
+          : {
+              // Fallback if no R2: use import/base64
+              'import-1': { operation: 'import/base64', file: Buffer.from(sanitizedHtml, 'utf8').toString('base64'), filename: `${safeBase || 'document'}.html` },
+              'convert-1': {
+                operation: 'convert',
+                input: 'import-1',
+                input_format: 'html',
+                output_format: 'pdf',
+                engine: 'chrome',
+                filename: pdfName,
+                page_size: 'A4',
+                margin_top: 10,
+                margin_bottom: 10,
+                margin_left: 10,
+                margin_right: 10,
+              },
+              'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+            };
+
+        const jobResp = await fetch(`${CC_API}/jobs`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${ccApiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tasks })
+        });
+        if (!jobResp.ok) {
+          const errText = await jobResp.text();
+          throw new Error(`CloudConvert job creation failed: ${errText}`);
+        }
+        const jobJson: any = await jobResp.json();
+        const jobId: string = jobJson?.data?.id;
+
+        const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+        // Helper: try to fetch export URLs
+        const fetchExportUrls = async (): Promise<string[]> => {
+          const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } });
+          if (!listResp.ok) return [];
+          const listJson: any = await listResp.json();
+          const allTasks: any[] = listJson?.data || [];
+          const exportTasks = allTasks.filter((t: any) => (t?.attributes?.operation || t?.operation || '').includes('export'));
+          const finished = exportTasks.find((t: any) => (t?.attributes?.status || t?.status) === 'finished') || exportTasks[0];
+          if (!finished?.id) return [];
+          const detailResp = await fetch(`${CC_API}/tasks/${finished.id}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } });
+          if (!detailResp.ok) return [];
+          const detailJson: any = await detailResp.json();
+          const files = detailJson?.data?.attributes?.result?.files || detailJson?.data?.result?.files || [];
+          return (files as any[]).map((f: any) => f.url).filter(Boolean);
+        };
+
+        // Poll until job finished
+        let exportUrls: string[] = [];
+        const started = Date.now();
+        while (!exportUrls.length && (Date.now() - started) < 90_000) {
+          const statusResp = await fetch(`${CC_API}/jobs/${jobId}?include=tasks`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } });
+          if (!statusResp.ok) break;
+          const statusJson: any = await statusResp.json();
+          const status = statusJson?.data?.status;
+          if (status === 'error') throw new Error('CloudConvert job failed');
+          if (status === 'finished') {
+            exportUrls = await fetchExportUrls();
+            break;
+          }
+          await sleep(2000);
+        }
+
+        if (!exportUrls.length) {
+          throw new Error('CloudConvert did not return export URLs in time');
+        }
+
+        // Mirror to R2 for stable hosting (if configured)
+        if (haveR2) {
+          const pdfResp = await fetch(exportUrls[0]);
+          if (!pdfResp.ok) throw new Error(`Failed to download PDF: ${pdfResp.status}`);
+          const pdfArr = new Uint8Array(await pdfResp.arrayBuffer());
+          const pdfKey = `generated/pdfs/${id}/${pdfName}`;
+          await uploadBufferToR2(pdfKey, pdfArr, 'application/pdf');
+          pdfUrl = `${r2PublicBase}/${pdfKey}`;
+        } else {
+          pdfUrl = exportUrls[0];
+        }
+      } catch (ccError) {
+        console.warn('CloudConvert PDF generation failed (continuing with HTML only):', ccError);
+      }
+    }
+
+    // Return HTML (for backward compatibility) and PDF URL when available
     return NextResponse.json({
       success: true,
       htmlContent: sanitizedHtml,
+      pdfUrl: pdfUrl || undefined,
       fileName: fileName || 'MPU_Document',
       generatedAt: new Date().toISOString()
     });
