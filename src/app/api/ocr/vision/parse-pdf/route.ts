@@ -132,9 +132,9 @@ export async function POST(request: NextRequest) {
 
           logStep('AI Analysis', 80, 'Structuring OCR text with AI...')
           const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: process.env.OCR_LLM_MODEL || 'gpt-4o-mini',
             messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
-            max_completion_tokens: 7000,
+            max_completion_tokens: Math.max(1000, Math.min(12000, parseInt(process.env.OCR_LLM_MAX_TOKENS || '7000', 10) || 7000)),
           })
           const extractedData = completion.choices[0]?.message?.content || ''
 
