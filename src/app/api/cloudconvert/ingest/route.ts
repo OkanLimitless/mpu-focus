@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
                   density: 200,
                   quality: 85,
                   page_range: '1-',
-                  filename: 'page'
+                  filename: 'page.jpg'
                 },
                 // Prefer exporting directly to Cloudflare R2 if configured
                 'export-1': (process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) ? {
