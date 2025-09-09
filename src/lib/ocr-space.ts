@@ -63,8 +63,15 @@ export async function ocrSpaceParseImageUrl(imageUrl: string, opts: OcrOptions =
 }
 
 export async function ocrSpaceParseImagesBatch(imageUrls: string[], opts: OcrOptions & { concurrency?: number; delayMs?: number } = {}) {
-  const limit = Math.max(1, Math.min(10, opts.concurrency ?? parseInt(process.env.OCR_SPACE_CONCURRENCY || '5', 10) || 5))
-  const delayMs = Math.max(0, opts.delayMs ?? parseInt(process.env.OCR_SPACE_DELAY_MS || '150', 10) || 150)
+  const envConc = parseInt(process.env.OCR_SPACE_CONCURRENCY || '5', 10)
+  const defaultConc = Number.isFinite(envConc) && envConc > 0 ? envConc : 5
+  const chosenConc = (opts.concurrency ?? defaultConc)
+  const limit = Math.max(1, Math.min(10, chosenConc))
+
+  const envDelay = parseInt(process.env.OCR_SPACE_DELAY_MS || '150', 10)
+  const defaultDelay = Number.isFinite(envDelay) && envDelay >= 0 ? envDelay : 150
+  const chosenDelay = (opts.delayMs ?? defaultDelay)
+  const delayMs = Math.max(0, chosenDelay)
   let counter = 0
   return withConcurrency(imageUrls, limit, async (url, idx) => {
     // small paced delay to avoid burst rate limits
@@ -72,4 +79,3 @@ export async function ocrSpaceParseImagesBatch(imageUrls: string[], opts: OcrOpt
     return ocrSpaceParseImageUrl(url, opts)
   })
 }
-
