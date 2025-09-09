@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
           const gcsInputUri = gcsUri && gcsUri.startsWith('gs://') ? gcsUri : `gs://${inputBucket}/${inputKey}`
           const outPrefix = (process.env.GCS_OUTPUT_PREFIX || 'vision-out').replace(/\/$/, '')
           const gcsOutputUri = `gs://${outputBucket}/${outPrefix}/${jobId}/`
+          console.log('[VisionOCR] inputBucket:', inputBucket, 'outputBucket:', outputBucket)
+          console.log('[VisionOCR] gcsInputUri:', gcsInputUri)
+          console.log('[VisionOCR] gcsOutputUri:', gcsOutputUri)
+          send({ step: 'Upload', progress: 4, message: `GCS buckets resolved: in=${inputBucket} out=${outputBucket}` })
 
           if (!gcsUri) {
             logStep('Upload', 5, 'Uploading PDF to Google Cloud Storage...')
@@ -55,13 +59,29 @@ export async function POST(request: NextRequest) {
             const buf = await resp.arrayBuffer()
             console.log('[VisionOCR] Downloaded PDF bytes:', buf.byteLength)
             logStep('Upload', 10, `Downloaded ${Math.round(buf.byteLength / 1024 / 1024)} MB. Uploading to GCS...`)
-            await storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
+            // Probe write to verify permissions
+            try {
+              await storage.bucket(inputBucket).file(`uploads/${jobId}/_probe.txt`).save(new TextEncoder().encode('ok'), { contentType: 'text/plain', resumable: false, public: false })
+              console.log('[VisionOCR] Probe write succeeded')
+              send({ step: 'Upload', progress: 11, message: 'GCS write probe succeeded.' })
+            } catch (e: any) {
+              console.error('[VisionOCR] Probe write failed:', e?.message || e)
+              send({ step: 'Error', progress: 0, message: `GCS write probe failed: ${e?.message || e}`, error: true })
+              controller.abort()
+              return
+            }
+            // Upload with timeout guard
+            const uploadTimeoutMs = 180_000
+            const uploadPromise = storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
+            const timedOut = new Promise((_, rej) => setTimeout(() => rej(new Error(`GCS upload timeout after ${uploadTimeoutMs}ms`)), uploadTimeoutMs))
+            await Promise.race([uploadPromise, timedOut])
             console.log('[VisionOCR] Saved to GCS:', `gs://${inputBucket}/${inputKey}`)
             logStep('Upload', 15, 'Upload to GCS complete.')
           }
 
-          logStep('Vision OCR', 15, 'Starting Google Cloud Vision OCR (PDF)...')
+          logStep('Vision OCR', 20, 'Starting Google Cloud Vision OCR (PDF)...')
           const { texts, fullText, pages } = await runVisionPdfOcr({ gcsInputUri, gcsOutputUri, batchSize: 20 })
+          console.log('[VisionOCR] OCR pages extracted:', pages)
           logStep('Vision OCR', 70, `OCR complete. ${pages} pages extracted.`)
 
           // LLM structuring (text mode)

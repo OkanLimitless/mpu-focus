@@ -79,9 +79,11 @@ export async function runVisionPdfOcr(params: { gcsInputUri: string; gcsOutputUr
   const bucketName = uri.hostname
   const prefix = (uri.pathname.startsWith('/') ? uri.pathname.slice(1) : uri.pathname).replace(/\/$/, '') + '/'
 
+  console.log('[VisionOCR] Listing output files in', `gs://${bucketName}/${prefix}`)
   const [files] = await storage.bucket(bucketName).getFiles({ prefix })
   const jsonFiles = files.filter(f => f.name.endsWith('.json'))
   jsonFiles.sort((a, b) => a.name.localeCompare(b.name))
+  console.log('[VisionOCR] Output files found:', files.length, 'JSON files:', jsonFiles.length)
 
   const texts: string[] = []
   for (const f of jsonFiles) {
