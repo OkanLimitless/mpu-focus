@@ -97,17 +97,23 @@ export async function POST(request: NextRequest) {
             if (listResp.ok) {
               const listJson: any = await listResp.json();
               const allTasks: any[] = listJson?.data || [];
-              const exportTasks = allTasks.filter((t: any) => t?.attributes?.operation === 'export/url');
-              log('Tasks listed', { total: allTasks.length, exportTasks: exportTasks.length });
-              // Prefer finished tasks
-              const finished = exportTasks.find((t: any) => t?.attributes?.status === 'finished') || exportTasks[0];
+              const summarized = allTasks.map((t: any) => ({
+                id: t?.id,
+                operation: t?.attributes?.operation || t?.operation,
+                status: t?.attributes?.status || t?.status,
+                name: t?.attributes?.name || t?.name
+              }));
+              log('Tasks listed', { total: allTasks.length, exportTasks: summarized.filter(t => (t.operation || '').includes('export')).length });
+
+              // Prefer finished export tasks
+              const exportCandidates = summarized.filter(t => (t.operation || '').includes('export'));
+              const finished = exportCandidates.find(t => t.status === 'finished') || exportCandidates[0];
               if (finished?.id) {
                 const taskResp = await fetch(`${CC_API}/tasks/${finished.id}`, {
                   headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
                 });
                 if (taskResp.ok) {
                   const taskJson: any = await taskResp.json();
-                  // CloudConvert v2: result files live under data.attributes.result.files
                   const files = taskJson?.data?.attributes?.result?.files
                     || taskJson?.data?.result?.files
                     || [];
@@ -118,11 +124,50 @@ export async function POST(request: NextRequest) {
                   log('Export task fetch failed', { status: taskResp.status });
                 }
               } else {
-                log('No export/url task found in job task list');
+                log('No export task found in job task list');
               }
             } else {
               log('Tasks list fetch failed', { status: listResp.status });
             }
+
+            // 2) Fallback: fetch job with include=tasks and locate export task id, then fetch detail
+            try {
+              const jobTasksResp = await fetch(`${CC_API}/jobs/${jobId}?include=tasks`, {
+                headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+              });
+              if (jobTasksResp.ok) {
+                const jobJson: any = await jobTasksResp.json();
+                const includedTasks: any[] = jobJson?.included || [];
+                const exportFromIncluded = includedTasks.find((t: any) => {
+                  const op = t?.attributes?.operation || t?.operation;
+                  return (op || '').includes('export');
+                });
+                if (exportFromIncluded?.id) {
+                  log('Found export task in job included', { taskId: exportFromIncluded.id, status: exportFromIncluded?.attributes?.status });
+                  const tResp = await fetch(`${CC_API}/tasks/${exportFromIncluded.id}`, {
+                    headers: { 'Authorization': `Bearer ${process.env.CLOUDCONVERT_API_KEY}` }
+                  });
+                  if (tResp.ok) {
+                    const tJson: any = await tResp.json();
+                    const files = tJson?.data?.attributes?.result?.files
+                      || tJson?.data?.result?.files
+                      || [];
+                    const urls = (files as any[]).map((f: any) => f.url).filter(Boolean);
+                    log('Export task detail (from job included)', { files: (files as any[]).length, urlsFound: urls.length });
+                    if (urls.length) return urls;
+                  } else {
+                    log('Export task fetch (from job included) failed', { status: tResp.status });
+                  }
+                } else {
+                  log('No export task found in job included');
+                }
+              } else {
+                log('Job fetch with include=tasks failed', { status: jobTasksResp.status });
+              }
+            } catch (e: any) {
+              log('Fallback job+tasks fetch error', { error: e?.message || e });
+            }
+
             return [];
           };
 
@@ -161,7 +206,14 @@ export async function POST(request: NextRequest) {
             }
             if (status === 'finished') {
               // Try immediate extraction from included
-              const exportTask = (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
+              const includedTasks: any[] = (statusJson as any).included || [];
+              log('Included tasks summary', {
+                includedCount: includedTasks.length,
+                samples: includedTasks.slice(0, 3).map((t: any) => ({ id: t?.id, type: t?.type, op: t?.attributes?.operation, status: t?.attributes?.status, files: (t?.attributes?.result?.files || []).length }))
+              });
+              const exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
+                || includedTasks.find((t: any) => ((t?.attributes?.operation || '').includes('export')))
+                || (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
               let files = exportTask?.attributes?.result?.files || [];
               let imageUrls: string[] = (files || []).map((f: any) => f.url).filter(Boolean);
 
