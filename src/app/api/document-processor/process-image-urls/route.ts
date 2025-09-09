@@ -19,7 +19,7 @@ async function retryOpenAICall(
 
       // Single comprehensive analysis of the entire document using GPT-5 Mini
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // Use vision-capable model to ensure image parts are consumed
+        model: "gpt-4o-mini", // Lower TPM, still vision-capable
         messages: [
           {
             role: "system",
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
               } as any));
 
               const completion = await openai.chat.completions.create({
-                model: "gpt-4o",
+                model: "gpt-4o-mini",
                 messages: [
                   {
                     role: "system",
