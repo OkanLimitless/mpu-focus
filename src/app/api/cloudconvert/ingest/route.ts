@@ -66,8 +66,9 @@ export async function POST(request: NextRequest) {
                   input: 'import-1',
                   output_format: 'jpg',
                   input_format: 'pdf',
-                  density: Math.max(72, parseInt(process.env.CC_JPEG_DENSITY || '150', 10) || 150),
-                  quality: Math.min(95, Math.max(50, parseInt(process.env.CC_JPEG_QUALITY || '70', 10) || 70)),
+                  // Hardcoded for faster analysis while preserving readability
+                  density: 120,
+                  quality: 60,
                   page_range: '1-',
                   filename: 'page.jpg'
                 },

@@ -36,7 +36,7 @@ async function retryOpenAICall(
             ],
           },
         ],
-        max_completion_tokens: 16000,
+        max_completion_tokens: 8000,
       });
 
       return completion.choices[0]?.message?.content || '';
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 ],
-                max_completion_tokens: 16000,
+                max_completion_tokens: 10000,
               });
 
               allExtractedData = completion.choices[0]?.message?.content || '';
