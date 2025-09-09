@@ -96,4 +96,3 @@ export async function runVisionPdfOcr(params: { gcsInputUri: string; gcsOutputUr
   const fullText = texts.join('\n\n')
   return { texts, fullText, pages: texts.length } as VisionOcrResult
 }
-

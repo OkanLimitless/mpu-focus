@@ -18,8 +18,10 @@ export async function POST(request: NextRequest) {
 
           // Prepare GCS input/output URIs
           const storage = await getStorageClient()
-          const inputBucket = process.env.GCS_INPUT_BUCKET as string
-          const outputBucket = process.env.GCS_OUTPUT_BUCKET as string
+          // Sanitize bucket envs (strip gs:// and slashes)
+          const sanitizeBucket = (v?: string) => (v || '').replace(/^gs:\/\//, '').replace(/^\//, '').replace(/\/$/, '')
+          const inputBucket = sanitizeBucket(process.env.GCS_INPUT_BUCKET)
+          const outputBucket = sanitizeBucket(process.env.GCS_OUTPUT_BUCKET)
           if (!inputBucket || !outputBucket) throw new Error('GCS_INPUT_BUCKET and GCS_OUTPUT_BUCKET must be set')
 
           const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -44,14 +46,18 @@ export async function POST(request: NextRequest) {
             const to = setTimeout(() => controller.abort(), 120_000)
             let resp: Response
             try {
+              console.log('[VisionOCR] Fetching PDF via proxy:', proxied)
               resp = await fetch(proxied, { signal: controller.signal, headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
             } finally {
               clearTimeout(to)
             }
             if (!resp.ok) throw new Error(`Failed to download PDF: ${resp.status}`)
-            const arr = new Uint8Array(await resp.arrayBuffer())
-            await storage.bucket(inputBucket).file(inputKey).save(arr, { contentType: 'application/pdf', resumable: false, public: false })
-            logStep('Upload', 12, 'Upload to GCS complete.')
+            const buf = await resp.arrayBuffer()
+            console.log('[VisionOCR] Downloaded PDF bytes:', buf.byteLength)
+            logStep('Upload', 10, `Downloaded ${Math.round(buf.byteLength / 1024 / 1024)} MB. Uploading to GCS...`)
+            await storage.bucket(inputBucket).file(inputKey).save(new Uint8Array(buf), { contentType: 'application/pdf', resumable: false, public: false })
+            console.log('[VisionOCR] Saved to GCS:', `gs://${inputBucket}/${inputKey}`)
+            logStep('Upload', 15, 'Upload to GCS complete.')
           }
 
           logStep('Vision OCR', 15, 'Starting Google Cloud Vision OCR (PDF)...')
