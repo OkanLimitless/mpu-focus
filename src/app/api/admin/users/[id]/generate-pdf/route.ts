@@ -1,46 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import OpenAI from 'openai'
-import DOMPurify from 'isomorphic-dompurify'
 
-// GPT prompt for generating professional PDF template (same as document processor)
-const PDF_GENERATION_PROMPT = `
-You are a professional document formatter specializing in German legal and MPU (Medizinisch-Psychologische Untersuchung) documentation. Your task is to convert extracted MPU document data into a beautifully formatted HTML template that will be converted to PDF.
-
-CRITICAL REQUIREMENTS:
-1. Output ONLY valid HTML (no markdown, no explanations, no backticks)
-2. Use INLINE STYLES for all formatting (no external CSS)
-3. Create a complete HTML document with <!DOCTYPE html>, <html>, <head>, and <body>
-4. Use black text on white background for PDF compatibility
-5. Handle missing or incomplete data gracefully
-
-HTML STRUCTURE REQUIREMENTS:
-- Start with: <!DOCTYPE html><html><head><title>MPU Report</title></head><body>
-- Use inline styles only (style="..." attributes)
-- Use standard fonts: Arial, Helvetica, sans-serif
-- Use absolute units (px, pt) not relative units (em, rem, %)
-- End with: </body></html>
-
-STYLING REQUIREMENTS:
-- Body: style="font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;"
-- Headers: style="color: #000; margin: 20px 0 10px 0; font-weight: bold;"
-- Sections: style="margin: 15px 0; padding: 10px; border: 1px solid #ccc;"
-- Text: style="color: #000; margin: 5px 0;"
-
-CONTENT STRUCTURE:
-1. Document Header (Title, Generation Date)
-2. Personal Information Section
-3. Offenses Overview - each offense in separate div
-4. Summary section
-
-DATA HANDLING:
-- If data is missing, display "Niet vermeld"
-- Use clear, readable formatting
-- Separate each offense clearly
-- Use proper German/Dutch terminology
-
-Generate a complete, self-contained HTML document that will render properly when converted to PDF.
-`;
 
 export async function POST(
   request: NextRequest,
@@ -87,80 +47,32 @@ export async function POST(
       )
     }
 
-    // Initialize OpenAI
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Delegate to the shared document-processor PDF generator
+    const baseOrigin = process.env.NEXT_PUBLIC_APP_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin)
 
-    // Generate HTML template using GPT
-    console.log('Generating HTML template with GPT for user:', user.firstName, user.lastName);
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        {
-          role: "system",
-          content: PDF_GENERATION_PROMPT
-        },
-        {
-          role: "user",
-          content: `Convert the following extracted MPU document data into a professional HTML template for PDF generation:
+    const dpResp = await fetch(`${baseOrigin}/api/document-processor/generate-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        extractedData: user.documentProcessing.extractedData,
+        fileName: user.documentProcessing.fileName || 'MPU_Document'
+      })
+    })
 
-EXTRACTED DATA:
-${user.documentProcessing.extractedData}
-
-DOCUMENT INFO:
-- User: ${user.firstName} ${user.lastName}
-- Original filename: ${user.documentProcessing.fileName || 'Unknown'}
-- Processing date: ${user.documentProcessing.processedAt ? new Date(user.documentProcessing.processedAt).toLocaleDateString('de-DE') : 'Unknown'}
-- Generation date: ${new Date().toLocaleDateString('de-DE')}
-
-Please generate a complete, professional HTML document that will create a beautiful PDF report.`
-        }
-      ],
-      max_completion_tokens: 16000,
-      // Note: GPT-5 Mini only supports default temperature (1)
-    });
-
-    const htmlContent = completion.choices[0]?.message?.content;
-
-    if (!htmlContent) {
-      throw new Error('Failed to generate HTML template');
+    if (!dpResp.ok) {
+      const err = await dpResp.text().catch(() => '')
+      return NextResponse.json(
+        { error: 'Failed to generate PDF', details: err || `Status ${dpResp.status}` },
+        { status: 500 }
+      )
     }
 
-    // Clean up and sanitize the HTML
-    let cleanHtml = htmlContent
-      .replace(/```html\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-
-    // Ensure we have a complete HTML document
-    if (!cleanHtml.includes('<!DOCTYPE html>')) {
-      console.warn('GPT did not generate complete HTML, wrapping content...');
-      cleanHtml = `<!DOCTYPE html>
-<html>
-<head>
-    <title>MPU Report - ${user.firstName} ${user.lastName}</title>
-    <meta charset="UTF-8">
-</head>
-<body style="font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;">
-    ${cleanHtml}
-</body>
-</html>`;
-    }
-
-    // Sanitize HTML server-side to prevent XSS in the client-side PDF renderer
-    const sanitizedHtml = DOMPurify.sanitize(cleanHtml, { ALLOW_UNKNOWN_PROTOCOLS: false })
-
-    console.log('Generated HTML length (sanitized):', sanitizedHtml.length);
-
-    // Return the HTML content for client-side PDF generation
+    const payload = await dpResp.json()
     return NextResponse.json({
-      success: true,
-      htmlContent: sanitizedHtml,
-      fileName: user.documentProcessing.fileName || 'MPU_Document',
-      userName: `${user.firstName} ${user.lastName}`,
-      generatedAt: new Date().toISOString()
-    });
+      ...payload,
+      userName: `${user.firstName} ${user.lastName}`
+    })
 
   } catch (error) {
     console.error('PDF generation error:', error);

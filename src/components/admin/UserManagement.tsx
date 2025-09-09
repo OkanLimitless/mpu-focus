@@ -163,49 +163,43 @@ export default function UserManagement() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.details || 'PDF generation failed')
       }
 
       const data = await response.json()
-      
+
+      if (data?.pdfUrl) {
+        // Prefer direct PDF download when available
+        window.open(data.pdfUrl, '_blank')
+        toast({ title: t('pdfGenerated'), description: `${user.firstName} ${user.lastName}` })
+        return
+      }
+
       if (!data.success || !data.htmlContent) {
         throw new Error('Invalid response from PDF generation service')
       }
 
-      // Create a new window with the HTML content for PDF generation
+      // Fallback: open HTML in new tab and trigger print
       const printWindow = window.open('', '_blank')
       if (!printWindow) {
         throw new Error('Popup blocked. Please allow popups and try again.')
       }
-
-      // Write the GPT-generated HTML to the new window
       printWindow.document.write(data.htmlContent)
       printWindow.document.close()
-
-      // Wait for content to load, then automatically trigger save as PDF
       printWindow.onload = () => {
         setTimeout(() => {
-          // Focus the window and trigger print (which can be saved as PDF)
           printWindow.focus()
           printWindow.print()
-          
-          // Close the window after a delay
-          setTimeout(() => {
-            printWindow.close()
-          }, 1000)
+          setTimeout(() => { printWindow.close() }, 1000)
         }, 500)
       }
-
-      toast({
-        title: "PDF Generated",
-        description: `PDF generated successfully for ${user.firstName} ${user.lastName}`,
-      })
+      toast({ title: t('pdfGenerated'), description: `${user.firstName} ${user.lastName}` })
 
     } catch (error) {
       console.error('PDF generation failed:', error)
       toast({
-        title: "PDF Generation Failed",
+        title: t('pdfGenerationFailed'),
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: "destructive"
       })
@@ -649,21 +643,7 @@ export default function UserManagement() {
                                 </CardContent>
                               </Card>
 
-                              {/* Generate PDF */}
-                              <Card className={`transition-shadow ${selectedUser.documentProcessing?.extractedData ? 'hover:shadow-md' : 'opacity-60'}`}>
-                                <CardContent className="p-4">
-                                  <button
-                                    onClick={() => generatePDFFromData(selectedUser)}
-                                    disabled={!selectedUser.documentProcessing?.extractedData || isGeneratingPDF}
-                                    className="w-full flex items-center justify-between text-left disabled:cursor-not-allowed"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Download className="w-4 h-4" />
-                                      <span className="font-medium">{t('pdfBtn')}</span>
-                                    </div>
-                                  </button>
-                                </CardContent>
-                              </Card>
+                              {/* Generate PDF (moved to Document Processing dialog only) */}
 
                               {/* Notes */}
                               <Card className="hover:shadow-md transition-shadow">
@@ -884,7 +864,7 @@ export default function UserManagement() {
                             <Button
                               size="sm"
                               onClick={() => generatePDFFromData(selectedUser)}
-                              disabled={isGeneratingPDF}
+                              disabled={!selectedUser.documentProcessing?.extractedData || isGeneratingPDF}
                               className="w-full"
                             >
                               <Download className="w-4 h-4 mr-2" />
