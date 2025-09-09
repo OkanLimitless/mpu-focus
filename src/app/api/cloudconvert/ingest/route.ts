@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Create job: import -> convert(pdf->jpg) -> export
+          // Create job: import -> convert(pdf->jpg) -> export (to R2 if configured)
           const jobResp = providedJobId ? null : await fetch(`${CC_API}/jobs`, {
             method: 'POST',
             headers: {
@@ -69,7 +69,21 @@ export async function POST(request: NextRequest) {
                   quality: 85,
                   page_range: '1-'
                 },
-                'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+                // Prefer exporting directly to Cloudflare R2 if configured
+                'export-1': (process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY) ? {
+                  operation: 'export/s3',
+                  input: 'convert-1',
+                  bucket: process.env.R2_BUCKET,
+                  endpoint: process.env.R2_S3_ENDPOINT,
+                  region: 'auto',
+                  force_path_style: true,
+                  access_key_id: process.env.R2_ACCESS_KEY_ID,
+                  secret_access_key: process.env.R2_SECRET_ACCESS_KEY,
+                  key: 'tmp/cloudconvert/${job_id}/${filename}',
+                  acl: 'public-read',
+                  content_type: 'image/jpeg',
+                  cache_control: 'public, max-age=86400'
+                } : { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
               }
             })
           });
@@ -211,11 +225,33 @@ export async function POST(request: NextRequest) {
                 includedCount: includedTasks.length,
                 samples: includedTasks.slice(0, 3).map((t: any) => ({ id: t?.id, type: t?.type, op: t?.attributes?.operation, status: t?.attributes?.status, files: (t?.attributes?.result?.files || []).length }))
               });
-              const exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
-                || includedTasks.find((t: any) => ((t?.attributes?.operation || '').includes('export')))
-                || (statusJson as any).included?.find((t: any) => t.type === 'task' && t.attributes?.operation === 'export/url');
-              let files = exportTask?.attributes?.result?.files || [];
-              let imageUrls: string[] = (files || []).map((f: any) => f.url).filter(Boolean);
+
+              let imageUrls: string[] = [];
+
+              // If exporting to R2 (export/s3), construct public URLs using configured base
+              const r2PublicBase = process.env.R2_PUBLIC_BASE_URL;
+              if (r2PublicBase && process.env.R2_BUCKET) {
+                try {
+                  const convertTask = includedTasks.find((t: any) => (t?.attributes?.operation || '') === 'convert');
+                  const convertFiles = convertTask?.attributes?.result?.files || [];
+                  if (Array.isArray(convertFiles) && convertFiles.length > 0) {
+                    imageUrls = convertFiles
+                      .map((f: any) => `${r2PublicBase.replace(/\/$/, '')}/tmp/cloudconvert/${jobId}/${encodeURIComponent(f.filename)}`);
+                    log('Constructed R2 image URLs', { count: imageUrls.length });
+                  }
+                } catch (e: any) {
+                  log('R2 URL construction failed; will fallback', { error: e?.message || e });
+                }
+              }
+
+              // If not R2 or construction failed, fallback to export/url discovery
+              if (!imageUrls.length) {
+                const exportTask = includedTasks.find((t: any) => (t?.attributes?.result?.files || []).length > 0)
+                  || includedTasks.find((t: any) => ((t?.attributes?.operation || '').includes('export')))
+                  || (statusJson as any).included?.find((t: any) => t.type === 'task' && (t.attributes?.operation || '').includes('export'));
+                const files = exportTask?.attributes?.result?.files || [];
+                imageUrls = (files || []).map((f: any) => f.url).filter(Boolean);
+              }
 
               // Fallback A: fetch export task detail directly by ID if present
               if ((!imageUrls.length) && exportTask?.id) {

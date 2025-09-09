@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
           // Build absolute base URL for proxying image URLs (helps external fetchers like OpenAI)
           const baseOrigin = process.env.NEXT_PUBLIC_APP_URL
             || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : new URL(request.url).origin);
-          const proxiedUrls: string[] = imageUrls.map((u: string) => `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`);
+          const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+          const isR2Url = (u: string) => r2PublicBase && u.startsWith(r2PublicBase);
+          const proxiedUrls: string[] = imageUrls.map((u: string) => isR2Url(u) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`);
 
           sendStatus({
             step: 'Processing images',
