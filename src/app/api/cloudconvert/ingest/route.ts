@@ -256,16 +256,25 @@ export async function POST(request: NextRequest) {
                   // Download and upload sequentially to control load
                   const uploaded: string[] = [];
                   for (const { url, name } of pairs) {
-                    try {
-                      const res = await fetch(url);
-                      if (!res.ok) throw new Error(`download ${res.status}`);
-                      const arr = new Uint8Array(await res.arrayBuffer());
-                      const key = `tmp/cloudconvert/${jobId}/${name}`;
-                      await uploadBufferToR2(key, arr, 'image/jpeg');
-                      uploaded.push(`${r2PublicBase!.replace(/\/$/, '')}/${key}`);
-                      send({ step: 'Uploading to R2', progress: 70, message: `Uploaded ${uploaded.length}/${pairs.length} pages...` });
-                    } catch (e: any) {
-                      log('Mirror to R2 failed for one file', { error: e?.message || e });
+                    let success = false;
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                      try {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`download ${res.status}`);
+                        const arr = new Uint8Array(await res.arrayBuffer());
+                        const key = `tmp/cloudconvert/${jobId}/${name}`;
+                        await uploadBufferToR2(key, arr, 'image/jpeg');
+                        uploaded.push(`${(r2PublicBase as string).replace(/\/$/, '')}/${key}`);
+                        send({ step: 'Uploading to R2', progress: 70, message: `Uploaded ${uploaded.length}/${pairs.length} pages...` });
+                        success = true;
+                        break;
+                      } catch (e: any) {
+                        log('Mirror to R2 failed for one file', { attempt, error: e?.message || e });
+                        if (attempt < 2) await sleep(300);
+                      }
+                    }
+                    if (!success) {
+                      log('Giving up mirroring one file to R2 after retries', { name });
                     }
                   }
                   imageUrls = uploaded;
@@ -286,7 +295,27 @@ export async function POST(request: NextRequest) {
                     const detailFiles = taskJson?.data?.attributes?.result?.files
                       || taskJson?.data?.result?.files
                       || [];
-                    imageUrls = (detailFiles as any[]).map((f: any) => f.url).filter(Boolean);
+                    const detailUrls: string[] = (detailFiles as any[]).map((f: any) => f.url).filter(Boolean);
+                    if (haveR2 && detailUrls.length) {
+                      const filenames = await fetchConvertFilenames(jobId);
+                      const pairs = detailUrls.map((url: string, idx: number) => ({ url, name: filenames[idx] || `page-${idx + 1}.jpg` }));
+                      const uploaded: string[] = [];
+                      for (const { url, name } of pairs) {
+                        try {
+                          const res = await fetch(url);
+                          if (!res.ok) throw new Error(`download ${res.status}`);
+                          const arr = new Uint8Array(await res.arrayBuffer());
+                          const key = `tmp/cloudconvert/${jobId}/${name}`;
+                          await uploadBufferToR2(key, arr, 'image/jpeg');
+                          uploaded.push(`${(r2PublicBase as string).replace(/\/$/, '')}/${key}`);
+                        } catch (e: any) {
+                          log('Mirror to R2 failed for one file (detail fetch)', { error: e?.message || e });
+                        }
+                      }
+                      imageUrls = uploaded;
+                    } else {
+                      imageUrls = detailUrls;
+                    }
                     log('Export task detail (included-id fetch)', { files: (detailFiles as any[]).length, urlsFound: imageUrls.length });
                   } else {
                     log('Export task detail fetch failed', { status: taskResp.status });
@@ -299,7 +328,27 @@ export async function POST(request: NextRequest) {
               // Fallback B: explicit query to tasks endpoint
               if (!imageUrls.length) {
                 log('No image URLs in included data; entering retry loop...');
-                imageUrls = await getImageUrlsWithRetries(jobId);
+                const ccUrls = await getImageUrlsWithRetries(jobId);
+                if (haveR2 && ccUrls.length) {
+                  const filenames = await fetchConvertFilenames(jobId);
+                  const pairs = ccUrls.map((url: string, idx: number) => ({ url, name: filenames[idx] || `page-${idx + 1}.jpg` }));
+                  const uploaded: string[] = [];
+                  for (const { url, name } of pairs) {
+                    try {
+                      const res = await fetch(url);
+                      if (!res.ok) throw new Error(`download ${res.status}`);
+                      const arr = new Uint8Array(await res.arrayBuffer());
+                      const key = `tmp/cloudconvert/${jobId}/${name}`;
+                      await uploadBufferToR2(key, arr, 'image/jpeg');
+                      uploaded.push(`${(r2PublicBase as string).replace(/\/$/, '')}/${key}`);
+                    } catch (e: any) {
+                      log('Mirror to R2 failed for one file (retry loop)', { error: e?.message || e });
+                    }
+                  }
+                  imageUrls = uploaded;
+                } else {
+                  imageUrls = ccUrls;
+                }
               }
 
               if (!imageUrls.length) {
