@@ -75,9 +75,10 @@ export async function POST(request: NextRequest) {
 
       const processImageUrls = async () => {
         try {
-          parsedBody = await request.json();
-          const imageUrls = parsedBody.imageUrls as string[];
-          const fileName = parsedBody.fileName as string;
+          const body = await request.json() as { imageUrls?: string[]; fileName?: string };
+          parsedBody = body;
+          const imageUrls = body.imageUrls as string[];
+          const fileName = body.fileName as string;
 
           if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
             throw new Error('No image URLs provided');
