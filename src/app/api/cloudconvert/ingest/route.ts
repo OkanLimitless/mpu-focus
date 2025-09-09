@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
                   force_path_style: true,
                   access_key_id: process.env.R2_ACCESS_KEY_ID,
                   secret_access_key: process.env.R2_SECRET_ACCESS_KEY,
-                  key: 'tmp/cloudconvert/{job_id}/{filename}',
+                  key: 'tmp/cloudconvert/${job_id}/${filename}',
                   acl: 'public-read',
                   content_type: 'image/jpeg',
                   cache_control: 'public, max-age=86400'
