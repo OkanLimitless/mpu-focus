@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
 
     let isCorrect: boolean | undefined = undefined
     let score: number | undefined = undefined
+    let feedbackPayload: any | undefined = undefined
 
     if (q.type === 'mcq') {
       const submitted = new Set(asArray(answer))
@@ -50,29 +51,28 @@ export async function POST(req: NextRequest) {
       const facts = profile?.facts || {}
       const evalRes = await evaluateShortAnswerWithLLM(String(answer || ''), q.prompt, q.rubric, facts)
       score = evalRes.score
-      // attach feedback as part of response
-      // fall through to save below
-      // Provide minimal normalized feedback text
-      // isCorrect remains undefined; numeric score used instead
-      (doc as any).feedback = JSON.stringify({ feedback: evalRes.feedback, strengths: evalRes.strengths, gaps: evalRes.gaps, actions: evalRes.actions })
-      await doc.save()
+      // Prepare feedback payload; saved with the result document below
+      feedbackPayload = { feedback: evalRes.feedback, strengths: evalRes.strengths, gaps: evalRes.gaps, actions: evalRes.actions }
     }
 
     const doc = await QuizResult.findOneAndUpdate(
       { sessionId: sess._id, questionId: q._id },
-      { $set: { submitted: answer, isCorrect, score, timeSpentSec } },
+      { $set: { submitted: answer, isCorrect, score, timeSpentSec, ...(feedbackPayload ? { feedback: JSON.stringify(feedbackPayload) } : {}) } },
       { upsert: true, new: true }
     )
 
     // Optional feedback after answer (rationales for MCQ)
     const feedback = q.type === 'mcq'
       ? (q.rationales ? { rationales: q.rationales, correct: q.correct } : undefined)
-      : ({
-          feedback: score != null ? `Score: ${Math.round((Number(score)||0)*100)}%` : undefined,
-          strengths: (doc as any).feedback ? JSON.parse((doc as any).feedback).strengths : [],
-          gaps: (doc as any).feedback ? JSON.parse((doc as any).feedback).gaps : [],
-          actions: (doc as any).feedback ? JSON.parse((doc as any).feedback).actions : []
-        })
+      : ((): any => {
+          const raw = (doc as any).feedback ? JSON.parse((doc as any).feedback) : {}
+          return {
+            feedback: score != null ? `Score: ${Math.round((Number(score)||0)*100)}%` : undefined,
+            strengths: raw.strengths || [],
+            gaps: raw.gaps || [],
+            actions: raw.actions || []
+          }
+        })()
 
     return NextResponse.json({ success: true, resultId: doc._id, isCorrect, score, feedback })
   } catch (e) {
