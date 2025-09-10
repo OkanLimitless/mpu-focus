@@ -236,6 +236,22 @@ export async function POST(request: NextRequest) {
               withTimeout(cleanupOutput, 8000).catch(e => console.warn('[VisionOCR] output cleanup:', e?.message || e)),
               withTimeout(cleanupInput, 5000).catch(e => console.warn('[VisionOCR] input cleanup:', e?.message || e)),
             ])
+
+            // Also delete the original UploadThing PDF to avoid storage buildup
+            if (pdfUrl) {
+              try {
+                const isUT = (u: string) => {
+                  try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh' } catch { return false }
+                }
+                if (isUT(pdfUrl)) {
+                  send({ step: 'Cleanup', progress: 92, message: 'Deleting original uploaded PDF…' })
+                  const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload')
+                  await withTimeout(deleteUploadThingFiles([pdfUrl]), 8000).catch(e => console.warn('[VisionOCR] UT delete failed:', e?.message || e))
+                }
+              } catch (e: any) {
+                console.warn('[VisionOCR] UploadThing cleanup skipped:', e?.message || e)
+              }
+            }
           } catch (e) {
             console.warn('[VisionOCR] Cleanup step failed (ignored):', (e as any)?.message || e)
           }
@@ -254,6 +270,17 @@ export async function POST(request: NextRequest) {
               const outputPrefix = `${outPrefix}/${jobId}/`.replace(/\/+/, '/').replace(/^\//, '')
               await deleteGcsFilesByPrefix(outputBucket, outputPrefix)
             }
+            // Also try to delete the original UploadThing PDF if present
+            try {
+              const { pdfUrl } = await request.clone().json()
+              const isUT = (u: string) => {
+                try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh' } catch { return false }
+              }
+              if (pdfUrl && isUT(pdfUrl)) {
+                const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload')
+                await deleteUploadThingFiles([pdfUrl]).catch(() => null)
+              }
+            } catch {}
           } catch {}
           controller.close()
         }
