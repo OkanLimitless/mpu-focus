@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -76,8 +77,17 @@ export default function VerificationManagement() {
   const { t } = useI18n()
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
 
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    // initialize from URL param once
+    const s = searchParams?.get('search')
+    if (s && !searchTerm) setSearchTerm(s)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter, searchTerm])
 
   const fetchUsers = async () => {

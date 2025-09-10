@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mai
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useI18n } from '@/components/providers/i18n-provider'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface User {
   _id: string
@@ -75,6 +77,7 @@ interface Chapter {
 }
 
 export default function UserManagement() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,7 +100,7 @@ export default function UserManagement() {
 
   // View mode and columns
   type ViewMode = 'list' | 'table'
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
   const ALL_COLUMNS = ['name','email','role','verification','progress','created','lastLogin'] as const
   type ColumnId = typeof ALL_COLUMNS[number]
   const [columns, setColumns] = useState<ColumnId[]>(['name','email','verification','progress'])
@@ -851,21 +854,85 @@ export default function UserManagement() {
                           <DialogTrigger asChild>
                             <Button size="sm" variant="outline" onClick={() => { setSelectedUser(user); setDialogOpen(true) }}>{t('details')}</Button>
                           </DialogTrigger>
-                          <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
+                          <DialogContent className="left-auto right-0 top-0 translate-x-0 translate-y-0 h-[100vh] w-full sm:max-w-[720px] sm:rounded-none overflow-y-auto">
                             {selectedUser && (
-                              <div className="space-y-4">
+                              <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <div className="font-semibold">{selectedUser.firstName} {selectedUser.lastName}</div>
+                                    <div className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</div>
                                     <div className="text-sm text-gray-600">{selectedUser.email}</div>
                                   </div>
                                   {getVerificationStatusBadge(selectedUser.verificationStatus)}
                                 </div>
-                                {/* Reuse simple bits from existing detail panel */}
-                                {selectedUser.progress && (
-                                  <div className="text-sm">{t('overallProgress')}: {selectedUser.progress.averageProgress}%</div>
-                                )}
-                                <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(selectedUser.createdAt).toLocaleDateString()}</div>
+                                <Tabs defaultValue="overview">
+                                  <TabsList>
+                                    <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+                                    <TabsTrigger value="documents">{t('documentsBtn')}</TabsTrigger>
+                                    <TabsTrigger value="notes">{t('notesBtn')}</TabsTrigger>
+                                    <TabsTrigger value="actions">{t('actionsHeader')}</TabsTrigger>
+                                  </TabsList>
+                                  <TabsContent value="overview" className="space-y-3">
+                                    <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(selectedUser.createdAt).toLocaleDateString()}</div>
+                                    {selectedUser.progress && (
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between text-xs">
+                                          <span>{t('progressLabel')}</span>
+                                          <span>{selectedUser.progress.averageProgress}%</span>
+                                        </div>
+                                        <Progress value={selectedUser.progress.averageProgress} className="h-2" />
+                                      </div>
+                                    )}
+                                  </TabsContent>
+                                  <TabsContent value="documents" className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium">{t('documentProcessingLabel')}</span>
+                                      {selectedUser.documentProcessing ? (
+                                        <Badge variant="success">
+                                          <FileText className="w-3 h-3 mr-1" />
+                                          {t('processedLabel')}
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="secondary">{t('noData')}</Badge>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => viewDocumentData(selectedUser)}>
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        {t('documentsBtn')}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => openDocumentProcessor(selectedUser)}>
+                                        <ExternalLink className="w-4 h-4 mr-2" />
+                                        {t('processBtn')}
+                                      </Button>
+                                      <Button size="sm" onClick={() => generatePDFFromData(selectedUser)} disabled={isGeneratingPDF}>
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        {isGeneratingPDF ? t('processing') : t('pdfBtn')}
+                                      </Button>
+                                    </div>
+                                  </TabsContent>
+                                  <TabsContent value="notes" className="space-y-3">
+                                    <Button size="sm" variant="outline" onClick={() => viewNotes(selectedUser)}>
+                                      <StickyNote className="w-4 h-4 mr-2" />
+                                      {t('notesBtn')}
+                                    </Button>
+                                  </TabsContent>
+                                  <TabsContent value="actions" className="space-y-2">
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => setProgressDialogOpen(true)}>
+                                        <BarChart3 className="w-4 h-4 mr-2" />
+                                        {t('progressBtn')}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => router.push(`/admin?section=verification&search=${encodeURIComponent(selectedUser.email)}`)}>
+                                        <Shield className="w-4 h-4 mr-2" />
+                                        {t('nav_verification')}
+                                      </Button>
+                                      <Button size="sm" variant="destructive" onClick={() => { setUserToDelete(selectedUser); setDeleteDialogOpen(true) }}>
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        {t('deleteBtn')}
+                                      </Button>
+                                    </div>
+                                  </TabsContent>
+                                </Tabs>
                               </div>
                             )}
                           </DialogContent>
