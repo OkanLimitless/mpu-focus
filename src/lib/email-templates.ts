@@ -409,6 +409,38 @@ If you need to reset your password, please use the password reset option on the 
   }
 }
 
+// Password reset email (DE/EN)
+export function getPasswordResetEmailTemplate(email: string, resetUrl: string, lang: 'de' | 'en' = 'de') {
+  if (lang === 'de') {
+    return {
+      subject: 'Passwort zurücksetzen – MPU-Focus',
+      html: `
+        <!DOCTYPE html>
+        <html><head><meta charSet="utf-8"/></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6;color:#111">
+          <p>Sie haben eine Zurücksetzung Ihres Passworts angefordert.</p>
+          <p>Klicken Sie auf den folgenden Link, um ein neues Passwort zu setzen:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>Wenn Sie dies nicht waren, ignorieren Sie diese E-Mail.</p>
+        </body></html>
+      `,
+      text: `Sie haben eine Zurücksetzung Ihres Passworts angefordert. Link: ${resetUrl}`
+    }
+  }
+  return {
+    subject: 'Reset your password – MPU-Focus',
+    html: `
+      <!DOCTYPE html>
+      <html><head><meta charSet="utf-8"/></head><body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height:1.6;color:#111">
+        <p>You requested a password reset.</p>
+        <p>Click the link below to set a new password:</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If this wasn’t you, please ignore this email.</p>
+      </body></html>
+    `,
+    text: `You requested a password reset. Link: ${resetUrl}`
+  }
+}
+
 // Minimal German templates for verification emails
 export function getVerificationApprovedEmailTemplateDe(user: User) {
   const firstName = user.firstName || 'Kunde'
