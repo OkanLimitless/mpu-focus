@@ -12,18 +12,25 @@ export interface User extends Document {
   verificationStatus: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'
   passportDocument?: {
     filename: string
+    url?: string
     uploadedAt: Date
     status: 'pending' | 'approved' | 'rejected'
     rejectionReason?: string
+    resubmissionCount?: number
+    allowResubmission?: boolean
   }
   contractSigned?: {
     signedAt: Date
     ipAddress: string
     userAgent: string
+    signatureData?: string
+    signatureMethod?: 'checkbox' | 'digital_signature' | 'qes'
   }
   verifiedAt?: Date
   verifiedBy?: Types.ObjectId | string
   verificationToken?: string // For email verification links
+  resetPasswordToken?: string
+  resetPasswordExpires?: Date
   // Document processing results from MPU documents
   documentProcessing?: {
     extractedData: string
