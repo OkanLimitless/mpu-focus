@@ -151,27 +151,37 @@ export async function POST(request: NextRequest) {
             new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`ai-timeout-${ms}`)), ms))
           ])
 
-          async function runAI(model: string) {
-            const start = Date.now()
+          const runAI = async (model: string) => {
             const resp = await openai.chat.completions.create({
               model,
               messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
               max_completion_tokens: maxTokens,
             })
-            console.log('[VisionOCR] AI completed in', Date.now() - start, 'ms with model', model)
             return resp.choices[0]?.message?.content || ''
           }
 
           let extractedData = ''
           try {
+            send({ ai: 'start', model: modelPrimary, approxTokens, pages })
+            const t0 = Date.now()
             extractedData = await withTimeout(runAI(modelPrimary), aiTimeoutMs)
+            const dur = Date.now() - t0
+            console.log('[VisionOCR] AI completed in', dur, 'ms with model', modelPrimary)
+            send({ ai: 'done', model: modelPrimary, durationMs: dur, outputChars: extractedData.length })
           } catch (e: any) {
             console.warn('[VisionOCR] AI primary failed:', e?.message || e, '— falling back to', modelFallback)
+            send({ ai: 'fail', model: modelPrimary, error: String(e?.message || e) })
             logStep('AI Analysis', 82, 'Primary model busy; attempting fallback...')
             try {
+              send({ ai: 'start', model: modelFallback, approxTokens, pages })
+              const t1 = Date.now()
               extractedData = await withTimeout(runAI(modelFallback), aiTimeoutMs)
+              const dur2 = Date.now() - t1
+              console.log('[VisionOCR] AI fallback completed in', dur2, 'ms with model', modelFallback)
+              send({ ai: 'done', model: modelFallback, durationMs: dur2, outputChars: extractedData.length })
             } catch (e2: any) {
               console.error('[VisionOCR] AI fallback failed:', e2?.message || e2)
+              send({ ai: 'fail', model: modelFallback, error: String(e2?.message || e2) })
               throw new Error('AI processing failed. Please retry or try a smaller document.')
             }
           }
