@@ -190,6 +190,16 @@ const dictionaries: I18nDictionaries = {
     nextSteps: "Next Steps",
     nextStepsSubtitle: "Begin with the next lesson",
     continueInModule: "Continue in module",
+    quizRecommendations: "Recommendations",
+    quizReviewMaterials: "Review study materials",
+    goToModule: "Go to module",
+    finishLater: "Finish later",
+    stepOf: "Step {current} of {total}",
+    cat_knowledge: "Knowledge",
+    cat_insight: "Insight",
+    cat_behavior: "Behavior",
+    cat_consistency: "Consistency",
+    cat_planning: "Planning",
 
     // Admin
     nav_dashboard: "Dashboard",
@@ -626,6 +636,16 @@ const dictionaries: I18nDictionaries = {
     nextSteps: "Nächste Schritte",
     nextStepsSubtitle: "Beginne mit der nächsten Lektion",
     continueInModule: "Weiter in Modul",
+    quizRecommendations: "Empfehlungen",
+    quizReviewMaterials: "Lernmaterial ansehen",
+    goToModule: "Zum Modul",
+    finishLater: "Später fortsetzen",
+    stepOf: "Schritt {current} von {total}",
+    cat_knowledge: "Wissen",
+    cat_insight: "Einsicht",
+    cat_behavior: "Verhalten",
+    cat_consistency: "Kohärenz",
+    cat_planning: "Planung",
 
     // Admin
     nav_dashboard: "Dashboard",

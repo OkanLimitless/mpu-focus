@@ -99,6 +99,9 @@ export default function UserManagement() {
   const { t } = useI18n()
   const [quizSessions, setQuizSessions] = useState<any[]>([])
   const [quizLoading, setQuizLoading] = useState(false)
+  const [quizDetailOpen, setQuizDetailOpen] = useState(false)
+  const [quizDetailLoading, setQuizDetailLoading] = useState(false)
+  const [quizDetail, setQuizDetail] = useState<any | null>(null)
 
   // View mode and columns
   type ViewMode = 'list' | 'table'
@@ -167,6 +170,46 @@ export default function UserManagement() {
       }
     } catch {}
     finally { setQuizLoading(false) }
+  }
+
+  const openQuizDetail = async (sessionId: string) => {
+    try {
+      setQuizDetailLoading(true)
+      setQuizDetail(null)
+      setQuizDetailOpen(true)
+      const res = await fetch(`/api/admin/quiz/sessions/${sessionId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setQuizDetail(data)
+      }
+    } finally {
+      setQuizDetailLoading(false)
+    }
+  }
+
+  const exportQuizDetail = () => {
+    if (!quizDetail) return
+    const s = quizDetail.session
+    const items = quizDetail.items || []
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Quiz Report</title>
+    <style>body{font-family:Arial,sans-serif;padding:16px;color:#111}h1{font-size:18px}h2{font-size:16px;margin-top:16px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #ddd;padding:8px;font-size:12px}th{background:#f3f4f6;text-align:left}</style>
+    </head><body>
+    <h1>Quiz Report</h1>
+    <div><strong>Session:</strong> ${s._id} &nbsp; <strong>Started:</strong> ${new Date(s.startedAt).toLocaleString()} &nbsp; <strong>Finished:</strong> ${s.finishedAt ? new Date(s.finishedAt).toLocaleString() : '-'}</div>
+    <h2>Items</h2>
+    <table><thead><tr><th>#</th><th>Type</th><th>Category</th><th>Prompt</th><th>Submitted</th><th>Score</th><th>Correct</th></tr></thead><tbody>
+    ${items.map((it:any,i:number)=>`<tr><td>${i+1}</td><td>${it.type||''}</td><td>${it.category||''}</td><td>${escapeHtml(String(it.prompt||''))}</td><td>${escapeHtml(JSON.stringify(it.submitted))}</td><td>${it.score!=null ? Math.round(it.score*100)+'%' : (it.isCorrect!=null? (it.isCorrect?'100%':'0%'):'-')}</td><td>${it.correct?escapeHtml(JSON.stringify(it.correct)):'-'}</td></tr>`).join('')}
+    </tbody></table>
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+  }
+
+  function escapeHtml(s: string){
+    return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'} as any)[c])
   }
 
   const deleteSavedView = () => {
@@ -989,6 +1032,10 @@ export default function UserManagement() {
                                         ))}
                                       </div>
                                     )}
+                                    <div className="mt-2 flex gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => openQuizDetail(s._id)}>{t('view')}</Button>
+                                      <Button size="sm" variant="outline" onClick={exportQuizDetail}>{t('exportHTML')}</Button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1127,6 +1174,46 @@ export default function UserManagement() {
               {actionLoading ? t('deleting') : t('deleteBtn')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quiz Session Detail Dialog */}
+      <Dialog open={quizDetailOpen} onOpenChange={setQuizDetailOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('quizSessionDetails') || 'Quiz Session Details'}</DialogTitle>
+          </DialogHeader>
+          {quizDetailLoading ? (
+            <div className="py-4 text-sm text-gray-600">{t('loading')}</div>
+          ) : !quizDetail ? (
+            <div className="py-4 text-sm text-gray-600">{t('noData')}</div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div className="text-gray-700">
+                <strong>ID:</strong> {quizDetail.session?._id} &nbsp; <strong>{t('createdLabel')}:</strong> {new Date(quizDetail.session?.startedAt).toLocaleString()}
+              </div>
+              <div className="border rounded">
+                <div className="grid grid-cols-12 gap-2 p-2 bg-gray-50 font-medium">
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-2">Type</div>
+                  <div className="col-span-2">Category</div>
+                  <div className="col-span-4">Prompt</div>
+                  <div className="col-span-1">Score</div>
+                  <div className="col-span-2">Submitted</div>
+                </div>
+                {quizDetail.items.map((it: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 p-2 border-t">
+                    <div className="col-span-1">{i+1}</div>
+                    <div className="col-span-2">{it.type}</div>
+                    <div className="col-span-2">{it.category}</div>
+                    <div className="col-span-4 truncate" title={it.prompt}>{it.prompt}</div>
+                    <div className="col-span-1">{it.score!=null ? Math.round(it.score*100)+'%' : (it.isCorrect!=null? (it.isCorrect?'100%':'0%'):'-')}</div>
+                    <div className="col-span-2 truncate" title={JSON.stringify(it.submitted)}>{JSON.stringify(it.submitted)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

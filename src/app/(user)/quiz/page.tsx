@@ -128,18 +128,27 @@ export default function QuizPage() {
                 </div>
               </div>
             ) : summary ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="text-sm">{t('quizOverallScore')}: <strong>{summary.score}%</strong> ({summary.itemsScored}/{summary.itemsTotal})</div>
                 <div>
-                  <div className="font-medium mb-1">{t('quizCategoryScores')}</div>
+                  <div className="font-medium mb-2">{t('quizCategoryScores')}</div>
                   {summary.competencyScores && Object.keys(summary.competencyScores).length > 0 ? (
-                    <ul className="list-disc ml-4 text-sm">
+                    <div className="space-y-2">
                       {Object.entries(summary.competencyScores).map(([k,v]: any) => (
-                        <li key={k}><strong>{k}</strong>: {v}%</li>
+                        <div key={k} className="text-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">{categoryLabel(k)}</span>
+                            <span>{v}%</span>
+                          </div>
+                          <div className="h-2 bg-gray-200 rounded">
+                            <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.max(0, Math.min(100, Number(v)||0))}%` }} />
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   ) : <div className="text-sm text-gray-600">{t('noData')}</div>}
                 </div>
+                <Recommendations scores={summary.competencyScores || {}} />
                 <div className="flex gap-2 mt-2">
                   <Button onClick={() => { setSummary(null); setSessionId(undefined); setQuestions([]); }}>{t('quizStartPractice')}</Button>
                 </div>
@@ -202,4 +211,52 @@ export default function QuizPage() {
       </div>
     </div>
   )
+}
+
+function categoryLabel(k: string) {
+  switch (k) {
+    case 'knowledge': return 'Knowledge'
+    case 'insight': return 'Insight'
+    case 'behavior': return 'Behavior'
+    case 'consistency': return 'Consistency'
+    case 'planning': return 'Planning'
+    default: return k
+  }
+}
+
+function Recommendations({ scores }: { scores: Record<string, number> }) {
+  const { t } = useI18n()
+  const entries = Object.entries(scores)
+  if (entries.length === 0) return null
+  const sorted = [...entries].sort((a,b) => (a[1]||0) - (b[1]||0))
+  const picks = sorted.slice(0, Math.min(2, sorted.length))
+  const recs = picks.map(([cat]) => recommendForCategory(cat))
+  return (
+    <div>
+      <div className="font-medium mb-2">{t('quizRecommendations')}</div>
+      <div className="space-y-2">
+        {recs.map((r, i) => (
+          <div key={i} className="border rounded p-2 text-sm flex items-center justify-between">
+            <div>
+              <div className="font-medium">{categoryLabel(r.category)}</div>
+              <div className="text-xs text-gray-600">{t('quizReviewMaterials')}</div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => r.path && (window.location.href = r.path)}>{t('goToModule')}</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function recommendForCategory(cat: string): { category: string; path: string } {
+  // Simple mapping for now; can be refined using intake/risk flags later
+  const map: Record<string, string> = {
+    knowledge: '/learn/traffic_points',
+    insight: '/learn/alcohol_drugs',
+    behavior: '/learn/alcohol_drugs',
+    consistency: '/learn/alcohol_drugs',
+    planning: '/learn/alcohol_drugs',
+  }
+  return { category: cat, path: map[cat] || '/learn' }
 }
