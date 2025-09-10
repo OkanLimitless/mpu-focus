@@ -67,7 +67,7 @@ export default function LearnHomePage() {
     })()
   }, [session, status, router])
 
-  const continueTarget = useMemo(() => {
+  const continueTarget = useMemo<{ key: string; chapterId: string } | null>(() => {
     if (!modules.length || !userProgress) return null
     const currentOrder = userProgress.currentChapterOrder
     let target: { key: string; chapterId: string } | null = null
