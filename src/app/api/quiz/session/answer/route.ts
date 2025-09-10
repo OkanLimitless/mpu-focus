@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       // fall through to save below
       // Provide minimal normalized feedback text
       // isCorrect remains undefined; numeric score used instead
+      (doc as any).feedback = JSON.stringify({ feedback: evalRes.feedback, strengths: evalRes.strengths, gaps: evalRes.gaps, actions: evalRes.actions })
+      await doc.save()
     }
 
     const doc = await QuizResult.findOneAndUpdate(
@@ -65,7 +67,12 @@ export async function POST(req: NextRequest) {
     // Optional feedback after answer (rationales for MCQ)
     const feedback = q.type === 'mcq'
       ? (q.rationales ? { rationales: q.rationales, correct: q.correct } : undefined)
-      : ({ feedback: score != null ? `Score: ${Math.round((Number(score)||0)*100)}%` : undefined })
+      : ({
+          feedback: score != null ? `Score: ${Math.round((Number(score)||0)*100)}%` : undefined,
+          strengths: (doc as any).feedback ? JSON.parse((doc as any).feedback).strengths : [],
+          gaps: (doc as any).feedback ? JSON.parse((doc as any).feedback).gaps : [],
+          actions: (doc as any).feedback ? JSON.parse((doc as any).feedback).actions : []
+        })
 
     return NextResponse.json({ success: true, resultId: doc._id, isCorrect, score, feedback })
   } catch (e) {

@@ -199,8 +199,34 @@ export default function QuizPage() {
                           <li key={k}><strong>{k}:</strong> {String(v)}</li>
                         ))}
                       </ul>
-                    ) : feedback?.feedback ? (
-                      <div className="text-sm text-gray-700">{String(feedback.feedback)}</div>
+                    ) : feedback?.feedback || (feedback?.strengths?.length || feedback?.gaps?.length || feedback?.actions?.length) ? (
+                      <div className="space-y-2 text-sm text-gray-700">
+                        {feedback?.feedback && <div>{String(feedback.feedback)}</div>}
+                        {Array.isArray(feedback?.strengths) && feedback.strengths.length > 0 && (
+                          <div>
+                            <div className="font-medium">{t('strengths') || 'Stärken'}</div>
+                            <ul className="list-disc ml-4">
+                              {feedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {Array.isArray(feedback?.gaps) && feedback.gaps.length > 0 && (
+                          <div>
+                            <div className="font-medium">{t('gaps') || 'Lücken'}</div>
+                            <ul className="list-disc ml-4">
+                              {feedback.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {Array.isArray(feedback?.actions) && feedback.actions.length > 0 && (
+                          <div>
+                            <div className="font-medium">{t('nextActions') || 'Nächste Schritte'}</div>
+                            <ul className="list-disc ml-4">
+                              {feedback.actions.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="text-sm text-gray-600">{t('noData')}</div>
                     )}
@@ -235,11 +261,22 @@ function categoryLabel(k: string) {
 
 function Recommendations({ scores }: { scores: Record<string, number> }) {
   const { t } = useI18n()
+  const [flags, setFlags] = useState<string[]>([])
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/quiz/profile')
+        const data = await res.json()
+        const rf = data?.profile?.riskFlags || []
+        setFlags(rf)
+      } catch {}
+    })()
+  }, [])
   const entries = Object.entries(scores)
   if (entries.length === 0) return null
   const sorted = [...entries].sort((a,b) => (a[1]||0) - (b[1]||0))
   const picks = sorted.slice(0, Math.min(2, sorted.length))
-  const recs = picks.map(([cat]) => recommendForCategory(cat))
+  const recs = picks.map(([cat]) => recommendForCategory(cat, flags))
   return (
     <div>
       <div className="font-medium mb-2">{t('quizRecommendations')}</div>
@@ -258,16 +295,19 @@ function Recommendations({ scores }: { scores: Record<string, number> }) {
   )
 }
 
-function recommendForCategory(cat: string): { category: string; path: string } {
-  // Simple mapping for now; can be refined using intake/risk flags later
+function recommendForCategory(cat: string, flags: string[] = []): { category: string; path: string } {
+  const alcohol = flags.includes('alcohol_case')
+  const cannabis = flags.includes('cannabis_case')
+  const points = flags.includes('points_case')
+  const base = alcohol || cannabis ? '/learn/alcohol_drugs' : points ? '/learn/traffic_points' : '/learn'
   const map: Record<string, string> = {
-    knowledge: '/learn/traffic_points',
-    insight: '/learn/alcohol_drugs',
-    behavior: '/learn/alcohol_drugs',
-    consistency: '/learn/alcohol_drugs',
-    planning: '/learn/alcohol_drugs',
+    knowledge: points ? '/learn/traffic_points' : base,
+    insight: base,
+    behavior: base,
+    consistency: base,
+    planning: base,
   }
-  return { category: cat, path: map[cat] || '/learn' }
+  return { category: cat, path: map[cat] || base }
 }
 
 function BulletListEditor({ list, onChange }: { list: string[]; onChange: (next: string[]) => void }) {

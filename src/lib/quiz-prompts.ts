@@ -73,14 +73,14 @@ export const createOpenAIForQuiz = () => {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 }
 
-export async function generateBlueprintWithLLM(facts: any): Promise<GeneratedBlueprint> {
+export async function generateBlueprintWithLLM(facts: any, desiredCount: number = 12): Promise<GeneratedBlueprint> {
   const client = createOpenAIForQuiz()
   if (!client) return fallbackBlueprint()
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: 'system', content: MPU_DOMAIN_CONTEXT },
     { role: 'user', content: [
-      { type: 'text', text: `${BLUEPRINT_INSTRUCTIONS}\n\nFALLFAKTEN (JSON):\n${JSON.stringify(facts).slice(0, 4000)}` }
+      { type: 'text', text: `${BLUEPRINT_INSTRUCTIONS}\n\nANZAHL: ERZEUGE GENAU ${desiredCount} FRAGEN. KEINE ANDEREN TEXTE AUSSER JSON.\n\nFALLFAKTEN (JSON):\n${JSON.stringify(facts).slice(0, 4000)}` }
     ] }
   ]
 
@@ -94,9 +94,27 @@ export async function generateBlueprintWithLLM(facts: any): Promise<GeneratedBlu
   try {
     const parsed = JSON.parse(txt) as GeneratedBlueprint
     if (!Array.isArray(parsed.questions)) throw new Error('invalid')
-    // ensure minimum size; if LLM returns too few questions, fall back to a robust default
-    if ((parsed.questions || []).length < 10) {
-      return fallbackBlueprint()
+    // normalize size: trim or re-request to hit desiredCount
+    if (parsed.questions.length > desiredCount) {
+      parsed.questions = parsed.questions.slice(0, desiredCount)
+      return parsed
+    }
+    if (parsed.questions.length < desiredCount) {
+      // retry with stricter instruction
+      const retry = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [messages[0], { role: 'user', content: [{ type:'text', text: `${BLUEPRINT_INSTRUCTIONS}\n\nANTWORTE NUR ALS JSON. KEIN TEXT AUSSERHALB DES JSON. ERZEUGE GENAU ${desiredCount} FRAGEN.\nFALLFAKTEN:\n${JSON.stringify(facts).slice(0, 4000)}` }]}],
+        temperature: 0.2,
+        max_tokens: 3200,
+      })
+      const t2 = retry.choices[0]?.message?.content || ''
+      try {
+        const p2 = JSON.parse(t2) as GeneratedBlueprint
+        if (Array.isArray(p2.questions) && p2.questions.length >= desiredCount) return p2
+      } catch {}
+      // if still short, pad with knowledge MCQs to reach desiredCount
+      const pad = makeKnowledgeMCQs(desiredCount - parsed.questions.length)
+      parsed.questions = parsed.questions.concat(pad)
     }
     return parsed
   } catch {
@@ -118,7 +136,7 @@ export async function generateBlueprintWithLLM(facts: any): Promise<GeneratedBlu
   }
 }
 
-export function fallbackBlueprint(): GeneratedBlueprint {
+export function fallbackBlueprint(desiredCount: number = 12): GeneratedBlueprint {
   // Robust domain‑appropriate default with ~12 items across categories
   const questions: GeneratedQuestion[] = [
     // knowledge MCQs
@@ -168,6 +186,10 @@ export function fallbackBlueprint(): GeneratedBlueprint {
       prompt: 'Wer unterstützt dich konkret im Alltag (2 Beispiele) und wie erreichst du diese Personen? (Stichpunkte).',
       rubric: { points: [ { id: 'netz', desc: 'Benennbare Unterstützung' } ] } },
   ]
+  // if desiredCount is larger, pad with more knowledge MCQs
+  if (questions.length < desiredCount) {
+    questions.push(...makeKnowledgeMCQs(desiredCount - questions.length))
+  }
   return { categories: [
     { key: 'knowledge', count: 4 },
     { key: 'insight', count: 2 },
@@ -177,7 +199,27 @@ export function fallbackBlueprint(): GeneratedBlueprint {
   ], questions }
 }
 
-export async function evaluateShortAnswerWithLLM(answer: string, prompt: string, rubric: any, facts: any): Promise<{ score: number; feedback: string }> {
+function makeKnowledgeMCQs(n: number): GeneratedQuestion[] {
+  const bank: Array<Omit<GeneratedQuestion,'difficulty'|'category'|'type'>> = [
+    { prompt: 'Welche Aussage beschreibt „Trennungsvermögen“ korrekt?', choices: [
+      { key:'A', text:'Konsum und Teilnahme am Straßenverkehr werden sicher getrennt.' },
+      { key:'B', text:'Man darf fahren, wenn man sich fit fühlt.' },
+      { key:'C', text:'Es betrifft nur Alkohol, nicht Cannabis.' },
+      { key:'D', text:'Es ist irrelevant für die MPU.' } ], correct: 'A', rationales:{ A:'Definition.', B:'Subjektiv, unzureichend.', C:'Auch Cannabis.', D:'Relevanz hoch.' } },
+    { prompt: 'Ab welchem Richtwert spricht man i. d. R. von absoluter Fahruntüchtigkeit bei Pkw?', choices:[
+      { key:'A', text:'0,5‰' }, { key:'B', text:'1,1‰' }, { key:'C', text:'1,3‰' }, { key:'D', text:'2,0‰' } ], correct:'B', rationales:{ A:'OWi‑Grenze.', B:'Richtwert.', C:'Nicht Standard.', D:'Zu hoch.' } },
+    { prompt: 'Welche Konsequenz kann bei 0,5‰–1,09‰ (ohne Ausfallerscheinungen) eintreten?', choices:[
+      { key:'A', text:'Straftat' }, { key:'B', text:'Ordnungswidrigkeit' }, { key:'C', text:'Keine' }, { key:'D', text:'Nur Verwarnung' } ], correct:'B', rationales:{ A:'Nicht zwingend.', B:'Regelmäßig OWi.', C:'Falsch.', D:'Nicht zutreffend.' } },
+  ]
+  const out: GeneratedQuestion[] = []
+  for (let i=0;i<n;i++) {
+    const b = bank[i % bank.length]
+    out.push({ type:'mcq', category:'knowledge', difficulty:1, prompt:b.prompt, choices:b.choices as any, correct:b.correct as any, rationales:b.rationales })
+  }
+  return out
+}
+
+export async function evaluateShortAnswerWithLLM(answer: string, prompt: string, rubric: any, facts: any): Promise<{ score: number; feedback: string; strengths?: string[]; gaps?: string[]; actions?: string[] }> {
   const client = createOpenAIForQuiz()
   // Fallback: rudimentary heuristic if LLM not configured
   if (!client) {
@@ -186,11 +228,11 @@ export async function evaluateShortAnswerWithLLM(answer: string, prompt: string,
     return { score, feedback: 'Heuristische Bewertung (ohne KI). Bitte geben Sie mehr Details und konkrete Maßnahmen an.' }
   }
 
-  const SYSTEM = MPU_DOMAIN_CONTEXT + `\nBewerte frei formulierte Antworten nach Rubrik. Liefere NUR kompaktes, hilfreiches Coaching‑Feedback.`
+  const SYSTEM = MPU_DOMAIN_CONTEXT + `\nBewerte frei formulierte Antworten nach Rubrik. Erstelle empathisches, knappes Coaching‑Feedback mit Stärken, Lücken und konkreten nächsten Schritten.`
   const instruction = `
 Bewerte die folgende Antwort auf eine MPU‑Übungsfrage. Nutze die Rubrik (Punkte/Kriterien) und den Fallkontext.
 Gib ein JSON zurück:
-{ "score": Zahl zwischen 0 und 1 in 0.25‑Schritten, "feedback": "knappes, hilfreiches Feedback (Deutsch)" }
+{ "score": Zahl zwischen 0 und 1 in 0.25‑Schritten, "feedback": "kurzer Gesamtkommentar (Deutsch)", "strengths": ["..."], "gaps": ["..."], "actions": ["..."] }
 Antwort nie außerhalb dieses JSON.
 
 RUBRIK:
@@ -222,8 +264,8 @@ ${(answer || '').slice(0, 1800)}
     if (!isFinite(s)) s = 0
     // clamp to nearest 0.25 between 0 and 1
     s = Math.max(0, Math.min(1, Math.round(s / 0.25) * 0.25))
-    return { score: s, feedback: String(parsed.feedback || '') }
+    return { score: s, feedback: String(parsed.feedback || ''), strengths: parsed.strengths || [], gaps: parsed.gaps || [], actions: parsed.actions || [] }
   } catch {
-    return { score: 0.5, feedback: 'Standard‑Feedback: Ergänzen Sie konkrete Beispiele, Maßnahmen und Rückfallstrategien.' }
+    return { score: 0.5, feedback: 'Standard‑Feedback: Ergänzen Sie konkrete Beispiele, Maßnahmen und Rückfallstrategien.', strengths: [], gaps: [], actions: [] }
   }
 }

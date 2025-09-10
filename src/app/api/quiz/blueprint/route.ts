@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}))
     const force = !!body?.force
+    const desiredCount = Math.max(8, Math.min(30, Number(body?.desiredCount) || 12))
 
     const extracted = user.documentProcessing?.extractedData || ''
     if (!extracted) return NextResponse.json({ error: 'No document data found' }, { status: 400 })
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     // generate with LLM or fallback
-    const generated = await generateBlueprintWithLLM(facts)
+    const generated = await generateBlueprintWithLLM(facts, desiredCount)
     const blueprint = await QuizBlueprint.create({
       userId: user._id,
       sourceHash,
