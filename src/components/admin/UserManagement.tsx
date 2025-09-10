@@ -559,6 +559,14 @@ export default function UserManagement() {
     return 'bg-red-500'
   }
 
+  // Load quiz sessions when opening table drawer
+  useEffect(() => {
+    if (dialogOpen && selectedUser?._id) {
+      fetchQuizSessions(selectedUser._id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialogOpen, selectedUser?._id])
+
   if (loading) {
     return (
       <Card>
@@ -570,13 +578,6 @@ export default function UserManagement() {
       </Card>
     )
   }
-
-  // Load quiz sessions when opening table drawer
-  useEffect(() => {
-    if (dialogOpen && selectedUser?._id) {
-      fetchQuizSessions(selectedUser._id)
-    }
-  }, [dialogOpen, selectedUser?._id])
 
   return (
     <div className="space-y-6">

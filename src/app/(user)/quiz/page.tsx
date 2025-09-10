@@ -30,6 +30,7 @@ export default function QuizPage() {
   const [feedback, setFeedback] = useState<any | null>(null)
   const [summary, setSummary] = useState<any | null>(null)
   const [answers, setAnswers] = useState<Record<string, any>>({})
+  const [bullets, setBullets] = useState<Record<string, string[]>>({})
   const startTs = useRef<number>(0)
 
   useEffect(() => {
@@ -55,7 +56,11 @@ export default function QuizPage() {
     try {
       const payload: any = { sessionId, questionId: q._id, timeSpentSec: Math.floor((Date.now() - startTs.current)/1000) }
       if (q.type === 'mcq') payload.answer = answers[q._id] || []
-      if (q.type === 'short' || q.type === 'scenario') payload.answer = answers[q._id] || ''
+      if (q.type === 'short' || q.type === 'scenario') {
+        const isBullet = /Stichpunkt/i.test(q.prompt) || /bullet/i.test(q.prompt)
+        const text = isBullet ? (bullets[q._id] || []).map(s => s.trim()).filter(Boolean).map(s => `- ${s}`).join('\n') : (answers[q._id] || '')
+        payload.answer = text
+      }
       const res = await fetch('/api/quiz/session/answer', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (data.success) setFeedback(data.feedback || null)
@@ -169,7 +174,11 @@ export default function QuizPage() {
                     </div>
                   )}
                   {(q.type === 'short' || q.type === 'scenario') && (
-                    <Textarea value={answers[q._id] || ''} onChange={(e) => setAnswers(a => ({ ...a, [q._id]: e.target.value }))} rows={5} placeholder={t('quizYourAnswer')} />
+                    /Stichpunkt/i.test(q.prompt) || /bullet/i.test(q.prompt) ? (
+                      <BulletListEditor list={bullets[q._id] || []} onChange={(list) => setBullets(b => ({ ...b, [q._id]: list }))} />
+                    ) : (
+                      <Textarea value={answers[q._id] || ''} onChange={(e) => setAnswers(a => ({ ...a, [q._id]: e.target.value }))} rows={5} placeholder={t('quizYourAnswer')} />
+                    )
                   )}
                 </div>
                 {!feedback ? (
@@ -259,4 +268,24 @@ function recommendForCategory(cat: string): { category: string; path: string } {
     planning: '/learn/alcohol_drugs',
   }
   return { category: cat, path: map[cat] || '/learn' }
+}
+
+function BulletListEditor({ list, onChange }: { list: string[]; onChange: (next: string[]) => void }) {
+  const [value, setValue] = useState('')
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Input placeholder="•" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (value.trim()) { onChange([...(list||[]), value.trim()]); setValue('') } } }} />
+        <Button variant="outline" onClick={() => { if (value.trim()) { onChange([...(list||[]), value.trim()]); setValue('') } }}>Add</Button>
+      </div>
+      <div className="space-y-1">
+        {(list || []).map((item, i) => (
+          <div key={i} className="flex items-center justify-between border rounded px-2 py-1 text-sm">
+            <span className="truncate">- {item}</span>
+            <Button size="sm" variant="ghost" onClick={() => onChange(list.filter((_, idx) => idx !== i))}>×</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
