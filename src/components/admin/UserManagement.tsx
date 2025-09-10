@@ -956,9 +956,17 @@ export default function UserManagement() {
                           </TabsContent>
 
                           <TabsContent value="quiz" className="space-y-3">
-                            <Button size="sm" variant="outline" onClick={() => selectedUser && fetchQuizSessions(selectedUser._id)} disabled={quizLoading}>
-                              {quizLoading ? t('loading') : t('update')}
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => selectedUser && fetchQuizSessions(selectedUser._id)} disabled={quizLoading}>
+                                {quizLoading ? t('loading') : t('update')}
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={async () => {
+                                if (!selectedUser) return
+                                if (!confirm('Reset quiz data for this user?')) return
+                                await fetch('/api/admin/quiz/reset', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ userId: selectedUser._id, resetIntake: false }) })
+                                fetchQuizSessions(selectedUser._id)
+                              }}>{t('resetQuizData') || 'Reset Quiz Data'}</Button>
+                            </div>
                             {quizLoading ? (
                               <div className="text-sm text-gray-600">{t('loading')}</div>
                             ) : quizSessions.length === 0 ? (

@@ -121,7 +121,11 @@ export default function QuizPage() {
             {!started && !summary ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">{t('quizInstructions')}</p>
-                <Button onClick={startPractice} disabled={busy}>{t('quizStartPractice')}</Button>
+                <div className="flex gap-2">
+                  <Button onClick={startPractice} disabled={busy}>{t('quizStartPractice')}</Button>
+                  <Button variant="outline" disabled={busy} onClick={async () => { setBusy(true); try { await fetch('/api/quiz/blueprint', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ force: true }) }); await startPractice() } finally { setBusy(false) } }}>{t('regenerateSet') || 'Regenerate Set'}</Button>
+                  <Button variant="outline" onClick={() => router.push('/intake')}>{t('startBaseline')}</Button>
+                </div>
               </div>
             ) : summary ? (
               <div className="space-y-3">

@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
     const user = await User.findOne({ email: session.user.email })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+    const body = await req.json().catch(() => ({}))
+    const force = !!body?.force
+
     const extracted = user.documentProcessing?.extractedData || ''
     if (!extracted) return NextResponse.json({ error: 'No document data found' }, { status: 400 })
     const sourceHash = hashString(extracted)
@@ -35,9 +38,16 @@ export async function POST(req: NextRequest) {
     const facts = { ...(profile?.facts || { summary: extracted.slice(0, 2000) }), intake: intake?.responses || {} }
 
     // existing blueprint?
-    const existing = await QuizBlueprint.findOne({ userId: user._id, sourceHash })
-    if (existing) {
+    let existing = await QuizBlueprint.findOne({ userId: user._id, sourceHash })
+    if (existing && !force) {
       return NextResponse.json({ success: true, blueprintId: existing._id })
+    }
+    if (existing && force) {
+      // delete existing blueprint and questions
+      const oldId = existing._id
+      await QuizQuestion.deleteMany({ userId: user._id, blueprintId: oldId })
+      await QuizBlueprint.deleteOne({ _id: oldId })
+      existing = null as any
     }
 
     // generate with LLM or fallback
