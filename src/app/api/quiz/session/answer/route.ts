@@ -6,6 +6,8 @@ import User from '@/models/User'
 import QuizSession from '@/models/QuizSession'
 import QuizQuestion from '@/models/QuizQuestion'
 import QuizResult from '@/models/QuizResult'
+import UserCaseProfile from '@/models/UserCaseProfile'
+import { evaluateShortAnswerWithLLM } from '@/lib/quiz-prompts'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,8 +44,17 @@ export async function POST(req: NextRequest) {
       // exact match set equality
       isCorrect = submitted.size === correctSet.size && Array.from(submitted).every((v) => correctSet.has(v))
       score = isCorrect ? 1 : 0
+    } else if (q.type === 'short' || q.type === 'scenario') {
+      // LLM-based evaluation using rubric and case facts
+      const profile = await UserCaseProfile.findOne({ userId: user._id }).sort({ createdAt: -1 })
+      const facts = profile?.facts || {}
+      const evalRes = await evaluateShortAnswerWithLLM(String(answer || ''), q.prompt, q.rubric, facts)
+      score = evalRes.score
+      // attach feedback as part of response
+      // fall through to save below
+      // Provide minimal normalized feedback text
+      // isCorrect remains undefined; numeric score used instead
     }
-    // short/scenario scoring can be added later via LLM
 
     const doc = await QuizResult.findOneAndUpdate(
       { sessionId: sess._id, questionId: q._id },
@@ -52,7 +63,9 @@ export async function POST(req: NextRequest) {
     )
 
     // Optional feedback after answer (rationales for MCQ)
-    const feedback = q.type === 'mcq' && q.rationales ? { rationales: q.rationales, correct: q.correct } : undefined
+    const feedback = q.type === 'mcq'
+      ? (q.rationales ? { rationales: q.rationales, correct: q.correct } : undefined)
+      : ({ feedback: score != null ? `Score: ${Math.round((Number(score)||0)*100)}%` : undefined })
 
     return NextResponse.json({ success: true, resultId: doc._id, isCorrect, score, feedback })
   } catch (e) {

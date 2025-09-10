@@ -30,38 +30,41 @@ export async function POST(req: NextRequest) {
     const byQ: Record<string, any> = {}
     questions.forEach(q => { byQ[String(q._id)] = q })
 
-    // Score: MCQ scored; short/scenario currently excluded from numeric scoring
-    let correct = 0
-    let total = 0
-    const comp: Record<string, { correct: number; total: number }> = {}
+    // Score: include MCQ (0/1) and short/scenario numeric scores (0..1)
+    let sum = 0
+    let cnt = 0
+    const comp: Record<string, { sum: number; cnt: number }> = {}
 
     for (const r of results) {
       const q = byQ[String(r.questionId)]
       if (!q) continue
       if (q.type === 'mcq') {
-        total += 1
-        if (r.isCorrect) correct += 1
-        comp[q.category] = comp[q.category] || { correct: 0, total: 0 }
-        comp[q.category].total += 1
-        if (r.isCorrect) comp[q.category].correct += 1
+        cnt += 1
+        sum += r.isCorrect ? 1 : 0
+        comp[q.category] = comp[q.category] || { sum: 0, cnt: 0 }
+        comp[q.category].cnt += 1
+        comp[q.category].sum += r.isCorrect ? 1 : 0
+      } else if (typeof r.score === 'number') {
+        cnt += 1
+        sum += r.score
+        comp[q.category] = comp[q.category] || { sum: 0, cnt: 0 }
+        comp[q.category].cnt += 1
+        comp[q.category].sum += r.score
       }
     }
 
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0
+    const score = cnt > 0 ? Math.round((sum / cnt) * 100) : 0
     const competencyScores: Record<string, number> = {}
-    Object.keys(comp).forEach(k => {
-      competencyScores[k] = comp[k].total > 0 ? Math.round((comp[k].correct / comp[k].total) * 100) : 0
-    })
+    Object.keys(comp).forEach(k => { competencyScores[k] = comp[k].cnt > 0 ? Math.round((comp[k].sum / comp[k].cnt) * 100) : 0 })
 
     const finishedAt = new Date()
     const durationSeconds = Math.floor((finishedAt.getTime() - new Date(sess.startedAt).getTime()) / 1000)
 
     await QuizSession.updateOne({ _id: sess._id }, { $set: { finishedAt, durationSeconds, score, competencyScores } })
 
-    return NextResponse.json({ success: true, score, competencyScores })
+    return NextResponse.json({ success: true, score, competencyScores, itemsScored: cnt, itemsTotal: sess.questionIds.length })
   } catch (e) {
     console.error('session/finish error', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

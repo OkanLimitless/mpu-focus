@@ -149,3 +149,54 @@ export function fallbackBlueprint(): GeneratedBlueprint {
   ], questions }
 }
 
+export async function evaluateShortAnswerWithLLM(answer: string, prompt: string, rubric: any, facts: any): Promise<{ score: number; feedback: string }> {
+  const client = createOpenAIForQuiz()
+  // Fallback: rudimentary heuristic if LLM not configured
+  if (!client) {
+    const len = (answer || '').trim().length
+    const score = len > 120 ? 0.75 : len > 40 ? 0.5 : len > 10 ? 0.25 : 0
+    return { score, feedback: 'Heuristische Bewertung (ohne KI). Bitte geben Sie mehr Details und konkrete Maßnahmen an.' }
+  }
+
+  const SYSTEM = MPU_DOMAIN_CONTEXT + `\nBewerte frei formulierte Antworten nach Rubrik. Liefere NUR kompaktes, hilfreiches Coaching‑Feedback.`
+  const instruction = `
+Bewerte die folgende Antwort auf eine MPU‑Übungsfrage. Nutze die Rubrik (Punkte/Kriterien) und den Fallkontext.
+Gib ein JSON zurück:
+{ "score": Zahl zwischen 0 und 1 in 0.25‑Schritten, "feedback": "knappes, hilfreiches Feedback (Deutsch)" }
+Antwort nie außerhalb dieses JSON.
+
+RUBRIK:
+${JSON.stringify(rubric || {}, null, 2)}
+
+FRAGE:
+${prompt}
+
+FALLFAKTEN:
+${JSON.stringify(facts || {}, null, 2).slice(0, 1800)}
+
+ANTWORT DES NUTZERS:
+${(answer || '').slice(0, 1800)}
+`
+
+  const resp = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    temperature: 0.2,
+    max_tokens: 500,
+    messages: [
+      { role: 'system', content: SYSTEM },
+      { role: 'user', content: [{ type: 'text', text: instruction }] }
+    ]
+  })
+  const txt = resp.choices[0]?.message?.content || '{}'
+  try {
+    const parsed = JSON.parse(txt)
+    let s = Number(parsed.score)
+    if (!isFinite(s)) s = 0
+    // clamp to nearest 0.25 between 0 and 1
+    s = Math.max(0, Math.min(1, Math.round(s / 0.25) * 0.25))
+    return { score: s, feedback: String(parsed.feedback || '') }
+  } catch {
+    return { score: 0.5, feedback: 'Standard‑Feedback: Ergänzen Sie konkrete Beispiele, Maßnahmen und Rückfallstrategien.' }
+  }
+}
+

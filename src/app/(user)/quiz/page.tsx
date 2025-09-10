@@ -28,6 +28,7 @@ export default function QuizPage() {
   const [questions, setQuestions] = useState<Q[]>([])
   const [idx, setIdx] = useState(0)
   const [feedback, setFeedback] = useState<any | null>(null)
+  const [summary, setSummary] = useState<any | null>(null)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const startTs = useRef<number>(0)
 
@@ -75,9 +76,7 @@ export default function QuizPage() {
     try {
       const res = await fetch('/api/quiz/session/finish', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ sessionId }) })
       const data = await res.json()
-      if (data.success) {
-        alert(`${t('quizScore')}: ${data.score}%`)
-      }
+      if (data.success) setSummary(data)
     } finally {
       setBusy(false)
     }
@@ -119,10 +118,27 @@ export default function QuizPage() {
             <CardDescription>{t('quizSubtitle')}</CardDescription>
           </CardHeader>
           <CardContent>
-            {!started ? (
+            {!started && !summary ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">{t('quizInstructions')}</p>
                 <Button onClick={startPractice} disabled={busy}>{t('quizStartPractice')}</Button>
+              </div>
+            ) : summary ? (
+              <div className="space-y-3">
+                <div className="text-sm">{t('quizOverallScore')}: <strong>{summary.score}%</strong> ({summary.itemsScored}/{summary.itemsTotal})</div>
+                <div>
+                  <div className="font-medium mb-1">{t('quizCategoryScores')}</div>
+                  {summary.competencyScores && Object.keys(summary.competencyScores).length > 0 ? (
+                    <ul className="list-disc ml-4 text-sm">
+                      {Object.entries(summary.competencyScores).map(([k,v]: any) => (
+                        <li key={k}><strong>{k}</strong>: {v}%</li>
+                      ))}
+                    </ul>
+                  ) : <div className="text-sm text-gray-600">{t('noData')}</div>}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button onClick={() => { setSummary(null); setSessionId(undefined); setQuestions([]); }}>{t('quizStartPractice')}</Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -179,4 +195,3 @@ export default function QuizPage() {
     </div>
   )
 }
-
