@@ -94,6 +94,10 @@ export async function generateBlueprintWithLLM(facts: any): Promise<GeneratedBlu
   try {
     const parsed = JSON.parse(txt) as GeneratedBlueprint
     if (!Array.isArray(parsed.questions)) throw new Error('invalid')
+    // ensure minimum size; if LLM returns too few questions, fall back to a robust default
+    if ((parsed.questions || []).length < 10) {
+      return fallbackBlueprint()
+    }
     return parsed
   } catch {
     // retry with stricter hint
@@ -115,36 +119,60 @@ export async function generateBlueprintWithLLM(facts: any): Promise<GeneratedBlu
 }
 
 export function fallbackBlueprint(): GeneratedBlueprint {
-  // Minimal, domain‑appropriate defaults
+  // Robust domain‑appropriate default with ~12 items across categories
   const questions: GeneratedQuestion[] = [
-    {
-      type: 'mcq', category: 'knowledge', difficulty: 1,
+    // knowledge MCQs
+    { type: 'mcq', category: 'knowledge', difficulty: 1,
       prompt: 'Ab welcher Blutalkoholkonzentration (BAK) gilt absolute Fahruntüchtigkeit für Pkw‑Fahrende? (Richtwert)',
-      choices: [
-        { key: 'A', text: '0,5‰' },
-        { key: 'B', text: '1,1‰' },
-        { key: 'C', text: '1,6‰' },
-        { key: 'D', text: '2,0‰' },
-      ],
-      correct: 'B',
-      rationales: { A: '0,5‰ ist Grenze OWi.', B: 'Richtwert absolute Fahruntüchtigkeit.', C: 'Radfahrer‑Grenze.', D: 'Zu hoch.' }
-    },
-    {
-      type: 'short', category: 'planning', difficulty: 2,
-      prompt: 'Nenne zwei persönliche Risikosituationen und je eine konkrete Strategie zur Vermeidung (Stichpunkte).',
-      rubric: { points: [{ id: 'risiken', desc: 'Konkrete Situationen benannt' }, { id: 'strategie', desc: 'Umsetzbare Strategien benannt' }] }
-    },
-    {
-      type: 'scenario', category: 'insight', difficulty: 2,
+      choices: [ { key: 'A', text: '0,5‰' }, { key: 'B', text: '1,1‰' }, { key: 'C', text: '1,6‰' }, { key: 'D', text: '2,0‰' } ],
+      correct: 'B', rationales: { A: 'OWi‑Grenze.', B: 'Absolute Fahruntüchtigkeit Pkw.', C: 'Radfahrer‑Grenze.', D: 'Zu hoch.' } },
+    { type: 'mcq', category: 'knowledge', difficulty: 1,
+      prompt: 'Welche Aussage trifft auf das Trennungsvermögen (Cannabis & Fahren) zu?',
+      choices: [ { key: 'A', text: 'Man darf immer fahren, wenn man sich fit fühlt.' }, { key: 'B', text: 'Trennungsvermögen bedeutet, Konsum und Fahren sicher zu trennen.' }, { key: 'C', text: 'Es gibt keine Grenzwerte oder Richtwerte.' }, { key: 'D', text: 'Konsum am Vorabend ist immer unproblematisch.' } ],
+      correct: 'B', rationales: { A: 'Falsch, subjektives Empfinden reicht nicht.', B: 'Definition trifft zu.', C: 'Es gibt rechtliche Orientierung.', D: 'Kann problematisch sein.' } },
+    { type: 'mcq', category: 'knowledge', difficulty: 2,
+      prompt: 'Welche Konsequenz kann bei 0,5‰–1,09‰ ohne Ausfallerscheinungen eintreten?',
+      choices: [ { key: 'A', text: 'Straftat' }, { key: 'B', text: 'Ordnungswidrigkeit' }, { key: 'C', text: 'Gar keine' }, { key: 'D', text: 'Nur Verwarnung' } ],
+      correct: 'B', rationales: { A: 'Nicht zwingend Straftat.', B: 'Regelmäßig OWi.', C: 'Falsch.', D: 'Nicht zutreffend.' } },
+    // insight / behavior / planning
+    { type: 'scenario', category: 'insight', difficulty: 2,
       prompt: 'Im MPU‑Gespräch wirst du nach deiner Einsicht gefragt. Skizziere kurz, worin der Fehler lag und was du daraus gelernt hast (Stichpunkte).',
-      rubric: { points: [{ id: 'einsicht', desc: 'Kern der Einsicht erfasst' }, { id: 'lernen', desc: 'Konkrete Lernpunkte' }] }
-    }
+      rubric: { points: [ { id: 'einsicht', desc: 'Kern der Einsicht benannt' }, { id: 'lernen', desc: 'Konkrete Lernpunkte' } ] } },
+    { type: 'short', category: 'behavior', difficulty: 2,
+      prompt: 'Nenne drei Maßnahmen, die du zur Verhaltensänderung umgesetzt hast (Stichpunkte).',
+      rubric: { points: [ { id: 'massnahmen', desc: 'Konkrete Maßnahmen benannt' } ] } },
+    { type: 'short', category: 'planning', difficulty: 2,
+      prompt: 'Nenne zwei persönliche Risikosituationen und je eine konkrete Strategie zur Vermeidung (Stichpunkte).',
+      rubric: { points: [ { id: 'risiken', desc: 'Situationen benannt' }, { id: 'strategie', desc: 'Umsetzbare Strategie' } ] } },
+    { type: 'short', category: 'behavior', difficulty: 2,
+      prompt: 'Wie stellst du Abstinenz oder kontrollierten Konsum sicher? (Stichpunkte: Regeln/Routinen/Kontrollen)',
+      rubric: { points: [ { id: 'sicherung', desc: 'Nachvollziehbare Sicherung' } ] } },
+    { type: 'short', category: 'insight', difficulty: 2,
+      prompt: 'Warum war dein früheres Verhalten verkehrsgefährdend? Nenne zwei Punkte (Stichpunkte).',
+      rubric: { points: [ { id: 'gefahr', desc: 'Gefährdungsaspekte benannt' } ] } },
+    { type: 'short', category: 'consistency', difficulty: 2,
+      prompt: 'Nenne zwei Beispiele, die zeigen, dass dein jetziges Verhalten zu deinen Aussagen passt (Kohärenz).',
+      rubric: { points: [ { id: 'kohärenz', desc: 'Handlung‑Aussage‑Kohärenz' } ] } },
+    { type: 'scenario', category: 'planning', difficulty: 2,
+      prompt: 'Du wirst zu Rückfallprophylaxe gefragt. Skizziere dein Frühwarnsystem (Stichpunkte).',
+      rubric: { points: [ { id: 'frühwarn', desc: 'Frühwarnzeichen + Reaktion' } ] } },
+    { type: 'mcq', category: 'knowledge', difficulty: 1,
+      prompt: 'Welche Aussage zu Punkten (Flensburg) ist korrekt?',
+      choices: [ { key: 'A', text: 'Punkte spielen für die Fahrerlaubnis keine Rolle.' }, { key: 'B', text: '8 Punkte führen zur Entziehung der Fahrerlaubnis.' }, { key: 'C', text: 'Ab 2 Punkten wird immer MPU angeordnet.' }, { key: 'D', text: 'Punkte verfallen nie.' } ],
+      correct: 'B', rationales: { A: 'Falsch.', B: 'Regel: 8 Punkte = Entziehung.', C: 'Falsch.', D: 'Es gibt Verfall/ Tilgung.' } },
+    { type: 'mcq', category: 'knowledge', difficulty: 1,
+      prompt: 'Welche Aussage ist richtig? (Radfahren unter Alkohol)',
+      choices: [ { key: 'A', text: 'Radfahren ist immer erlaubt.' }, { key: 'B', text: 'Ab ca. 1,6‰ droht MPU auch für Radfahrende.' }, { key: 'C', text: 'Es gibt keine Grenzwerte fürs Rad.' }, { key: 'D', text: 'Nur Pkw‑Grenzwerte sind relevant.' } ],
+      correct: 'B', rationales: { A: 'Falsch.', B: 'Praxisrelevanter Richtwert.', C: 'Falsch.', D: 'Falsch.' } },
+    { type: 'short', category: 'support', difficulty: 1,
+      prompt: 'Wer unterstützt dich konkret im Alltag (2 Beispiele) und wie erreichst du diese Personen? (Stichpunkte).',
+      rubric: { points: [ { id: 'netz', desc: 'Benennbare Unterstützung' } ] } },
   ]
   return { categories: [
-    { key: 'knowledge', count: 3 },
-    { key: 'insight', count: 3 },
-    { key: 'behavior', count: 3 },
-    { key: 'consistency', count: 2 },
+    { key: 'knowledge', count: 4 },
+    { key: 'insight', count: 2 },
+    { key: 'behavior', count: 2 },
+    { key: 'consistency', count: 1 },
     { key: 'planning', count: 2 },
   ], questions }
 }
@@ -199,4 +227,3 @@ ${(answer || '').slice(0, 1800)}
     return { score: 0.5, feedback: 'Standard‑Feedback: Ergänzen Sie konkrete Beispiele, Maßnahmen und Rückfallstrategien.' }
   }
 }
-

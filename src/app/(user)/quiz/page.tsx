@@ -90,7 +90,7 @@ export default function QuizPage() {
       // ensure blueprint
       await fetch('/api/quiz/blueprint', { method: 'POST' })
       // start session
-      const res = await fetch('/api/quiz/session/start', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ count: 10 }) })
+      const res = await fetch('/api/quiz/session/start', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ count: 12 }) })
       const data = await res.json()
       if (data.success) {
         setSessionId(data.sessionId)
