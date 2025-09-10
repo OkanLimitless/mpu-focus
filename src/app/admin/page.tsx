@@ -10,7 +10,6 @@ import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, Ba
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import LanguageSwitcher from '@/components/ui/language-switcher'
-import ThemeToggle from '@/components/ui/theme-toggle'
 import { useI18n } from '@/components/providers/i18n-provider'
 
 // Dynamic imports for admin components to prevent SSR issues
@@ -336,7 +335,6 @@ export default function AdminDashboardPage() {
                 </Button>
               )}
               <LanguageSwitcher />
-              <ThemeToggle />
             </div>
           </div>
 
@@ -371,7 +369,6 @@ export default function AdminDashboardPage() {
               </Button>
             )}
             <LanguageSwitcher />
-            <ThemeToggle />
           </div>
         </header>
 
