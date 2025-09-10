@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Phone, Clock, CheckCircle, Star, Shield, Use
 import QuizStep from '@/components/enrollment/QuizStep'
 import ContactForm from '@/components/enrollment/ContactForm'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 
 interface QuizData {
   timeframe: string
@@ -27,6 +28,7 @@ interface ContactData {
 
 export default function BeratungPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(0)
   const [quizData, setQuizData] = useState<QuizData>({
     timeframe: '',
@@ -151,6 +153,9 @@ export default function BeratungPage() {
     }
   }
 
+  const emailValid = (email: string) => /.+@.+\..+/.test(email)
+  const phoneValid = (phone: string) => /^[+0-9 ()-]{7,}$/.test(phone)
+
   const isStepValid = () => {
     if (currentStep < quizSteps.length) {
       const step = quizSteps[currentStep]
@@ -165,8 +170,9 @@ export default function BeratungPage() {
       return value !== '' && value !== undefined
     } else {
       // Contact form validation
-      return contactData.firstName && contactData.lastName && 
-             contactData.email && contactData.phone
+      return !!(contactData.firstName && contactData.lastName && 
+             contactData.email && emailValid(contactData.email) && 
+             contactData.phone && phoneValid(contactData.phone))
     }
   }
 
@@ -188,11 +194,19 @@ export default function BeratungPage() {
       if (response.ok) {
         setIsSubmitted(true)
       } else {
-        alert('Es gab einen Fehler beim Senden Ihrer Anfrage. Bitte versuchen Sie es erneut.')
+        toast({
+          title: 'Fehler',
+          description: 'Es gab einen Fehler beim Senden Ihrer Anfrage. Bitte versuchen Sie es erneut.',
+          variant: 'destructive'
+        })
       }
     } catch (error) {
       console.error('Error submitting form:', error)
-      alert('Es gab einen Fehler beim Senden Ihrer Anfrage. Bitte versuchen Sie es erneut.')
+      toast({
+        title: 'Fehler',
+        description: 'Es gab einen Fehler beim Senden Ihrer Anfrage. Bitte versuchen Sie es erneut.',
+        variant: 'destructive'
+      })
     } finally {
       setIsSubmitting(false)
     }

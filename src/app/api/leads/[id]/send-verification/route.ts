@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import connectDB from '@/lib/mongodb'
 import Lead from '@/models/Lead'
 import User from '@/models/User'
-import { getWelcomeLoginAndVerificationEmailTemplate, getLoginVerificationReminderTemplate } from '@/lib/email-templates'
+import { getWelcomeLoginAndVerificationEmailTemplate, getWelcomeLoginAndVerificationEmailTemplateDe, getLoginVerificationReminderTemplate } from '@/lib/email-templates'
 import nodemailer from 'nodemailer'
 import crypto from 'crypto'
 
@@ -95,7 +95,8 @@ export async function POST(
     const from = `"MPU-Focus Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`
 
     if (passwordFromRequest) {
-      const template = getWelcomeLoginAndVerificationEmailTemplate({
+      // Prefer German welcome template by default
+      const template = getWelcomeLoginAndVerificationEmailTemplateDe({
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,

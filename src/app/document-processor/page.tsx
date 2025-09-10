@@ -431,10 +431,10 @@ export default function DocumentProcessor() {
         {targetUserId && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-800 font-medium">
-               🎯 Processing for user: {targetUserName || 'Unknown User'}
+               🎯 {t('docProc_processingForUser')}: {targetUserName || t('unknownUser')}
             </p>
             <p className="text-blue-600 text-sm">
-              Results will be automatically saved to this user's account
+              {t('docProc_resultsAutosaved')}
             </p>
           </div>
         )}

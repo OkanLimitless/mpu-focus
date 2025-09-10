@@ -9,7 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck, Loader2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import CommandPalette from '@/components/ui/command-palette'
 import { useI18n } from '@/components/providers/i18n-provider'
+import { useSearchParams } from 'next/navigation'
 
 // Dynamic imports for admin components to prevent SSR issues
 const UserManagement = dynamic(() => import('@/components/admin/UserManagement'), {
@@ -72,6 +74,7 @@ const navigationItems = [
 export default function AdminDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState<AdminSection>('dashboard')
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -103,7 +106,12 @@ export default function AdminDashboardPage() {
 
     // Load dashboard stats
     fetchDashboardStats()
-  }, [session, status, router])
+    // Read section from URL
+    const section = searchParams?.get('section') as AdminSection | null
+    if (section && navigationItems.find(n => n.id === section)) {
+      setActiveSection(section)
+    }
+  }, [session, status, router, searchParams])
 
   const fetchDashboardStats = async () => {
     try {
@@ -222,6 +230,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex">
+      <CommandPalette context="admin" />
       {/* Sidebar */}
       <div className="hidden lg:flex w-72 bg-white/90 supports-[backdrop-filter]:bg-white/60 backdrop-blur shadow-xl border-r flex-col">
         {/* Header */}
@@ -298,6 +307,7 @@ export default function AdminDashboardPage() {
         <header className="bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur shadow-sm border-b px-4 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
+              <div className="text-xs text-gray-500 mb-1">Admin / {t(navigationItems.find(item => item.id === activeSection)?.nameKey || 'nav_dashboard')}</div>
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
                 {t(navigationItems.find(item => item.id === activeSection)?.nameKey || 'nav_dashboard')}
               </h1>
@@ -355,7 +365,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Mobile Action Buttons */}
-          <div className="lg:hidden mt-4 flex gap-2">
+          <div className="lg:hidden mt-4 flex gap-2 items-center">
             {stats.newLeads > 0 && (
               <Button
                 size="sm"
@@ -366,6 +376,7 @@ export default function AdminDashboardPage() {
                 {stats.newLeads} {t('newLeads')}
               </Button>
             )}
+            {/* Language switcher shown globally in app/layout */}
           </div>
         </header>
 

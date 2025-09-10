@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import RestrictedMuxVideoPlayer from '@/components/video/RestrictedMuxVideoPlayer'
 import { ArrowLeft, ArrowRight, CheckCircle, PlayCircle, BookOpen } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface VideoData {
   _id: string
@@ -38,6 +39,7 @@ export default function ModulePage() {
   const { category, moduleId } = useParams<{ category: string; moduleId: string }>()
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { t } = useI18n()
   const [moduleData, setModuleData] = useState<ChapterData | null>(null)
   const [selected, setSelected] = useState<VideoData | null>(null)
 
@@ -92,15 +94,15 @@ export default function ModulePage() {
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="min-w-0">
-            <div className="text-xs text-gray-500 truncate">MPU Focus Campus / <span className="capitalize">{category}</span></div>
+            <div className="text-xs text-gray-500 truncate">{t('campusTitle')} / <span className="capitalize">{category}</span></div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 truncate">{moduleData.title}</h1>
             <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-gray-600">
               <div className="w-48"><Progress value={totals.pct} /></div>
-              <span>{totals.done}/{totals.total} Lektionen</span>
+              <span>{t('lessonsCount', { done: totals.done, total: totals.total })}</span>
             </div>
           </div>
           <Button variant="outline" onClick={() => router.push(`/learn/${category}`)}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
+            <ArrowLeft className="h-4 w-4 mr-1" /> {t('previous')}
           </Button>
         </div>
       </div>
@@ -134,17 +136,17 @@ export default function ModulePage() {
 
           <div className="flex items-center justify-between">
             <Button variant="outline" disabled={!prevVideo} onClick={() => prevVideo && setSelected(prevVideo)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
+              <ArrowLeft className="h-4 w-4 mr-1" /> {t('previous')}
             </Button>
             <Button disabled={!nextVideo} onClick={() => nextVideo && setSelected(nextVideo)}>
-              Weiter <ArrowRight className="h-4 w-4 ml-1" />
+              {t('next')} <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Lektionen</CardTitle>
-              <CardDescription>Wähle eine Lektion aus oder nutze Weiter/Zurück.</CardDescription>
+              <CardTitle>{t('lessons')}</CardTitle>
+              <CardDescription>{t('pickLessonPrompt')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="divide-y">
@@ -174,8 +176,8 @@ export default function ModulePage() {
           <div className="lg:sticky lg:top-6 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-4 w-4" /> Modulfortschritt</CardTitle>
-                <CardDescription>{totals.done}/{totals.total} Lektionen abgeschlossen</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-4 w-4" /> {t('moduleProgress')}</CardTitle>
+                <CardDescription>{t('lessonsCount', { done: totals.done, total: totals.total })}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Progress value={totals.pct} />
@@ -183,7 +185,7 @@ export default function ModulePage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Modulbeschreibung</CardTitle>
+                <CardTitle className="text-base">{t('moduleDescription')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-700">{moduleData.description}</p>

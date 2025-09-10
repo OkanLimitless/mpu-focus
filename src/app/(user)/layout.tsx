@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import CommandPalette from '@/components/ui/command-palette'
 import { User } from 'lucide-react'
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      <CommandPalette context="user" />
       <header className="sticky top-0 z-40 bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
@@ -30,6 +32,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                 Willkommen, {session.user.firstName} {session.user.lastName}
               </div>
             )}
+            {/* Language switcher is provided globally in app/layout.tsx */}
             <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold ring-2 ring-blue-100">
               {userInitials || <User className="h-4 w-4" />}
             </div>

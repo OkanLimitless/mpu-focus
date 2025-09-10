@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mai
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useI18n } from '@/components/providers/i18n-provider'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface User {
   _id: string
@@ -75,6 +77,7 @@ interface Chapter {
 }
 
 export default function UserManagement() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,6 +97,71 @@ export default function UserManagement() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const { toast } = useToast()
   const { t } = useI18n()
+
+  // View mode and columns
+  type ViewMode = 'list' | 'table'
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
+  const ALL_COLUMNS = ['name','email','role','verification','progress','created','lastLogin'] as const
+  type ColumnId = typeof ALL_COLUMNS[number]
+  const [columns, setColumns] = useState<ColumnId[]>(['name','email','verification','progress'])
+
+  // Saved views (localStorage)
+  type SavedView = {
+    name: string
+    roleFilter: string
+    searchTerm: string
+    viewMode: ViewMode
+    columns: ColumnId[]
+  }
+  const [savedViews, setSavedViews] = useState<SavedView[]>([])
+  const [selectedViewName, setSelectedViewName] = useState<string>('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const sv = localStorage.getItem('admin_users_saved_views')
+      if (sv) setSavedViews(JSON.parse(sv))
+      const storedCols = localStorage.getItem('admin_users_columns')
+      if (storedCols) setColumns(JSON.parse(storedCols))
+      const storedMode = localStorage.getItem('admin_users_view_mode') as ViewMode | null
+      if (storedMode === 'table' || storedMode === 'list') setViewMode(storedMode)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('admin_users_columns', JSON.stringify(columns))
+    localStorage.setItem('admin_users_view_mode', viewMode)
+  }, [columns, viewMode])
+
+  const applySavedView = (name: string) => {
+    const view = savedViews.find(v => v.name === name)
+    if (!view) return
+    setSelectedViewName(name)
+    setRoleFilter(view.roleFilter)
+    setSearchTerm(view.searchTerm)
+    setViewMode(view.viewMode)
+    setColumns(view.columns)
+  }
+
+  const saveCurrentView = () => {
+    const name = window.prompt(t('nameViewPrompt'), selectedViewName || '')?.trim()
+    if (!name) return
+    const newView: SavedView = { name, roleFilter, searchTerm, viewMode, columns }
+    const next = [...savedViews.filter(v => v.name !== name), newView]
+    setSavedViews(next)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
+    setSelectedViewName(name)
+    toast({ title: t('success'), description: t('viewSaved') })
+  }
+
+  const deleteSavedView = () => {
+    if (!selectedViewName) return
+    const next = savedViews.filter(v => v.name !== selectedViewName)
+    setSavedViews(next)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
+    setSelectedViewName('')
+  }
 
   // Helper function to get verification status badge
   const getVerificationStatusBadge = (status?: string) => {
@@ -478,6 +546,61 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="md:ml-auto">
+              <Label>{t('views')}</Label>
+              <div className="flex gap-2">
+                <Select value={selectedViewName} onValueChange={applySavedView}>
+                  <SelectTrigger className="min-w-[160px]">
+                    <SelectValue placeholder={t('selectView')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedViews.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500">{t('noSavedViews')}</div>
+                    ) : (
+                      savedViews.map(v => (
+                        <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={saveCurrentView}>{t('save')}</Button>
+                <Button variant="outline" disabled={!selectedViewName} onClick={deleteSavedView}>{t('delete')}</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* View mode + Columns */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Label>{t('viewLabel')}</Label>
+              <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('list')}>{t('list')}</Button>
+              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>{t('table')}</Button>
+            </div>
+            {viewMode === 'table' && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">{t('columns')}</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[420px]">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">{t('chooseColumns')}</h3>
+                    {ALL_COLUMNS.map((col) => (
+                      <label key={col} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={columns.includes(col)}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            setColumns((prev) => checked ? Array.from(new Set([...prev, col])) : prev.filter(c => c !== col))
+                          }}
+                        />
+                        <span>{t(`col_${col}`)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {/* Removed: High-level metrics that are not useful here */}
@@ -487,7 +610,7 @@ export default function UserManagement() {
             <div className="text-center py-8 text-muted-foreground">
               {t('noUsersFound')}
             </div>
-          ) : (
+          ) : viewMode === 'list' ? (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {/* User List */}
               <div className="space-y-2 lg:col-span-1 rounded-lg border bg-white p-2 max-h-[70vh] overflow-y-auto">
@@ -699,6 +822,126 @@ export default function UserManagement() {
                   </Card>
                 )}
               </div>
+            </div>
+          ) : (
+            // Table view
+            <div className="overflow-auto">
+              <table className="min-w-full border rounded-md bg-white">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {columns.includes('name') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('col_name')}</th>}
+                    {columns.includes('email') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('col_email')}</th>}
+                    {columns.includes('role') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('role')}</th>}
+                    {columns.includes('verification') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('verificationStatus')}</th>}
+                    {columns.includes('progress') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('overallProgress')}</th>}
+                    {columns.includes('created') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('createdLabel')}</th>}
+                    {columns.includes('lastLogin') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('lastLogin')}</th>}
+                    <th className="p-3 text-right text-xs font-medium text-gray-500 uppercase">{t('actionsHeader')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user._id} className="border-t">
+                      {columns.includes('name') && <td className="p-3 whitespace-nowrap">{user.firstName} {user.lastName}</td>}
+                      {columns.includes('email') && <td className="p-3 whitespace-nowrap text-sm text-gray-700">{user.email}</td>}
+                      {columns.includes('role') && <td className="p-3 whitespace-nowrap text-sm text-gray-700 capitalize">{user.role}</td>}
+                      {columns.includes('verification') && <td className="p-3 whitespace-nowrap">{getVerificationStatusBadge(user.verificationStatus)}</td>}
+                      {columns.includes('progress') && <td className="p-3 whitespace-nowrap text-sm">{user.progress ? `${user.progress.averageProgress}%` : '-'}</td>}
+                      {columns.includes('created') && <td className="p-3 whitespace-nowrap text-sm text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</td>}
+                      {columns.includes('lastLogin') && <td className="p-3 whitespace-nowrap text-sm text-gray-500">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : '-'}</td>}
+                      <td className="p-3 whitespace-nowrap text-right">
+                        <Dialog open={dialogOpen && selectedUser?._id === user._id} onOpenChange={(o) => { setDialogOpen(o); if (!o) setSelectedUser(null) }}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedUser(user); setDialogOpen(true) }}>{t('details')}</Button>
+                          </DialogTrigger>
+                          <DialogContent className="left-auto right-0 top-0 translate-x-0 translate-y-0 h-[100vh] w-full sm:max-w-[720px] sm:rounded-none overflow-y-auto">
+                            {selectedUser && (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-semibold text-lg">{selectedUser.firstName} {selectedUser.lastName}</div>
+                                    <div className="text-sm text-gray-600">{selectedUser.email}</div>
+                                  </div>
+                                  {getVerificationStatusBadge(selectedUser.verificationStatus)}
+                                </div>
+                                <Tabs defaultValue="overview">
+                                  <TabsList>
+                                    <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+                                    <TabsTrigger value="documents">{t('documentsBtn')}</TabsTrigger>
+                                    <TabsTrigger value="notes">{t('notesBtn')}</TabsTrigger>
+                                    <TabsTrigger value="actions">{t('actionsHeader')}</TabsTrigger>
+                                  </TabsList>
+                                  <TabsContent value="overview" className="space-y-3">
+                                    <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(selectedUser.createdAt).toLocaleDateString()}</div>
+                                    {selectedUser.progress && (
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between text-xs">
+                                          <span>{t('progressLabel')}</span>
+                                          <span>{selectedUser.progress.averageProgress}%</span>
+                                        </div>
+                                        <Progress value={selectedUser.progress.averageProgress} className="h-2" />
+                                      </div>
+                                    )}
+                                  </TabsContent>
+                                  <TabsContent value="documents" className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium">{t('documentProcessingLabel')}</span>
+                                      {selectedUser.documentProcessing ? (
+                                        <Badge variant="success">
+                                          <FileText className="w-3 h-3 mr-1" />
+                                          {t('processedLabel')}
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="secondary">{t('noData')}</Badge>
+                                      )}
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => viewDocumentData(selectedUser)}>
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        {t('documentsBtn')}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => openDocumentProcessor(selectedUser)}>
+                                        <ExternalLink className="w-4 h-4 mr-2" />
+                                        {t('processBtn')}
+                                      </Button>
+                                      <Button size="sm" onClick={() => generatePDFFromData(selectedUser)} disabled={isGeneratingPDF}>
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        {isGeneratingPDF ? t('processing') : t('pdfBtn')}
+                                      </Button>
+                                    </div>
+                                  </TabsContent>
+                                  <TabsContent value="notes" className="space-y-3">
+                                    <Button size="sm" variant="outline" onClick={() => viewNotes(selectedUser)}>
+                                      <StickyNote className="w-4 h-4 mr-2" />
+                                      {t('notesBtn')}
+                                    </Button>
+                                  </TabsContent>
+                                  <TabsContent value="actions" className="space-y-2">
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button size="sm" variant="outline" onClick={() => setProgressDialogOpen(true)}>
+                                        <BarChart3 className="w-4 h-4 mr-2" />
+                                        {t('progressBtn')}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => router.push(`/admin?section=verification&search=${encodeURIComponent(selectedUser.email)}`)}>
+                                        <Shield className="w-4 h-4 mr-2" />
+                                        {t('nav_verification')}
+                                      </Button>
+                                      <Button size="sm" variant="destructive" onClick={() => { setUserToDelete(selectedUser); setDeleteDialogOpen(true) }}>
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        {t('deleteBtn')}
+                                      </Button>
+                                    </div>
+                                  </TabsContent>
+                                </Tabs>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

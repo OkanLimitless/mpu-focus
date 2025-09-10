@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock, CheckCircle, Play } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 interface MuxVideoPlayerProps {
   video: {
@@ -39,6 +40,7 @@ export default function MuxVideoPlayer({
 }: MuxVideoPlayerProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
+  const { t } = useI18n()
   const playerRef = useRef<any>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(userProgress?.currentTime || 0)
@@ -201,7 +203,7 @@ export default function MuxVideoPlayer({
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-            <p className="text-gray-500">Video not available</p>
+            <p className="text-gray-500">{t('videoNotAvailable')}</p>
           </div>
           {video.description && (
             <p className="text-sm text-gray-600 mt-4">{video.description}</p>
@@ -226,7 +228,7 @@ export default function MuxVideoPlayer({
             {isCompleted && (
               <div className="flex items-center gap-1 text-green-600">
                 <CheckCircle className="h-4 w-4" />
-                Completed
+                {t('completed')}
               </div>
             )}
             <div className="flex items-center gap-1 text-gray-500">
@@ -258,7 +260,7 @@ export default function MuxVideoPlayer({
         
         {video.description && (
           <div className="mt-4">
-            <h4 className="font-medium mb-2">Description</h4>
+            <h4 className="font-medium mb-2">{t('descriptionLabel')}</h4>
             <p className="text-sm text-gray-600">{video.description}</p>
           </div>
         )}

@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer'
-import { getVerificationApprovedEmailTemplate, getVerificationRejectedEmailTemplate } from './email-templates'
+import { getVerificationApprovedEmailTemplate, getVerificationRejectedEmailTemplate, getVerificationApprovedEmailTemplateDe, getVerificationRejectedEmailTemplateDe, getPasswordResetEmailTemplate } from './email-templates'
 
 interface User {
   firstName?: string
@@ -49,7 +49,7 @@ function checkSMTPCredentials(): { configured: boolean; missing: string[] } {
 }
 
 // Send verification approved email
-export async function sendVerificationApprovedEmail(user: User): Promise<boolean> {
+export async function sendVerificationApprovedEmail(user: User, lang: 'de' | 'en' = 'de'): Promise<boolean> {
   try {
     const credentialCheck = checkSMTPCredentials()
     
@@ -60,7 +60,7 @@ export async function sendVerificationApprovedEmail(user: User): Promise<boolean
 
     console.log('Sending verification approved email to:', user.email)
     const transporter = createTransporter()
-    const template = getVerificationApprovedEmailTemplate(user)
+    const template = lang === 'de' ? getVerificationApprovedEmailTemplateDe(user) : getVerificationApprovedEmailTemplate(user)
 
     const mailOptions = {
       from: `"MPU-Focus Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
@@ -84,7 +84,8 @@ export async function sendVerificationApprovedEmail(user: User): Promise<boolean
 export async function sendVerificationRejectedEmail(
   user: User, 
   rejectionReason: string,
-  allowResubmission: boolean = false
+  allowResubmission: boolean = false,
+  lang: 'de' | 'en' = 'de'
 ): Promise<boolean> {
   try {
     const credentialCheck = checkSMTPCredentials()
@@ -100,7 +101,7 @@ export async function sendVerificationRejectedEmail(
     })
     
     const transporter = createTransporter()
-    const template = getVerificationRejectedEmailTemplate(user, rejectionReason, allowResubmission)
+    const template = lang === 'de' ? getVerificationRejectedEmailTemplateDe(user, rejectionReason, allowResubmission) : getVerificationRejectedEmailTemplate(user, rejectionReason, allowResubmission)
 
     const mailOptions = {
       from: `"MPU-Focus Verification Team" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
@@ -129,6 +130,26 @@ export async function sendVerificationRejectedEmail(
       user: user.email,
       allowResubmission
     })
+    return false
+  }
+}
+
+// Send password reset email
+export async function sendPasswordResetEmail(toEmail: string, resetUrl: string, lang: 'de' | 'en' = 'de'): Promise<boolean> {
+  try {
+    const credentialCheck = checkSMTPCredentials()
+    if (!credentialCheck.configured) return false
+    const transporter = createTransporter()
+    const tpl = getPasswordResetEmailTemplate(toEmail, resetUrl, lang)
+    const info = await transporter.sendMail({
+      from: `"MPU-Focus" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+      to: toEmail,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+    })
+    return !!info.messageId
+  } catch {
     return false
   }
 }
