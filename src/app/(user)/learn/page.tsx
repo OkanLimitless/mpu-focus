@@ -187,6 +187,11 @@ export default function LearnHomePage() {
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
+                <div className="font-semibold mb-2">{t('practiceBeta')}</div>
+                <p className="text-sm text-blue-800 mb-3">{t('quizSubtitle')}</p>
+                <Button variant="outline" onClick={() => router.push('/quiz')}>{t('quizStartPractice')}</Button>
+              </div>
               {modules.map((group) => (
                 <div key={group.key} className="border rounded-lg p-3">
                   <div className="font-semibold mb-2">{group.label}</div>

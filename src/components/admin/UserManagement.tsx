@@ -97,6 +97,8 @@ export default function UserManagement() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const { toast } = useToast()
   const { t } = useI18n()
+  const [quizSessions, setQuizSessions] = useState<any[]>([])
+  const [quizLoading, setQuizLoading] = useState(false)
 
   // View mode and columns
   type ViewMode = 'list' | 'table'
@@ -153,6 +155,18 @@ export default function UserManagement() {
     if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
     setSelectedViewName(name)
     toast({ title: t('success'), description: t('viewSaved') })
+  }
+
+  const fetchQuizSessions = async (uid: string) => {
+    try {
+      setQuizLoading(true)
+      const res = await fetch(`/api/admin/quiz/sessions?userId=${uid}`)
+      if (res.ok) {
+        const data = await res.json()
+        setQuizSessions(data.sessions || [])
+      }
+    } catch {}
+    finally { setQuizLoading(false) }
   }
 
   const deleteSavedView = () => {
@@ -514,6 +528,13 @@ export default function UserManagement() {
     )
   }
 
+  // Load quiz sessions when opening table drawer
+  useEffect(() => {
+    if (dialogOpen && selectedUser?._id) {
+      fetchQuizSessions(selectedUser._id)
+    }
+  }, [dialogOpen, selectedUser?._id])
+
   return (
     <div className="space-y-6">
       <Card>
@@ -865,12 +886,13 @@ export default function UserManagement() {
                                   {getVerificationStatusBadge(selectedUser.verificationStatus)}
                                 </div>
                                 <Tabs defaultValue="overview">
-                                  <TabsList>
-                                    <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
-                                    <TabsTrigger value="documents">{t('documentsBtn')}</TabsTrigger>
-                                    <TabsTrigger value="notes">{t('notesBtn')}</TabsTrigger>
-                                    <TabsTrigger value="actions">{t('actionsHeader')}</TabsTrigger>
-                                  </TabsList>
+                          <TabsList>
+                            <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+                            <TabsTrigger value="documents">{t('documentsBtn')}</TabsTrigger>
+                            <TabsTrigger value="notes">{t('notesBtn')}</TabsTrigger>
+                            <TabsTrigger value="actions">{t('actionsHeader')}</TabsTrigger>
+                            <TabsTrigger value="quiz">{t('quizTab') || 'Quiz'}</TabsTrigger>
+                          </TabsList>
                                   <TabsContent value="overview" className="space-y-3">
                                     <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(selectedUser.createdAt).toLocaleDateString()}</div>
                                     {selectedUser.progress && (
@@ -916,7 +938,7 @@ export default function UserManagement() {
                                       {t('notesBtn')}
                                     </Button>
                                   </TabsContent>
-                                  <TabsContent value="actions" className="space-y-2">
+                          <TabsContent value="actions" className="space-y-2">
                                     <div className="flex flex-wrap gap-2">
                                       <Button size="sm" variant="outline" onClick={() => setProgressDialogOpen(true)}>
                                         <BarChart3 className="w-4 h-4 mr-2" />
@@ -931,7 +953,39 @@ export default function UserManagement() {
                                         {t('deleteBtn')}
                                       </Button>
                                     </div>
-                                  </TabsContent>
+                          </TabsContent>
+
+                          <TabsContent value="quiz" className="space-y-3">
+                            <Button size="sm" variant="outline" onClick={() => selectedUser && fetchQuizSessions(selectedUser._id)} disabled={quizLoading}>
+                              {quizLoading ? t('loading') : t('update')}
+                            </Button>
+                            {quizLoading ? (
+                              <div className="text-sm text-gray-600">{t('loading')}</div>
+                            ) : quizSessions.length === 0 ? (
+                              <div className="text-sm text-gray-600">{t('noData')}</div>
+                            ) : (
+                              <div className="space-y-2">
+                                {quizSessions.map((s) => (
+                                  <div key={s._id} className="border rounded p-2 text-sm">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-medium">{t('quizOverallScore')}: {s.score ?? '-'}%</div>
+                                        <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(s.startedAt).toLocaleString()}</div>
+                                      </div>
+                                      <div className="text-xs text-gray-600">{s.itemsScored}/{s.itemsTotal}</div>
+                                    </div>
+                                    {s.competencyScores && Object.keys(s.competencyScores).length > 0 && (
+                                      <div className="mt-1 text-xs text-gray-700">
+                                        {Object.entries(s.competencyScores).map(([k,v]: any) => (
+                                          <span key={k} className="inline-block mr-2 mb-1 px-2 py-0.5 rounded bg-gray-100">{k}: {v}%</span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </TabsContent>
                                 </Tabs>
                               </div>
                             )}

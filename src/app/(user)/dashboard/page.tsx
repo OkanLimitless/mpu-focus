@@ -366,10 +366,11 @@ export default function DashboardPage() {
                             <h4 className="font-medium">{t('yourCourse')}</h4>
                             <p className="text-sm text-gray-600">{t('watchVideosAndTrack')}</p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => router.push('/course')}>{t('continue')}</Button>
-                            <Button onClick={() => router.push('/learn')} className="bg-green-600 hover:bg-green-700">Start Lernen</Button>
-                          </div>
+                        <div className="flex gap-2 flex-wrap">
+                          <Button variant="outline" onClick={() => router.push('/course')}>{t('continue')}</Button>
+                          <Button onClick={() => router.push('/learn')} className="bg-green-600 hover:bg-green-700">Start Lernen</Button>
+                          <Button variant="outline" onClick={() => router.push('/quiz')}>{t('practiceBeta')}</Button>
+                        </div>
                         </div>
                       </>
                     ) : (
