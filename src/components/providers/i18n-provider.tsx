@@ -77,6 +77,9 @@ const dictionaries: I18nDictionaries = {
     downloadHtml: "Download HTML",
     processAnother: "Process Another Document",
     copyExtracted: "Copy Extracted Data",
+    docProc_processingForUser: "Processing for user",
+    docProc_resultsAutosaved: "Results will be automatically saved to this user's account",
+    unknownUser: "Unknown User",
 
     // Login
     loginTitle: "Login",
@@ -480,6 +483,9 @@ const dictionaries: I18nDictionaries = {
     downloadHtml: "HTML herunterladen",
     processAnother: "Weiteres Dokument verarbeiten",
     copyExtracted: "Extrahierte Daten kopieren",
+    docProc_processingForUser: "Verarbeitung für Nutzer",
+    docProc_resultsAutosaved: "Ergebnisse werden automatisch im Benutzerkonto gespeichert",
+    unknownUser: "Unbekannter Nutzer",
 
     // Login
     loginTitle: "Anmeldung",
