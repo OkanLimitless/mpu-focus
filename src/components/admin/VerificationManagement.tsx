@@ -293,9 +293,9 @@ export default function VerificationManagement() {
           <div className="flex items-center justify-between">
             <CardTitle>{t('filters')}</CardTitle>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Ansicht:</span>
-              <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'} onClick={() => setViewMode('list')}>Liste</Button>
-              <Button size="sm" variant={viewMode === 'board' ? 'default' : 'outline'} onClick={() => setViewMode('board')}>Board</Button>
+              <span className="text-sm text-gray-600">{t('viewLabel')}</span>
+              <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'} onClick={() => setViewMode('list')}>{t('list')}</Button>
+              <Button size="sm" variant={viewMode === 'board' ? 'default' : 'outline'} onClick={() => setViewMode('board')}>{t('board')}</Button>
             </div>
           </div>
         </CardHeader>

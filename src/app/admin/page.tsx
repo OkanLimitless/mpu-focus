@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck, Loader2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import LanguageSwitcher from '@/components/ui/language-switcher'
 import CommandPalette from '@/components/ui/command-palette'
 import { useI18n } from '@/components/providers/i18n-provider'
 import { useSearchParams } from 'next/navigation'
@@ -344,7 +343,6 @@ export default function AdminDashboardPage() {
                   {stats.newLeads} {t('newLeads')}
                 </Button>
               )}
-              <LanguageSwitcher />
             </div>
           </div>
 
@@ -378,7 +376,7 @@ export default function AdminDashboardPage() {
                 {stats.newLeads} {t('newLeads')}
               </Button>
             )}
-            <LanguageSwitcher />
+            {/* Language switcher shown globally in app/layout */}
           </div>
         </header>
 

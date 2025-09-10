@@ -142,14 +142,14 @@ export default function UserManagement() {
   }
 
   const saveCurrentView = () => {
-    const name = window.prompt('Name der Ansicht speichern:', selectedViewName || '')?.trim()
+    const name = window.prompt(t('nameViewPrompt'), selectedViewName || '')?.trim()
     if (!name) return
     const newView: SavedView = { name, roleFilter, searchTerm, viewMode, columns }
     const next = [...savedViews.filter(v => v.name !== name), newView]
     setSavedViews(next)
     if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
     setSelectedViewName(name)
-    toast({ title: 'Gespeichert', description: 'Ansicht gespeichert.' })
+    toast({ title: t('success'), description: t('viewSaved') })
   }
 
   const deleteSavedView = () => {
@@ -544,15 +544,15 @@ export default function UserManagement() {
               </Select>
             </div>
             <div className="md:ml-auto">
-              <Label>Ansichten</Label>
+              <Label>{t('views')}</Label>
               <div className="flex gap-2">
                 <Select value={selectedViewName} onValueChange={applySavedView}>
                   <SelectTrigger className="min-w-[160px]">
-                    <SelectValue placeholder="Ansicht wählen" />
+                    <SelectValue placeholder={t('selectView')} />
                   </SelectTrigger>
                   <SelectContent>
                     {savedViews.length === 0 ? (
-                      <div className="p-2 text-sm text-gray-500">Keine gespeicherten Ansichten</div>
+                      <div className="p-2 text-sm text-gray-500">{t('noSavedViews')}</div>
                     ) : (
                       savedViews.map(v => (
                         <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
@@ -560,8 +560,8 @@ export default function UserManagement() {
                     )}
                   </SelectContent>
                 </Select>
-                <Button variant="outline" onClick={saveCurrentView}>Speichern</Button>
-                <Button variant="outline" disabled={!selectedViewName} onClick={deleteSavedView}>Löschen</Button>
+                <Button variant="outline" onClick={saveCurrentView}>{t('save')}</Button>
+                <Button variant="outline" disabled={!selectedViewName} onClick={deleteSavedView}>{t('delete')}</Button>
               </div>
             </div>
           </div>
@@ -569,18 +569,18 @@ export default function UserManagement() {
           {/* View mode + Columns */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Label>Ansicht:</Label>
-              <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('list')}>Liste</Button>
-              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>Tabelle</Button>
+              <Label>{t('viewLabel')}</Label>
+              <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('list')}>{t('list')}</Button>
+              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>{t('table')}</Button>
             </div>
             {viewMode === 'table' && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">Spalten</Button>
+                  <Button variant="outline" size="sm">{t('columns')}</Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[420px]">
                   <div className="space-y-2">
-                    <h3 className="font-semibold">Spalten auswählen</h3>
+                    <h3 className="font-semibold">{t('chooseColumns')}</h3>
                     {ALL_COLUMNS.map((col) => (
                       <label key={col} className="flex items-center gap-2 text-sm">
                         <input
@@ -591,7 +591,7 @@ export default function UserManagement() {
                             setColumns((prev) => checked ? Array.from(new Set([...prev, col])) : prev.filter(c => c !== col))
                           }}
                         />
-                        <span>{col}</span>
+                        <span>{t(`col_${col}`)}</span>
                       </label>
                     ))}
                   </div>
@@ -826,14 +826,14 @@ export default function UserManagement() {
               <table className="min-w-full border rounded-md bg-white">
                 <thead className="bg-gray-50">
                   <tr>
-                    {columns.includes('name') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>}
-                    {columns.includes('email') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>}
+                    {columns.includes('name') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('col_name')}</th>}
+                    {columns.includes('email') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('col_email')}</th>}
                     {columns.includes('role') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('role')}</th>}
                     {columns.includes('verification') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('verificationStatus')}</th>}
                     {columns.includes('progress') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('overallProgress')}</th>}
                     {columns.includes('created') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('createdLabel')}</th>}
                     {columns.includes('lastLogin') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('lastLogin')}</th>}
-                    <th className="p-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
+                    <th className="p-3 text-right text-xs font-medium text-gray-500 uppercase">{t('actionsHeader')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -849,7 +849,7 @@ export default function UserManagement() {
                       <td className="p-3 whitespace-nowrap text-right">
                         <Dialog open={dialogOpen && selectedUser?._id === user._id} onOpenChange={(o) => { setDialogOpen(o); if (!o) setSelectedUser(null) }}>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline" onClick={() => { setSelectedUser(user); setDialogOpen(true) }}>Details</Button>
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedUser(user); setDialogOpen(true) }}>{t('details')}</Button>
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
                             {selectedUser && (
