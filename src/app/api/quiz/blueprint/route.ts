@@ -29,14 +29,22 @@ export async function POST(req: NextRequest) {
     const force = !!body?.force
     const desiredCount = Math.max(8, Math.min(30, Number(body?.desiredCount) || 12))
 
-    const extracted = user.documentProcessing?.extractedData || ''
-    if (!extracted) return NextResponse.json({ error: 'No document data found' }, { status: 400 })
-    const sourceHash = hashString(extracted)
+    const extracted = (user.documentProcessing?.extractedData || '').trim()
+    const intake = await UserIntake.findOne({ userId: user._id })
+    const intakeJSON = JSON.stringify(intake?.responses || {})
+    const hasDoc = extracted.length > 0
+    const hasIntake = intakeJSON !== '{}' && intakeJSON.length > 2
+    if (!hasDoc && !hasIntake) {
+      return NextResponse.json({ error: 'No baseline or document data found' }, { status: 400 })
+    }
+    // Profile for doc facts uses the doc-only hash
+    const docOnlyHash = hasDoc ? hashString(extracted) : null
+    // Composite hash for blueprint caches both sources deterministically
+    const sourceHash = hashString(`${docOnlyHash || ''}|${hasIntake ? hashString(intakeJSON) : ''}`)
 
     // ensure profile exists
-    const profile = await UserCaseProfile.findOne({ userId: user._id, sourceHash })
-    const intake = await UserIntake.findOne({ userId: user._id })
-    const facts = { ...(profile?.facts || { summary: extracted.slice(0, 2000) }), intake: intake?.responses || {} }
+    const profile = docOnlyHash ? await UserCaseProfile.findOne({ userId: user._id, sourceHash: docOnlyHash }) : null
+    const facts = { ...(profile?.facts || (hasDoc ? { summary: extracted.slice(0, 2000) } : {})), intake: hasIntake ? (intake?.responses || {}) : {} }
 
     // existing blueprint?
     let existing = await QuizBlueprint.findOne({ userId: user._id, sourceHash })
