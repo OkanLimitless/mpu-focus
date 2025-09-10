@@ -6,6 +6,7 @@ import User from '@/models/User'
 import UserCaseProfile from '@/models/UserCaseProfile'
 import QuizBlueprint from '@/models/QuizBlueprint'
 import QuizQuestion from '@/models/QuizQuestion'
+import UserIntake from '@/models/UserIntake'
 import crypto from 'crypto'
 import { generateBlueprintWithLLM } from '@/lib/quiz-prompts'
 
@@ -30,7 +31,8 @@ export async function POST(req: NextRequest) {
 
     // ensure profile exists
     const profile = await UserCaseProfile.findOne({ userId: user._id, sourceHash })
-    const facts = profile?.facts || { summary: extracted.slice(0, 2000) }
+    const intake = await UserIntake.findOne({ userId: user._id })
+    const facts = { ...(profile?.facts || { summary: extracted.slice(0, 2000) }), intake: intake?.responses || {} }
 
     // existing blueprint?
     const existing = await QuizBlueprint.findOne({ userId: user._id, sourceHash })
@@ -69,4 +71,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

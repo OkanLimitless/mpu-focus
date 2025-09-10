@@ -369,6 +369,7 @@ export default function DashboardPage() {
                         <div className="flex gap-2 flex-wrap">
                           <Button variant="outline" onClick={() => router.push('/course')}>{t('continue')}</Button>
                           <Button onClick={() => router.push('/learn')} className="bg-green-600 hover:bg-green-700">Start Lernen</Button>
+                          <Button variant="outline" onClick={() => router.push('/intake')}>{t('startBaseline')}</Button>
                           <Button variant="outline" onClick={() => router.push('/quiz')}>{t('practiceBeta')}</Button>
                         </div>
                         </div>

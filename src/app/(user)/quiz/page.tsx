@@ -177,7 +177,11 @@ export default function QuizPage() {
                           <li key={k}><strong>{k}:</strong> {String(v)}</li>
                         ))}
                       </ul>
-                    ) : <div className="text-sm text-gray-600">{t('noData')}</div>}
+                    ) : feedback?.feedback ? (
+                      <div className="text-sm text-gray-700">{String(feedback.feedback)}</div>
+                    ) : (
+                      <div className="text-sm text-gray-600">{t('noData')}</div>
+                    )}
                     <div className="mt-3 flex gap-2">
                       {idx < questions.length - 1 ? (
                         <Button onClick={nextQuestion}>{t('next')}</Button>
