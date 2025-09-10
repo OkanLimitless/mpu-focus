@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const adminUser = await User.findOne({ email: session.user.email })
     if (!adminUser || adminUser.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const sess = await QuizSession.findById(params.id).lean()
+    const sess: any = await QuizSession.findById(params.id).lean()
     if (!sess) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const results = await QuizResult.find({ sessionId: sess._id }).lean()
     const questions = await QuizQuestion.find({ _id: { $in: sess.questionIds } }).lean()
@@ -48,4 +48,3 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
