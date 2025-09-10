@@ -168,6 +168,7 @@ const dictionaries: I18nDictionaries = {
     quizYourAnswer: "Your answer...",
     quizScore: "Your score",
     practiceBeta: "Practice (Beta)",
+    quizTab: "Quiz (Beta)",
     quizOverallScore: "Overall score",
     quizCategoryScores: "Category scores",
     nextSteps: "Next Steps",
@@ -587,6 +588,7 @@ const dictionaries: I18nDictionaries = {
     quizYourAnswer: "Ihre Antwort...",
     quizScore: "Ihr Ergebnis",
     practiceBeta: "Üben (Beta)",
+    quizTab: "Quiz (Beta)",
     quizOverallScore: "Gesamtergebnis",
     quizCategoryScores: "Ergebnisse nach Kategorie",
     nextSteps: "Nächste Schritte",
@@ -928,5 +930,3 @@ export function LanguageSwitcher() {
     </div>
   );
 }
-    quizTab: "Quiz (Beta)",
-    quizTab: "Quiz (Beta)",
