@@ -154,6 +154,9 @@ const dictionaries: I18nDictionaries = {
     moduleProgress: "Module Progress",
     moduleDescription: "Module Description",
     pickLessonPrompt: "Select a lesson or use Next/Back.",
+    nextSteps: "Next Steps",
+    nextStepsSubtitle: "Begin with the next lesson",
+    continueInModule: "Continue in module",
 
     // Admin
     nav_dashboard: "Dashboard",
@@ -554,6 +557,9 @@ const dictionaries: I18nDictionaries = {
     moduleProgress: "Modulfortschritt",
     moduleDescription: "Modulbeschreibung",
     pickLessonPrompt: "Wähle eine Lektion aus oder nutze Weiter/Zürück.",
+    nextSteps: "Nächste Schritte",
+    nextStepsSubtitle: "Beginne mit der nächsten Lektion",
+    continueInModule: "Weiter in Modul",
 
     // Admin
     nav_dashboard: "Dashboard",

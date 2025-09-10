@@ -135,14 +135,14 @@ export default function LearnHomePage() {
         {nextSteps.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Nächste Schritte</CardTitle>
-              <CardDescription>Beginne mit der nächsten Lektion</CardDescription>
+              <CardTitle className="text-base">{t('nextSteps')}</CardTitle>
+              <CardDescription>{t('nextStepsSubtitle')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {nextSteps.map((step, idx) => (
                   <Button key={idx} variant="outline" onClick={() => router.push(`/learn/${step.moduleKey}/${step.chapterId}`)}>
-                    Weiter in Modul
+                    {t('continueInModule')}
                   </Button>
                 ))}
               </div>

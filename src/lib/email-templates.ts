@@ -347,6 +347,100 @@ For security, change your password after first login from your account settings.
   }
 }
 
+export function getWelcomeLoginAndVerificationEmailTemplateDe(user: User & { password: string }) {
+  const firstName = user.firstName || 'Kunde'
+  const loginUrl = `${process.env.NEXTAUTH_URL}/login`
+  const verificationUrl = user.verificationToken
+    ? `${process.env.NEXTAUTH_URL}/verification/${user.verificationToken}`
+    : `${process.env.NEXTAUTH_URL}/dashboard`
+
+  return {
+    subject: 'Willkommen bei MPU-Focus – Ihre Zugangsdaten und die nächsten Schritte',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Willkommen bei MPU-Focus</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
+          .header { background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%); color: white; padding: 36px 28px; text-align: center; }
+          .content { padding: 28px; }
+          .button { display: inline-block; background: #2563eb; color: white; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 8px 0; }
+          .panel { background-color: #f3f4f6; padding: 16px; border-radius: 8px; }
+          .code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; background: #111827; color: #fff; padding: 10px 12px; border-radius: 6px; display: inline-block; }
+          .list { margin: 0; padding-left: 18px; }
+          .footer { background-color: #f9fafb; padding: 20px; text-align: center; font-size: 14px; color: #6b7280; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="margin: 0; font-size: 24px;">Willkommen bei MPU-Focus</h1>
+            <p style="margin: 8px 0 0 0; opacity: 0.95;">Ihre Zugangsdaten und die nächsten Schritte</p>
+          </div>
+          <div class="content">
+            <p>Hallo ${firstName},</p>
+            <p>Ihr Konto wurde erstellt. Bitte melden Sie sich an und schließen Sie die Verifizierung ab, um auf den Kurs zuzugreifen.</p>
+
+            <div class="panel" style="margin: 16px 0;">
+              <h3 style="margin-top: 0;">Ihre Anmeldung</h3>
+              <p><strong>Nutzername (E-Mail):</strong> ${user.email}<br>
+              <strong>Passwort:</strong></p>
+              <div class="code" style="user-select: all; -webkit-user-select: all; display: inline-block;">${user.password}</div>
+              <div style="margin-top: 12px;">
+                <a href="${loginUrl}" class="button">Jetzt einloggen</a>
+              </div>
+            </div>
+
+            <h3>So geht es weiter</h3>
+            <ol class="list">
+              <li>Melden Sie sich mit den obigen Zugangsdaten an.</li>
+              <li>Beim ersten Login führen wir Sie durch die Verifizierung:</li>
+              <ul class="list">
+                <li>Gültiges Ausweisdokument hochladen (Pass/Personalausweis)</li>
+                <li>Dienstleistungsvereinbarung digital unterschreiben</li>
+              </ul>
+              <li>Unser Team prüft Ihre Eingaben (in der Regel 1–2 Werktage).</li>
+              <li>Nach Freigabe wird Ihr Dashboard vollständig freigeschaltet.</li>
+            </ol>
+
+            <p style="margin-top: 14px; font-size: 14px; color: #374151;">Sicherheitstipp: Ändern Sie Ihr Passwort nach dem ersten Login in den Kontoeinstellungen.</p>
+          </div>
+          <div class="footer">
+            <p>Diese E-Mail wurde an ${user.email} gesendet</p>
+            <p>MPU-Focus – Ihr Partner für erfolgreiche MPU-Vorbereitung</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Willkommen bei MPU-Focus
+
+Hallo ${firstName},
+
+Ihr Konto wurde erstellt. Bitte loggen Sie sich ein und schließen Sie die Verifizierung ab.
+
+Login:
+- E-Mail: ${user.email}
+- Passwort: ${user.password}
+
+Login: ${loginUrl}
+
+Nächste Schritte:
+1) Einloggen
+2) Verifizierung starten (Ausweis hochladen, Vereinbarung unterschreiben)
+3) Prüfung durch unser Team (1–2 Werktage)
+4) Freischaltung des Dashboards
+
+Sicherheitstipp: Passwort nach dem ersten Login ändern.
+    `
+  }
+}
+
 export function getLoginVerificationReminderTemplate(user: User) {
   const firstName = user.firstName || 'Dear User'
   const loginUrl = `${process.env.NEXTAUTH_URL}/login`

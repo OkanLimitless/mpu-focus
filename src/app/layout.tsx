@@ -28,11 +28,15 @@ export const metadata: Metadata = {
     title: 'MPU Focus | Professionelle MPU-Beratung',
     description: 'Bestehen Sie Ihre MPU im ersten Anlauf. 92% Erfolgsquote.',
   },
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#2563eb',
   icons: {
     icon: '/favicon.svg',
   },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#2563eb',
 }
 
 export default function RootLayout({
