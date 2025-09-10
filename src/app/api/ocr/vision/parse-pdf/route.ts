@@ -136,13 +136,45 @@ export async function POST(request: NextRequest) {
           const systemPrompt = `Je bent een professionele analist van Duitse juridische/bestuursrechtelijke documenten (MPU-context). Baseer ALLES uitsluitend op de OCR-tekst. Output in het Nederlands. Gebruik korte exacte Duitse citaten. Voeg bij elk feit paginaverwijzingen toe (gebruik de PAGINA-markers). Markeer ontbrekende gegevens als "Niet vermeld" of "Onzeker". Geen hallucinaties.`
           const userPrompt = `OCR-INVOER MET PAGINAMARKERS (totaal ${pages} pagina's):\n\n${markedText}\n\nOPDRACHT: Maak een gestructureerd rapport volgens dit strikte format:\n\nMPU Rapport / Dossieroverzicht\nDocumentinformatie\n- Bestandsnaam: …\n- Datum generatie rapport: …\n- Opmerking extractie: Systematische inventarisatie van meegeleverde pagina’s; ontbrekende gegevens gemarkeerd als \"Niet vermeld\".\n\nPersoonlijke Gegevens / Identificatie\n- Naam: …\n- Geboortedatum: …\n- Adres (vermeld in dossier): …\n- Rijbewijsnummer(s) in dossier: …\n- Totaal aantal punten (FAER): …\n- Belangrijkste aktenzeichen / dossiernummers: …\n\nOverzicht van Delicten / Sachverhalt (één blok per delict)\nDelict N: [korte titel + jaartal]\n- Pagina(s) bron: …\n- Wat is er gebeurd? …\n- Duits citaat ter onderbouwing: \"…\"\n- Wanneer? … (datums)\n- Waar / bevoegde instantie? …\n- Aktenzeichen: …\n- Wetsverwijzing(en): … (bijv. §-verwijzingen BtMG/StVG/StGB)\n- Boete / straf / maatregelen: … (geldstraf, Freiheitsstrafe, Fahrverbot/Entzug, MPU-verplichting)\n- Punten (Flensburg): …\n- Alcohol / Drugs / Bloedwaarden: … (met exacte waarden en citaten)\n- Overige maatregelen / status: … (kort)\n\nAlgemene Gegevens & Aanvullende Documenten\n- Overzicht overige relevante stukken (toxicologie, Führungszeugnis, ordonnanties, correspondentie) met kerncitaat + pagina.\n\nBelangrijke geciteerde fragmenten (kort)\n- \"…\" — Pagina X\n- \"…\" — Pagina Y\n\nSamenvatting & Aanbevelingen\n- Chronologische kernpunten (kort)\n- Belangrijk voor MPU-voorbereiding: …\n- Aanbevolen vervolg: …\n\nRegels:\n1) Geen verzinsels; schrijf \"Niet vermeld\" waar data ontbreekt.\n2) Voeg bij elk feit een Pagina-verwijzing (op basis van inputmarkers).\n3) Gebruik korte Duitse citaten om cruciale velden te staven.\n4) Wees volledig en systematisch zoals in het format.`
 
+          // AI request with timeout + fallback model
+          const modelPrimary = process.env.OCR_LLM_MODEL || 'gpt-4o'
+          const modelFallback = process.env.OCR_LLM_FALLBACK_MODEL || 'gpt-4o-mini'
+          const maxTokens = Math.max(1000, Math.min(12000, parseInt(process.env.OCR_LLM_MAX_TOKENS || '7000', 10) || 7000))
+          const aiTimeoutMs = Math.max(30000, Math.min(240000, parseInt(process.env.OCR_LLM_TIMEOUT_MS || '120000', 10) || 120000))
+
+          const approxTokens = Math.ceil(markedText.length / 4)
+          console.log('[VisionOCR] AI input approx tokens:', approxTokens, 'model:', modelPrimary, 'maxTokens:', maxTokens)
           logStep('AI Analysis', 80, 'Structuring OCR text with AI...')
-          const completion = await openai.chat.completions.create({
-            model: process.env.OCR_LLM_MODEL || 'gpt-4o',
-            messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
-            max_completion_tokens: Math.max(1000, Math.min(12000, parseInt(process.env.OCR_LLM_MAX_TOKENS || '7000', 10) || 7000)),
-          })
-          const extractedData = completion.choices[0]?.message?.content || ''
+
+          const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([
+            p,
+            new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`ai-timeout-${ms}`)), ms))
+          ])
+
+          async function runAI(model: string) {
+            const start = Date.now()
+            const resp = await openai.chat.completions.create({
+              model,
+              messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
+              max_completion_tokens: maxTokens,
+            })
+            console.log('[VisionOCR] AI completed in', Date.now() - start, 'ms with model', model)
+            return resp.choices[0]?.message?.content || ''
+          }
+
+          let extractedData = ''
+          try {
+            extractedData = await withTimeout(runAI(modelPrimary), aiTimeoutMs)
+          } catch (e: any) {
+            console.warn('[VisionOCR] AI primary failed:', e?.message || e, '— falling back to', modelFallback)
+            logStep('AI Analysis', 82, 'Primary model busy; attempting fallback...')
+            try {
+              extractedData = await withTimeout(runAI(modelFallback), aiTimeoutMs)
+            } catch (e2: any) {
+              console.error('[VisionOCR] AI fallback failed:', e2?.message || e2)
+              throw new Error('AI processing failed. Please retry or try a smaller document.')
+            }
+          }
 
           const result = {
             fileName: fileName || 'document.pdf',
