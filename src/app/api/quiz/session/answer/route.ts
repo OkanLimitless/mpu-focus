@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       const submitted = new Set(asArray(answer))
       const correctSet = new Set(asArray(q.correct))
       // exact match set equality
-      isCorrect = submitted.size === correctSet.size && [...submitted].every(v => correctSet.has(v))
+      isCorrect = submitted.size === correctSet.size && Array.from(submitted).every((v) => correctSet.has(v))
       score = isCorrect ? 1 : 0
     }
     // short/scenario scoring can be added later via LLM
@@ -60,4 +60,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-
