@@ -66,6 +66,7 @@ export default function ContactForm({ data, onChange }: ContactFormProps) {
           value={data.email}
           onChange={(e) => onChange('email', e.target.value)}
           className="w-full"
+          required
         />
       </div>
 
@@ -80,6 +81,9 @@ export default function ContactForm({ data, onChange }: ContactFormProps) {
           value={data.phone}
           onChange={(e) => onChange('phone', e.target.value)}
           className="w-full"
+          required
+          pattern="^[+0-9 ()-]{7,}$"
+          title="Bitte geben Sie eine gültige Telefonnummer ein"
         />
         <p className="text-sm text-gray-500">
           Bitte geben Sie Ihre Telefonnummer an, damit wir Sie kontaktieren können.

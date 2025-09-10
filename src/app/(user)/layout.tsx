@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import LanguageSwitcher from '@/components/ui/language-switcher'
+import ThemeToggle from '@/components/ui/theme-toggle'
 import { User } from 'lucide-react'
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +32,10 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
                 Willkommen, {session.user.firstName} {session.user.lastName}
               </div>
             )}
+            <div className="hidden md:flex items-center gap-2">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
             <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold ring-2 ring-blue-100">
               {userInitials || <User className="h-4 w-4" />}
             </div>

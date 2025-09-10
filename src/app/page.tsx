@@ -6,11 +6,13 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Phone, Clock, Users, Award, TrendingUp, Star, ArrowRight, Shield, Target } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 
 export default function HomePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
+  const { t } = useI18n()
 
   useEffect(() => {
     if (status === 'loading') return // Still loading
@@ -109,7 +111,7 @@ export default function HomePage() {
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold shadow-lg min-h-[48px]"
               onClick={() => router.push('/beratung')}
             >
-              <span className="mr-2">Kostenloses Beratungsgespräch vereinbaren</span>
+              <span className="mr-2">{t('bookFreeConsultation')}</span>
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
             </Button>
             

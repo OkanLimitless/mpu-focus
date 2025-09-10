@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, BookOpen, FileText, LogOut, Plus, Eye, Clock, Play, Settings, BarChart3, UserCheck, Video, MessageSquare, Shield, FileCheck, Loader2 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import LanguageSwitcher from '@/components/ui/language-switcher'
+import ThemeToggle from '@/components/ui/theme-toggle'
 import { useI18n } from '@/components/providers/i18n-provider'
 
 // Dynamic imports for admin components to prevent SSR issues
@@ -333,6 +335,8 @@ export default function AdminDashboardPage() {
                   {stats.newLeads} {t('newLeads')}
                 </Button>
               )}
+              <LanguageSwitcher />
+              <ThemeToggle />
             </div>
           </div>
 
@@ -355,7 +359,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Mobile Action Buttons */}
-          <div className="lg:hidden mt-4 flex gap-2">
+          <div className="lg:hidden mt-4 flex gap-2 items-center">
             {stats.newLeads > 0 && (
               <Button
                 size="sm"
@@ -366,6 +370,8 @@ export default function AdminDashboardPage() {
                 {stats.newLeads} {t('newLeads')}
               </Button>
             )}
+            <LanguageSwitcher />
+            <ThemeToggle />
           </div>
         </header>
 

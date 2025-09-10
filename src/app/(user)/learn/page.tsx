@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -8,10 +8,25 @@ import { Button } from '@/components/ui/button'
 import { BookOpen } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
 
-interface ModuleGroup {
+type VideoProgress = {
+  isCompleted?: boolean
+}
+
+type Video = {
+  _id: string
+  progress?: VideoProgress | null
+}
+
+type Chapter = {
+  _id: string
+  order: number
+  videos: Video[]
+}
+
+type ModuleGroup = {
   key: string
   label: string
-  chapters: Array<{ _id: string }>
+  chapters: Chapter[]
 }
 
 export default function LearnHomePage() {
@@ -19,6 +34,7 @@ export default function LearnHomePage() {
   const router = useRouter()
   const { t } = useI18n()
   const [modules, setModules] = useState<ModuleGroup[]>([])
+  const [userProgress, setUserProgress] = useState<{ currentChapterOrder: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -31,7 +47,6 @@ export default function LearnHomePage() {
       router.push('/admin')
       return
     }
-    // verify user account status
     ;(async () => {
       try {
         const detailsRes = await fetch('/api/user/details')
@@ -44,12 +59,27 @@ export default function LearnHomePage() {
         if (courseRes.ok) {
           const data = await courseRes.json()
           setModules(data.modules || [])
+          setUserProgress(data.userProgress || null)
         }
       } finally {
         setLoading(false)
       }
     })()
   }, [session, status, router])
+
+  const continueTarget = useMemo(() => {
+    if (!modules.length || !userProgress) return null
+    const currentOrder = userProgress.currentChapterOrder
+    let target: { key: string; chapterId: string } | null = null
+    modules.forEach(group => {
+      group.chapters.forEach(ch => {
+        if (!target && ch.order === currentOrder) {
+          target = { key: group.key, chapterId: ch._id }
+        }
+      })
+    })
+    return target
+  }, [modules, userProgress])
 
   if (status === 'loading' || loading) {
     return (
@@ -62,34 +92,51 @@ export default function LearnHomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="relative h-40 md:h-56 bg-gray-800 flex items-center justify-center">
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white">MPU Focus Campus</h1>
+        <h1 className="text-2xl md:text-4xl font-extrabold text-white">{t('campusTitle')}</h1>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6">{t('yourCourse')}</h2>
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+        {continueTarget && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="py-4 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-green-700 font-medium">{t('continueWhereLeftOff')}</div>
+                <div className="text-xs text-green-700/80">{t('resumeCourse')}</div>
+              </div>
+              <Button className="bg-green-600 hover:bg-green-700" onClick={() => router.push(`/learn/${continueTarget.key}/${continueTarget.chapterId}`)}>
+                {t('resume')}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <h2 className="text-2xl md:text-3xl font-bold">{t('yourCourse')}</h2>
 
         <div className="space-y-6">
-          {modules.map((group) => (
-            <Card key={group.key} className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">{group.label}</CardTitle>
-                  <CardDescription>
-                    {t('watchVideosAndTrack')}
-                  </CardDescription>
-                </div>
-                <Button onClick={() => router.push(`/learn/${group.key}`)} className="bg-green-500 hover:bg-green-600">
-                  Kurs starten
-                </Button>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <BookOpen className="h-4 w-4" />
-                  <span>{group.chapters.length} Module</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {modules.map((group) => {
+            const hasProgress = group.chapters.some(ch => ch.videos.some(v => v.progress?.isCompleted))
+            return (
+              <Card key={group.key} className="overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">{group.label}</CardTitle>
+                    <CardDescription>
+                      {t('watchVideosAndTrack')}
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => router.push(`/learn/${group.key}`)} className="bg-green-500 hover:bg-green-600">
+                    {hasProgress ? t('resume') : t('startCourse')}
+                  </Button>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center gap-3 text-sm text-gray-600">
+                    <BookOpen className="h-4 w-4" />
+                    <span>{t('modulesCount', { count: group.chapters.length })}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
     </div>

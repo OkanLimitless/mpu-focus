@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ChevronRight, ArrowLeft, BookOpen } from 'lucide-react'
+import { useI18n } from '@/components/providers/i18n-provider'
 import { Progress } from '@/components/ui/progress'
 
 interface VideoData { _id: string; duration?: number; progress?: { isCompleted: boolean } | null }
@@ -15,6 +16,7 @@ export default function CategoryPage() {
   const { category } = useParams<{ category: string }>()
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { t } = useI18n()
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [label, setLabel] = useState('')
   const [loading, setLoading] = useState(true)
@@ -57,18 +59,18 @@ export default function CategoryPage() {
         <div className="max-w-6xl mx-auto px-4 py-8 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm/6 opacity-80">MPU Focus Campus</div>
+              <div className="text-sm/6 opacity-80">{t('campusTitle')}</div>
               <h1 className="text-2xl md:text-3xl font-bold">{label}</h1>
               <div className="mt-2 flex items-center gap-3 text-sm">
-                <div className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> {chapters.length} Module</div>
+                <div className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> {t('modulesCount', { count: chapters.length })}</div>
                 <div className="hidden md:flex items-center gap-2">
                   <div className="w-40"><Progress value={totals.pct} /></div>
-                  <span className="text-white/90">{totals.completedVideos}/{totals.totalVideos} Lektionen</span>
+                  <span className="text-white/90">{t('lessonsCount', { done: totals.completedVideos, total: totals.totalVideos })}</span>
                 </div>
               </div>
             </div>
             <Button variant="secondary" onClick={() => router.push('/learn')} className="bg-white/10 hover:bg-white/20 text-white border-white/20">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Zurück
+              <ArrowLeft className="h-4 w-4 mr-1" /> {t('previous')}
             </Button>
           </div>
         </div>
@@ -78,14 +80,14 @@ export default function CategoryPage() {
         {/* Summary for small screens */}
         <div className="md:hidden mb-6 flex items-center gap-3">
           <div className="flex-1"><Progress value={totals.pct} /></div>
-          <span className="text-sm text-gray-600 whitespace-nowrap">{totals.completedVideos}/{totals.totalVideos} Lektionen</span>
+          <span className="text-sm text-gray-600 whitespace-nowrap">{t('lessonsCount', { done: totals.completedVideos, total: totals.totalVideos })}</span>
         </div>
 
         {/* Modules List */}
         <Card>
           <CardHeader>
-            <CardTitle>Module</CardTitle>
-            <CardDescription>Wähle ein Modul aus, um fortzufahren.</CardDescription>
+            <CardTitle>{t('nav_chapters')}</CardTitle>
+            <CardDescription>{t('chaptersWillBePresented')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -104,12 +106,12 @@ export default function CategoryPage() {
                       <div className="text-sm text-gray-600 line-clamp-2">{c.description}</div>
                       <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                         <div className="w-40 hidden sm:block"><Progress value={pct} /></div>
-                        <span>{done}/{total} Lektionen</span>
+                        <span>{t('lessonsCount', { done, total })}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Button onClick={() => router.push(`/learn/${category}/${c._id}`)} variant="outline">
-                        {isCompleted ? 'Erneut starten' : (done > 0 ? 'Weiter' : 'Starten')} <ChevronRight className="h-4 w-4 ml-1" />
+                        {isCompleted ? t('start') : (done > 0 ? t('resume') : t('start'))} <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </div>
                   </div>
