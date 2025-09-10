@@ -27,11 +27,13 @@ export interface User extends Document {
   // Document processing results from MPU documents
   documentProcessing?: {
     extractedData: string
+    htmlContent?: string
     fileName: string
     totalPages: number
     processedAt: Date
     processingMethod: string
     processingNotes: string
+    pdfUrl?: string
   }
   // Admin notes for this user
   adminNotes?: Array<{

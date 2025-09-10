@@ -29,8 +29,8 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 export async function GET(request: NextRequest) {
   try {
-    // Rate limit: moderate to prevent abuse (60/min)
-    const limited = await rateLimit({ request, limit: 60, windowMs: 60 * 1000, keyPrefix: 'doc-proxy' })
+    // Rate limit: increased to support multi-image downloads by AI (1000/min)
+    const limited = await rateLimit({ request, limit: 1000, windowMs: 60 * 1000, keyPrefix: 'doc-proxy' })
     if (!limited.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
     }
@@ -45,11 +45,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Validate that the URL is from UploadThing (including v7 patterns)
+    // Validate that the URL is from allowed sources (UploadThing and CloudConvert storage)
+    // Keep this list broad enough to include regional subdomains
     const allowedDomains = [
       'utfs.io',                    // Legacy pattern
       'uploadthing.com',           // General UploadThing domain
-      'ufs.sh'                     // New v7 pattern (*.ufs.sh)
+      'ufs.sh',                    // New v7 pattern (*.ufs.sh)
+      'cloudconvert.com',          // Any CloudConvert subdomain (includes storage.cloudconvert.com and regional variants)
+      'storage.cloudconvert.com',  // Explicit storage domain (kept for clarity)
+      'us-east.storage.cloudconvert.com',
+      'eu-central-1.storage.cloudconvert.com'
     ]
     let urlObj: URL
     
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Check if the hostname matches any allowed domain or is a subdomain of ufs.sh
+    // Check if the hostname matches any allowed domain or is a subdomain of allowed domains
     const isValidDomain = allowedDomains.some(domain => 
       urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
     )
@@ -71,24 +76,20 @@ export async function GET(request: NextRequest) {
     if (!isValidDomain) {
       console.error('Unauthorized domain:', urlObj.hostname)
       return NextResponse.json(
-        { error: 'Invalid file source - only UploadThing URLs are allowed' },
+        { error: 'Invalid file source', details: 'Only UploadThing and CloudConvert URLs are allowed' },
         { status: 403 }
       )
     }
 
-    console.log('Attempting to fetch document from:', fileUrl)
+    console.log('Proxy fetching:', fileUrl)
 
-    // Fetch the file from UploadThing
-    const response = await fetch(fileUrl, {
-      headers: {
-        'User-Agent': 'MPU-Focus-App/1.0'
-      }
-    })
+    // Fetch the file from origin and stream it back
+    const response = await fetch(fileUrl, { headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
 
-    console.log('UploadThing response status:', response.status)
+    console.log('Origin response status:', response.status)
 
     if (!response.ok) {
-      console.error(`Failed to fetch file from UploadThing. Status: ${response.status}, URL: ${fileUrl}`)
+      console.error(`Failed to fetch file from origin. Status: ${response.status}, URL: ${fileUrl}`)
       
       // Provide more specific error messages based on status
       if (response.status === 404) {
@@ -121,29 +122,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get the file data
-    const fileBuffer = await response.arrayBuffer()
-    const contentType = response.headers.get('content-type') || 'application/octet-stream'
-    const contentLength = response.headers.get('content-length')
-
-    console.log(`Successfully fetched document. Size: ${fileBuffer.byteLength} bytes, Type: ${contentType}`)
-
+    // Stream body through
     const origin = request.headers.get('origin')
     const corsHeaders = getCorsHeaders(origin)
-
-    // Create response with proper headers
-    const proxyResponse = new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': contentLength || fileBuffer.byteLength.toString(),
-        ...corsHeaders,
-        'Cache-Control': 'private, max-age=60',
-        'Content-Disposition': 'inline',
-      }
-    })
-
-    return proxyResponse
+    const headers: Record<string, string> = {
+      'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=60',
+      // Preserve origin content-disposition when present; fallback to inline
+      'Content-Disposition': response.headers.get('content-disposition') || 'inline',
+      ...corsHeaders,
+    }
+    const contentLength = response.headers.get('content-length')
+    if (contentLength) headers['Content-Length'] = contentLength
+    return new NextResponse(response.body as any, { status: 200, headers })
 
   } catch (error: any) {
     console.error('Document proxy error:', {
@@ -176,4 +167,45 @@ export async function OPTIONS(request: NextRequest) {
     status: 200,
     headers: corsHeaders,
   })
+}
+
+// Handle HEAD requests (some clients preflight with HEAD)
+export async function HEAD(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const fileUrl = searchParams.get('url')
+    if (!fileUrl) return new NextResponse(null, { status: 400 })
+
+    let urlObj: URL
+    try { urlObj = new URL(fileUrl) } catch { return new NextResponse(null, { status: 400 }) }
+
+    const allowedDomains = [
+      'utfs.io',
+      'uploadthing.com',
+      'ufs.sh',
+      'cloudconvert.com',
+      'storage.cloudconvert.com',
+      'us-east.storage.cloudconvert.com',
+      'eu-central-1.storage.cloudconvert.com'
+    ]
+    const isValidDomain = allowedDomains.some(domain => 
+      urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+    )
+    if (!isValidDomain) return new NextResponse(null, { status: 403 })
+
+    const originResp = await fetch(fileUrl, { method: 'HEAD', headers: { 'User-Agent': 'MPU-Focus-App/1.0' } })
+    const origin = request.headers.get('origin')
+    const corsHeaders = getCorsHeaders(origin)
+    const headers: Record<string, string> = {
+      'Content-Type': originResp.headers.get('content-type') || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=60',
+      'Content-Disposition': originResp.headers.get('content-disposition') || 'inline',
+      ...corsHeaders,
+    }
+    const len = originResp.headers.get('content-length')
+    if (len) headers['Content-Length'] = len
+    return new NextResponse(null, { status: originResp.ok ? 200 : originResp.status, headers })
+  } catch {
+    return new NextResponse(null, { status: 500 })
+  }
 }

@@ -133,6 +133,12 @@ The tool includes pre-built templates for:
   - Accepts: `multipart/form-data` with PDF file
   - Returns: Server-sent events stream with processing status and results
 
+### OCR (Optional)
+- `POST /api/ocr/parse-images` - OCR multiple page images via OCR.space in parallel
+  - Body: `{ imageUrls: string[], language?: string, isOverlayRequired?: boolean, concurrency?: number }`
+  - Response: `{ success: boolean, texts: string[], errors?: { index: number, error: string }[] }`
+  - Env: `OCR_SPACE_API_KEY` (falls back to `helloworld` for testing), `OCR_SPACE_CONCURRENCY` (default 5), `OCR_SPACE_DELAY_MS` (default 150)
+
 ### Core Platform APIs
 - `POST /api/auth/[...nextauth]` - Authentication endpoints
 - `GET/POST /api/courses` - Course management

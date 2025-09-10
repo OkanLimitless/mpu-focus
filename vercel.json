@@ -6,7 +6,7 @@
   "devCommand": "npm run dev",
   "functions": {
     "src/app/api/document-processor/process-image-urls/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 600
     },
     "src/app/api/document-processor/generate-pdf/route.ts": {
       "maxDuration": 120
@@ -16,6 +16,9 @@
     },
     "src/app/api/cloudconvert/webhook/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/ocr/vision/parse-pdf/route.ts": {
+      "maxDuration": 600
     }
   }
 }

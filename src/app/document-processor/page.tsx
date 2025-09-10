@@ -254,23 +254,22 @@ export default function DocumentProcessor() {
         throw new Error('No public URL returned after upload');
       }
 
-      // Start CloudConvert ingest (SSE)
-      setProcessingStatus({ step: 'Conversion', progress: 50, message: 'Converting PDF to images (server)...' });
-      const ingestResp = await fetch('/api/cloudconvert/ingest', {
+      // Start Google Vision PDF OCR (SSE)
+      setProcessingStatus({ step: 'OCR', progress: 10, message: 'Uploading to Google Cloud and starting OCR...' });
+      const ocrResp = await fetch('/api/ocr/vision/parse-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileUrl, fileName: file.name })
+        body: JSON.stringify({ pdfUrl: fileUrl, fileName: file.name })
       });
 
-      if (!ingestResp.ok || !ingestResp.body) {
-        throw new Error('Failed to start conversion');
+      if (!ocrResp.ok || !ocrResp.body) {
+        throw new Error('Failed to start OCR processing');
       }
 
-      const ingestReader = ingestResp.body.getReader();
+      const ocrReader = ocrResp.body.getReader();
       const decoder = new TextDecoder();
-      let foundImages = false;
       while (true) {
-        const { done, value } = await ingestReader.read();
+        const { done, value } = await ocrReader.read();
         if (done) break;
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
@@ -278,21 +277,19 @@ export default function DocumentProcessor() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.error) throw new Error(data.message || 'Conversion failed');
+            if (data.error) throw new Error(data.message || 'Processing failed');
             if (typeof data.progress === 'number') {
-              setProcessingStatus({ step: data.step || 'Conversion', progress: Math.min(90, Math.max(50, Math.round(data.progress))), message: data.message || 'Converting...' });
+              setProcessingStatus({ step: data.step || 'Processing', progress: Math.min(100, Math.max(10, Math.round(data.progress))), message: data.message || 'Processing...' });
             }
-            if (data.imageUrls && Array.isArray(data.imageUrls) && data.imageUrls.length > 0) {
-              foundImages = true;
-              // Kick off AI analysis with the returned image URLs
-              await runAnalysisWithImageUrls(data.imageUrls, file.name);
+            if (data.result) {
+              setResult(data.result);
+              setIsProcessing(false);
+              if (targetUserId && data.result.extractedData) {
+                saveResultsToUser(data.result);
+              }
             }
           } catch {}
         }
-      }
-
-      if (!foundImages) {
-        throw new Error('Conversion completed but no images were returned');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

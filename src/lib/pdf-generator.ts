@@ -1,305 +1,269 @@
-import jsPDF from 'jspdf';
+import OpenAI from 'openai'
+import DOMPurify from 'isomorphic-dompurify'
+import { uploadBufferToR2 } from '@/lib/r2'
 
-// Type definitions for structured MPU data
-export interface DelictData {
-  number: string;
-  type: string;
-  year: string;
-  whatHappened: string;
-  whenHappened: string;
-  whereHappened: string;
-  fineOrPunishment: string;
-  points: string;
+// GPT prompt for generating professional PDF template
+const PDF_GENERATION_PROMPT = `
+You are a professional document formatter specializing in German legal and MPU (Medizinisch-Psychologische Untersuchung) documentation. Your task is to convert extracted MPU document data into a beautifully formatted HTML template that will be converted to PDF.
+
+CRITICAL REQUIREMENTS:
+1. Output ONLY valid HTML (no markdown, no explanations, no backticks)
+2. Use INLINE STYLES for all formatting (no external CSS)
+3. Create a complete HTML document with <!DOCTYPE html>, <html>, <head>, and <body>
+4. Use black text on white background for PDF compatibility
+5. Handle missing or incomplete data gracefully
+
+HTML STRUCTURE REQUIREMENTS:
+- Start with: <!DOCTYPE html><html><head><title>MPU Report</title></head><body>
+- Use inline styles only (style="..." attributes)
+- Use standard fonts: Arial, Helvetica, sans-serif
+- Use absolute units (px, pt) not relative units (em, rem, %)
+- End with: </body></html>
+
+STYLING REQUIREMENTS:
+- Body: style="font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;"
+- Headers: style="color: #000; margin: 20px 0 10px 0; font-weight: bold;"
+- Sections: style="margin: 15px 0; padding: 10px; border: 1px solid #ccc;"
+- Text: style="color: #000; margin: 5px 0;"
+
+CONTENT STRUCTURE:
+1. Document Header (Title, Generation Date)
+2. Personal Information Section
+3. Offenses Overview - each offense in separate div
+4. Summary section
+
+DATA HANDLING:
+- If data is missing, display "Niet vermeld"
+- Use clear, readable formatting
+- Separate each offense clearly
+- Use proper German/Dutch terminology
+
+Generate a complete, self-contained HTML document that will render properly when converted to PDF.
+`;
+
+type GenerateParams = {
+  extractedData: string
+  fileName?: string
+  userName?: string
 }
 
-export interface GeneralData {
-  totalPoints: string;
-  birthDate: string;
-  fullName: string;
-  address?: string;
-  birthPlace?: string;
-  caseNumbers?: string[];
-  currentLicenseStatus?: string;
-  additionalNotes?: string;
-}
+export async function generatePdfFromExtractedData(params: GenerateParams) {
+  const { extractedData, fileName, userName } = params
 
-export interface ParsedMPUData {
-  delicts: DelictData[];
-  generalData: GeneralData;
-  rawText: string;
-}
+  if (!extractedData) throw new Error('No extracted data provided')
 
-// Function to parse the AI-extracted text into structured data
-export function parseExtractedData(extractedText: string): ParsedMPUData {
-  const delicts: DelictData[] = [];
-  const generalData: GeneralData = {
-    totalPoints: '',
-    birthDate: '',
-    fullName: ''
-  };
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-  try {
-    // Parse delicts - split into sections manually for better compatibility
-    const delictSections = extractedText.split(/(?=\*\*Delict \d+:)/);
-    const delictMatches = delictSections.filter(section => section.includes('**Delict'));
-    
-    if (delictMatches) {
-      delictMatches.forEach((delictText, index) => {
-        const delict: DelictData = {
-          number: `${index + 1}`,
-          type: '',
-          year: '',
-          whatHappened: '',
-          whenHappened: '',
-          whereHappened: '',
-          fineOrPunishment: '',
-          points: ''
-        };
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-5-mini',
+    messages: [
+      { role: 'system', content: PDF_GENERATION_PROMPT },
+      {
+        role: 'user',
+        content: `Convert the following extracted MPU document data into a professional HTML template for PDF generation:\n\nEXTRACTED DATA:\n${extractedData}\n\nDOCUMENT INFO:\n- ${userName ? `User: ${userName}\n- ` : ''}Original filename: ${fileName || 'Unknown'}\n- Generation date: ${new Date().toLocaleDateString('de-DE')}\n\nPlease generate a complete, professional HTML document that will create a beautiful PDF report.`
+      }
+    ],
+    max_completion_tokens: 16000,
+  })
 
-        // Extract delict header (type and year)
-        const headerMatch = delictText.match(/\*\*Delict \d+:\s*(.*?)\s*\(\s*(\d{4})\s*\)\*\*/);
-        if (headerMatch) {
-          delict.type = headerMatch[1].trim();
-          delict.year = headerMatch[2];
-        }
+  const htmlContent = completion.choices[0]?.message?.content
+  if (!htmlContent) throw new Error('Failed to generate HTML template')
 
-        // Extract each field using safer regex patterns
-        const whatMatch = delictText.match(/\*\*Wat is er gebeurd\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*Wanneer|$)/);
-        if (whatMatch) delict.whatHappened = whatMatch[1].trim();
+  let cleanHtml = htmlContent
+    .replace(/```html\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
 
-        const whenMatch = delictText.match(/\*\*Wanneer is het gebeurd\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*Waar|$)/);
-        if (whenMatch) delict.whenHappened = whenMatch[1].trim();
+  if (!cleanHtml.includes('<!DOCTYPE html>')) {
+    cleanHtml = `<!DOCTYPE html>\n<html>\n<head>\n  <title>MPU Report${userName ? ` - ${userName}` : ''}</title>\n  <meta charset=\"UTF-8\">\n</head>\n<body style=\"font-family: Arial, sans-serif; margin: 20px; color: #000; background: #fff; font-size: 14px; line-height: 1.5;\">\n${cleanHtml}\n</body>\n</html>`
+  }
 
-        const whereMatch = delictText.match(/\*\*Waar is het gebeurd\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*Wat is de boete|$)/);
-        if (whereMatch) delict.whereHappened = whereMatch[1].trim();
+  const sanitizedHtml = DOMPurify.sanitize(cleanHtml, { ALLOW_UNKNOWN_PROTOCOLS: false })
 
-        const fineMatch = delictText.match(/\*\*Wat is de boete en\/of straf\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*Hoeveel punten|$)/);
-        if (fineMatch) delict.fineOrPunishment = fineMatch[1].trim();
+  // Optional HTML->PDF via CloudConvert (mirrored to R2 if configured)
+  let pdfUrl: string | undefined
+  const ccApiKey = process.env.CLOUDCONVERT_API_KEY
+  const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '')
+  const haveR2 = r2PublicBase && process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
 
-        const pointsMatch = delictText.match(/\*\*Hoeveel punten heeft dit delict opgeleverd\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=---|$)/);
-        if (pointsMatch) delict.points = pointsMatch[1].trim();
+  if (ccApiKey) {
+    try {
+      const CC_API = 'https://api.cloudconvert.com/v2'
+      const safeBase = (fileName || 'MPU_Document').toString().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60)
+      const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const pdfName = `${safeBase || 'document'}_report.pdf`
 
-        delicts.push(delict);
-      });
+      let importUrlForCC: string | null = null
+      if (haveR2) {
+        const htmlKey = `tmp/pdfgen/${id}/${safeBase || 'document'}.html`
+        const htmlBytes = new TextEncoder().encode(sanitizedHtml)
+        await uploadBufferToR2(htmlKey, htmlBytes, 'text/html; charset=utf-8')
+        importUrlForCC = `${r2PublicBase}/${htmlKey}`
+      }
+
+      const tasks: any = importUrlForCC
+        ? {
+            'import-1': { operation: 'import/url', url: importUrlForCC },
+            'convert-1': {
+              operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName,
+              page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10,
+            },
+            'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+          }
+        : {
+            'import-1': { operation: 'import/base64', file: Buffer.from(sanitizedHtml, 'utf8').toString('base64'), filename: `${safeBase || 'document'}.html` },
+            'convert-1': {
+              operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName,
+              page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10,
+            },
+            'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+          }
+
+      const jobResp = await fetch(`${CC_API}/jobs`, { method: 'POST', headers: { 'Authorization': `Bearer ${ccApiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }) })
+      if (!jobResp.ok) throw new Error(`CloudConvert job creation failed: ${await jobResp.text()}`)
+      const jobJson: any = await jobResp.json()
+      const jobId: string = jobJson?.data?.id
+
+      const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+      const fetchExportUrls = async (): Promise<string[]> => {
+        const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+        if (!listResp.ok) return []
+        const listJson: any = await listResp.json()
+        const allTasks: any[] = listJson?.data || []
+        const exportTasks = allTasks.filter((t: any) => (t?.attributes?.operation || t?.operation || '').includes('export'))
+        const finished = exportTasks.find((t: any) => (t?.attributes?.status || t?.status) === 'finished') || exportTasks[0]
+        if (!finished?.id) return []
+        const detailResp = await fetch(`${CC_API}/tasks/${finished.id}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+        if (!detailResp.ok) return []
+        const detailJson: any = await detailResp.json()
+        const files = detailJson?.data?.attributes?.result?.files || detailJson?.data?.result?.files || []
+        return (files as any[]).map((f: any) => f.url).filter(Boolean)
+      }
+
+      let exportUrls: string[] = []
+      const started = Date.now()
+      while (!exportUrls.length && (Date.now() - started) < 90_000) {
+        const statusResp = await fetch(`${CC_API}/jobs/${jobId}?include=tasks`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+        if (!statusResp.ok) break
+        const statusJson: any = await statusResp.json()
+        const status = statusJson?.data?.status
+        if (status === 'error') throw new Error('CloudConvert job failed')
+        if (status === 'finished') { exportUrls = await fetchExportUrls(); break }
+        await sleep(2000)
+      }
+
+      if (!exportUrls.length) throw new Error('CloudConvert did not return export URLs in time')
+
+      if (haveR2) {
+        const pdfResp = await fetch(exportUrls[0])
+        if (!pdfResp.ok) throw new Error(`Failed to download PDF: ${pdfResp.status}`)
+        const pdfArr = new Uint8Array(await pdfResp.arrayBuffer())
+        const pdfKey = `generated/pdfs/${Date.now()}/${pdfName}`
+        await uploadBufferToR2(pdfKey, pdfArr, 'application/pdf')
+        pdfUrl = `${r2PublicBase}/${pdfKey}`
+      } else {
+        pdfUrl = exportUrls[0]
+      }
+    } catch (e) {
+      console.warn('CloudConvert PDF generation failed (HTML returned without pdfUrl):', e)
     }
-
-    // Parse general data
-    const generalMatch = extractedText.match(/\*\*Algemene Gegevens\*\*([\s\S]*?)(?=---|\*\*Delict|$)/);
-    if (generalMatch) {
-      const generalText = generalMatch[1];
-
-      const pointsMatch = generalText.match(/\*\*Hoeveel punten heeft deze persoon op zijn rijbewijs\?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (pointsMatch) generalData.totalPoints = pointsMatch[1].trim();
-
-      const birthDateMatch = generalText.match(/\*\*Geboortedatum:\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (birthDateMatch) generalData.birthDate = birthDateMatch[1].trim();
-
-      const nameMatch = generalText.match(/\*\*Voornaam en achternaam:\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (nameMatch) generalData.fullName = nameMatch[1].trim();
-
-      // Extract additional fields
-      const addressMatch = generalText.match(/\*\*Adres[\s\S]*?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (addressMatch) generalData.address = addressMatch[1].trim();
-
-      const birthPlaceMatch = generalText.match(/\*\*Geboorteplaats:\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (birthPlaceMatch) generalData.birthPlace = birthPlaceMatch[1].trim();
-
-      const licenseMatch = generalText.match(/\*\*Huidige administratieve status rijbewijs[\s\S]*?\*\*[\s\S]*?-\s*([\s\S]*?)(?=\*\*|$)/);
-      if (licenseMatch) generalData.currentLicenseStatus = licenseMatch[1].trim();
-    }
-
-  } catch (error) {
-    console.error('Error parsing extracted data:', error);
   }
 
   return {
-    delicts,
-    generalData,
-    rawText: extractedText
-  };
+    success: true,
+    htmlContent: sanitizedHtml,
+    pdfUrl,
+    fileName: fileName || 'MPU_Document',
+    generatedAt: new Date().toISOString(),
+  }
 }
 
-// Function to generate professional PDF from parsed data
-export function generateMPUReportPDF(data: ParsedMPUData, fileName: string = 'MPU_Report.pdf'): jsPDF {
-  const doc = new jsPDF();
-  let yPosition = 20;
-  const margin = 20;
-  const pageWidth = doc.internal.pageSize.width;
-  const contentWidth = pageWidth - (2 * margin);
+export async function convertHtmlToPdf(params: { htmlContent: string; fileName?: string; userName?: string }) {
+  const { htmlContent, fileName, userName } = params
+  const ccApiKey = process.env.CLOUDCONVERT_API_KEY
+  if (!ccApiKey) {
+    return { success: false, error: 'CLOUDCONVERT_API_KEY not configured' }
+  }
 
-  // Helper function to add text with word wrap
-  const addText = (text: string, x: number, y: number, options: any = {}) => {
-    const fontSize = options.fontSize || 10;
-    const maxWidth = options.maxWidth || contentWidth;
-    const lineHeight = options.lineHeight || fontSize * 1.2;
-    
-    doc.setFontSize(fontSize);
-    if (options.bold) doc.setFont('helvetica', 'bold');
-    else doc.setFont('helvetica', 'normal');
+  const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '')
+  const haveR2 = r2PublicBase && process.env.R2_BUCKET && process.env.R2_S3_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
 
-    const lines = doc.splitTextToSize(text, maxWidth);
-    lines.forEach((line: string, index: number) => {
-      doc.text(line, x, y + (index * lineHeight));
-    });
+  const CC_API = 'https://api.cloudconvert.com/v2'
+  const safeBase = (fileName || 'MPU_Document').toString().replace(/\.[^.]+$/, '').replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60)
+  const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const pdfName = `${safeBase || 'document'}_report.pdf`
 
-    return y + (lines.length * lineHeight);
-  };
+  // Upload HTML to R2 for import/url if available; otherwise import/base64
+  let importUrlForCC: string | null = null
+  const sanitizedHtml = DOMPurify.sanitize(htmlContent, { ALLOW_UNKNOWN_PROTOCOLS: false })
+  if (haveR2) {
+    const htmlKey = `tmp/pdfgen/${id}/${safeBase || 'document'}.html`
+    const htmlBytes = new TextEncoder().encode(sanitizedHtml)
+    await uploadBufferToR2(htmlKey, htmlBytes, 'text/html; charset=utf-8')
+    importUrlForCC = `${r2PublicBase}/${htmlKey}`
+  }
 
-  // Helper function to check if new page is needed
-  const checkNewPage = (requiredHeight: number) => {
-    if (yPosition + requiredHeight > doc.internal.pageSize.height - 20) {
-      doc.addPage();
-      yPosition = 20;
-    }
-  };
-
-  // Header
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MPU DOCUMENT ANALYSIS REPORT', margin, yPosition);
-  yPosition += 15;
-
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${new Date().toLocaleDateString('de-DE')}`, margin, yPosition);
-  yPosition += 20;
-
-  // General Information Section
-  checkNewPage(80);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ALGEMENE GEGEVENS', margin, yPosition);
-  yPosition += 10;
-
-  // Draw section divider
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
-
-  // General data fields
-  const generalFields = [
-    { label: 'Voornaam en achternaam:', value: data.generalData.fullName },
-    { label: 'Geboortedatum:', value: data.generalData.birthDate },
-    { label: 'Geboorteplaats:', value: data.generalData.birthPlace || 'Niet vermeld' },
-    { label: 'Adres:', value: data.generalData.address || 'Niet vermeld' },
-    { label: 'Huidige punten op rijbewijs:', value: data.generalData.totalPoints },
-    { label: 'Status rijbewijs:', value: data.generalData.currentLicenseStatus || 'Niet vermeld' }
-  ];
-
-  generalFields.forEach(field => {
-    checkNewPage(25);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    yPosition = addText(field.label, margin, yPosition, { fontSize: 11, bold: true });
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    yPosition = addText(field.value, margin + 5, yPosition, { fontSize: 10 }) + 8;
-  });
-
-  yPosition += 10;
-
-  // Delicts Section
-  checkNewPage(60);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('OVERZICHT VAN DELICTEN', margin, yPosition);
-  yPosition += 10;
-
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPosition, pageWidth - margin, yPosition);
-  yPosition += 15;
-
-  // Process each delict
-  data.delicts.forEach((delict, index) => {
-    checkNewPage(120);
-
-    // Delict header
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    yPosition = addText(`DELICT ${delict.number}: ${delict.type} (${delict.year})`, margin, yPosition, { 
-      fontSize: 12, 
-      bold: true 
-    }) + 5;
-
-    // Delict details
-    const delictFields = [
-      { label: 'Wat is er gebeurd?', value: delict.whatHappened },
-      { label: 'Wanneer is het gebeurd?', value: delict.whenHappened },
-      { label: 'Waar is het gebeurd?', value: delict.whereHappened },
-      { label: 'Wat is de boete en/of straf?', value: delict.fineOrPunishment },
-      { label: 'Hoeveel punten heeft dit delict opgeleverd?', value: delict.points }
-    ];
-
-    delictFields.forEach(field => {
-      if (field.value) {
-        checkNewPage(30);
-        
-        // Field label
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        yPosition = addText(`${field.label}`, margin + 5, yPosition, { 
-          fontSize: 10, 
-          bold: true 
-        }) + 3;
-
-        // Field value
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        yPosition = addText(field.value, margin + 10, yPosition, { 
-          fontSize: 9,
-          maxWidth: contentWidth - 10
-        }) + 8;
+  const tasks: any = importUrlForCC
+    ? {
+        'import-1': { operation: 'import/url', url: importUrlForCC },
+        'convert-1': { operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName, page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10 },
+        'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
       }
-    });
+    : {
+        'import-1': { operation: 'import/base64', file: Buffer.from(sanitizedHtml, 'utf8').toString('base64'), filename: `${safeBase || 'document'}.html` },
+        'convert-1': { operation: 'convert', input: 'import-1', input_format: 'html', output_format: 'pdf', engine: 'chrome', filename: pdfName, page_size: 'A4', margin_top: 10, margin_bottom: 10, margin_left: 10, margin_right: 10 },
+        'export-1': { operation: 'export/url', input: 'convert-1', inline: false, archive_multiple_files: false }
+      }
 
-    yPosition += 10;
+  const jobResp = await fetch(`${CC_API}/jobs`, { method: 'POST', headers: { 'Authorization': `Bearer ${ccApiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ tasks }) })
+  if (!jobResp.ok) {
+    const errText = await jobResp.text().catch(() => '')
+    return { success: false, error: `CloudConvert job creation failed: ${errText}` }
+  }
+  const jobJson: any = await jobResp.json()
+  const jobId: string = jobJson?.data?.id
 
-    // Add divider between delicts
-    if (index < data.delicts.length - 1) {
-      checkNewPage(10);
-      doc.setDrawColor(128, 128, 128);
-      doc.setLineWidth(0.3);
-      doc.line(margin + 20, yPosition, pageWidth - margin - 20, yPosition);
-      yPosition += 15;
-    }
-  });
-
-  // Footer on last page
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(128, 128, 128);
-    doc.text(`Seite ${i} von ${pageCount}`, pageWidth - margin - 20, doc.internal.pageSize.height - 10);
-    doc.text('MPU Document Analysis Report', margin, doc.internal.pageSize.height - 10);
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+  const fetchExportUrls = async (): Promise<string[]> => {
+    const listResp = await fetch(`${CC_API}/tasks?filter[job_id]=${jobId}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!listResp.ok) return []
+    const listJson: any = await listResp.json()
+    const allTasks: any[] = listJson?.data || []
+    const exportTasks = allTasks.filter((t: any) => (t?.attributes?.operation || t?.operation || '').includes('export'))
+    const finished = exportTasks.find((t: any) => (t?.attributes?.status || t?.status) === 'finished') || exportTasks[0]
+    if (!finished?.id) return []
+    const detailResp = await fetch(`${CC_API}/tasks/${finished.id}`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!detailResp.ok) return []
+    const detailJson: any = await detailResp.json()
+    const files = detailJson?.data?.attributes?.result?.files || detailJson?.data?.result?.files || []
+    return (files as any[]).map((f: any) => f.url).filter(Boolean)
   }
 
-  return doc;
-}
-
-// Function to download the PDF
-export function downloadPDF(doc: jsPDF, fileName: string = 'MPU_Report.pdf') {
-  doc.save(fileName);
-}
-
-// Complete function to process extracted text and generate PDF
-export function generateAndDownloadMPUReport(extractedText: string, fileName?: string): void {
-  try {
-    // Parse the extracted data
-    const parsedData = parseExtractedData(extractedText);
-    
-    // Generate PDF
-    const doc = generateMPUReportPDF(parsedData, fileName);
-    
-    // Download PDF
-    const downloadFileName = fileName || `MPU_Report_${parsedData.generalData.fullName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-    downloadPDF(doc, downloadFileName);
-    
-  } catch (error) {
-    console.error('Error generating MPU report PDF:', error);
-    throw new Error('Failed to generate PDF report');
+  let exportUrls: string[] = []
+  const started = Date.now()
+  while (!exportUrls.length && (Date.now() - started) < 90_000) {
+    const statusResp = await fetch(`${CC_API}/jobs/${jobId}?include=tasks`, { headers: { 'Authorization': `Bearer ${ccApiKey}` } })
+    if (!statusResp.ok) break
+    const statusJson: any = await statusResp.json()
+    const status = statusJson?.data?.status
+    if (status === 'error') return { success: false, error: 'CloudConvert job failed' }
+    if (status === 'finished') { exportUrls = await fetchExportUrls(); break }
+    await sleep(2000)
   }
+
+  if (!exportUrls.length) return { success: false, error: 'CloudConvert did not return export URLs in time' }
+
+  let pdfUrl: string
+  if (haveR2) {
+    const pdfResp = await fetch(exportUrls[0])
+    if (!pdfResp.ok) return { success: false, error: `Failed to download PDF: ${pdfResp.status}` }
+    const pdfArr = new Uint8Array(await pdfResp.arrayBuffer())
+    const pdfKey = `generated/pdfs/${Date.now()}/${pdfName}`
+    await uploadBufferToR2(pdfKey, pdfArr, 'application/pdf')
+    pdfUrl = `${r2PublicBase}/${pdfKey}`
+  } else {
+    pdfUrl = exportUrls[0]
+  }
+
+  return { success: true, pdfUrl }
 }

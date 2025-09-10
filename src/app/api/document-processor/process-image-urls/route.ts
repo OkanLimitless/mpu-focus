@@ -8,17 +8,18 @@ async function retryOpenAICall(
   imageUrls: string[],
   maxRetries: number = 3
 ): Promise<string> {
+  const defaultDetail = (process.env.VISION_DEFAULT_DETAIL || 'low').toLowerCase() === 'high' ? 'high' : 'low'
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       // Prepare all images for single request
       const imageMessages = imageUrls.map((imageUrl) => ({
         type: "image_url" as const,
-        image_url: { url: imageUrl, detail: "high" as const }
+        image_url: { url: imageUrl, detail: defaultDetail as 'low' | 'high' }
       } as any));
 
       // Single comprehensive analysis of the entire document using GPT-5 Mini
       const completion = await openai.chat.completions.create({
-        model: "gpt-5-mini", // GPT-5 Mini with 200k TPM - perfect for large document processing
+        model: "gpt-4o-mini", // Lower TPM, still vision-capable
         messages: [
           {
             role: "system",
@@ -35,18 +36,18 @@ async function retryOpenAICall(
             ],
           },
         ],
-        max_completion_tokens: 16000,
+        max_completion_tokens: 8000,
       });
 
       return completion.choices[0]?.message?.content || '';
     } catch (error: any) {
       console.error(`OpenAI call attempt ${attempt} failed:`, error.message);
       
-      // Check if it's a timeout/download error
-      if (error.code === 'invalid_image_url' && error.message?.includes('Timeout while downloading')) {
+      // Retry on any invalid_image_url download failures (timeout or other fetch errors)
+      if (error.code === 'invalid_image_url') {
         if (attempt < maxRetries) {
           const delay = Math.pow(2, attempt) * 2000; // Exponential backoff: 4s, 8s, 16s
-          console.log(`Retrying in ${delay}ms due to image download timeout...`);
+          console.log(`Retrying in ${delay}ms due to image download error...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -62,6 +63,8 @@ async function retryOpenAICall(
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
+  // Keep a reference to parsed payload for later cleanup without cloning the request
+  let parsedBody: { imageUrls?: string[]; fileName?: string } | null = null;
 
   // Create a readable stream for Server-Sent Events
   const stream = new ReadableStream({
@@ -73,16 +76,42 @@ export async function POST(request: NextRequest) {
 
       const processImageUrls = async () => {
         try {
-          const { imageUrls, fileName } = await request.json();
+          const body = await request.json() as { imageUrls?: string[]; fileName?: string };
+          parsedBody = body;
+          const imageUrls = body.imageUrls as string[];
+          const fileName = body.fileName as string;
 
           if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
             throw new Error('No image URLs provided');
           }
 
+          // Build absolute base URL for proxying image URLs (must be publicly accessible for external fetchers like OpenAI)
+          // Preference: EXTERNAL_PUBLIC_BASE_URL -> NEXT_PUBLIC_APP_URL -> VERCEL_PROJECT_PRODUCTION_URL -> VERCEL_BRANCH_URL -> VERCEL_URL -> request origin
+          const baseOrigin = (
+            process.env.EXTERNAL_PUBLIC_BASE_URL
+            || process.env.NEXT_PUBLIC_APP_URL
+            || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')
+            || (process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : '')
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+            || new URL(request.url).origin
+          );
+          const r2PublicBase = (process.env.R2_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+          const isR2Url = (u: string) => r2PublicBase && u.startsWith(r2PublicBase);
+          // Only pass through R2 URLs. Proxy everything else (including CloudConvert) for stability.
+          const proxiedUrls: string[] = imageUrls.map((u: string) =>
+            isR2Url(u) ? u : `${baseOrigin}/api/documents/proxy?url=${encodeURIComponent(u)}`
+          );
+
+          // Quick debug: confirm URL host source for first few images
+          try {
+            const sampleHosts = proxiedUrls.slice(0, 3).map(u => { try { return new URL(u).hostname } catch { return 'invalid' } })
+            console.log('[process-image-urls] firstHosts', sampleHosts)
+          } catch {}
+
           sendStatus({
             step: 'Processing images',
             progress: 0,
-            message: `Analyzing ${imageUrls.length} pages with AI...`
+            message: `Analyzing ${proxiedUrls.length} pages with AI...`
           });
 
           // Process with GPT-5 Mini Vision
@@ -94,30 +123,30 @@ export async function POST(request: NextRequest) {
           sendStatus({
             step: 'AI Analysis',
             progress: 20,
-            message: `Analyzing complete document: ${imageUrls.length} pages with GPT-5 Mini (200k TPM)...`
+            message: `Analyzing complete document: ${proxiedUrls.length} pages with GPT-5 Mini (200k TPM)...`
           });
 
           // Retry logic for handling OpenAI timeouts
           let allExtractedData: string;
           try {
-            allExtractedData = await retryOpenAICall(openai, imageUrls, 3);
+            allExtractedData = await retryOpenAICall(openai, proxiedUrls, 3);
           } catch (error: any) {
-            // If all retries failed, try with lower detail to reduce load
+            // If all retries failed, try with higher detail to improve accuracy (second attempt)
             sendStatus({
               step: 'AI Analysis - Fallback',
               progress: 50,
-              message: `Retrying with optimized settings due to download timeouts...`
+              message: `Retrying with high detail to improve completeness...`
             });
 
             try {
-              // Fallback: Use lower detail to reduce image download load
-              const imageMessages = imageUrls.map((imageUrl) => ({
+              // Fallback: Use high detail
+              const imageMessages = proxiedUrls.map((imageUrl) => ({
                 type: "image_url" as const,
-                image_url: { url: imageUrl, detail: "low" as const }
+                image_url: { url: imageUrl, detail: "high" as const }
               } as any));
 
               const completion = await openai.chat.completions.create({
-                model: "gpt-5-mini",
+                model: "gpt-4o-mini",
                 messages: [
                   {
                     role: "system",
@@ -134,7 +163,7 @@ export async function POST(request: NextRequest) {
                     ],
                   },
                 ],
-                max_completion_tokens: 16000,
+                max_completion_tokens: 10000,
               });
 
               allExtractedData = completion.choices[0]?.message?.content || '';
@@ -142,7 +171,10 @@ export async function POST(request: NextRequest) {
               // Try to clean up files even if processing fails (with timeout)
               try {
                 const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-                const cleanupPromise = deleteUploadThingFiles(imageUrls);
+                const uploadThingUrls = (parsedBody?.imageUrls || []).filter((u: string) => {
+                  try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh'; } catch { return false; }
+                });
+                const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
                 const timeoutPromise = new Promise((_, reject) => 
                   setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
                 );
@@ -171,7 +203,6 @@ export async function POST(request: NextRequest) {
                 }
               ],
               max_completion_tokens: 8000,
-              temperature: 0.2,
             });
             const consolidated = consolidation.choices[0]?.message?.content;
             if (consolidated && consolidated.length >= (allExtractedData?.length || 0) * 0.8) {
@@ -190,7 +221,7 @@ export async function POST(request: NextRequest) {
           // Structure the final result (no consolidation needed - single unified analysis)
           const result = {
             fileName: fileName || 'document.pdf',
-            totalPages: imageUrls.length,
+            totalPages: proxiedUrls.length,
             extractedData: allExtractedData,
             processingMethod: 'UploadThing + GPT-5 Mini Single Request Analysis',
             timestamp: new Date().toISOString(),
@@ -206,26 +237,25 @@ export async function POST(request: NextRequest) {
           });
 
           try {
-            // Import cleanup function with timeout
-            const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-            
-            // Add timeout to cleanup operation (10 seconds max)
-            const cleanupPromise = deleteUploadThingFiles(imageUrls);
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Cleanup timeout')), 10000)
-            );
-            
-            const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]) as any;
-            
-            if (cleanupResult.success) {
-              console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
+            // Only attempt cleanup for UploadThing-hosted URLs
+            const uploadThingUrls = (imageUrls as string[]).filter(u => /\.(utfs\.io|ufs\.sh)$/.test(new URL(u).hostname));
+            if (uploadThingUrls.length > 0) {
+              const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
+              const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Cleanup timeout')), 10000)
+              );
+              const cleanupResult = await Promise.race([cleanupPromise, timeoutPromise]) as any;
+              if (cleanupResult.success) {
+                console.log(`Cleanup successful: Deleted ${cleanupResult.deletedCount} temporary files`);
+              } else {
+                console.warn(`Cleanup partial: ${cleanupResult.deletedCount} deleted, errors:`, cleanupResult.errors);
+              }
             } else {
-              console.warn(`Cleanup partial: ${cleanupResult.deletedCount} deleted, errors:`, cleanupResult.errors);
+              console.log('Cleanup skipped: No UploadThing URLs to delete');
             }
           } catch (cleanupError) {
-            // Don't fail the whole process if cleanup fails
             console.error('Cleanup failed (non-critical):', cleanupError);
-            // If cleanup times out or fails, just log it and continue
           }
 
           sendStatus({
@@ -242,15 +272,20 @@ export async function POST(request: NextRequest) {
           
           // Try to clean up files even on error (with timeout)
           try {
-            const { imageUrls: urlsToClean } = await request.clone().json();
-            if (urlsToClean && Array.isArray(urlsToClean) && urlsToClean.length > 0) {
+            const urlsToClean = (parsedBody?.imageUrls || []) as string[];
+            const uploadThingUrls = (urlsToClean || []).filter((u: string) => {
+              try { const h = new URL(u).hostname; return h.endsWith('.utfs.io') || h.endsWith('.ufs.sh') || h === 'utfs.io' || h === 'ufs.sh'; } catch { return false; }
+            });
+            if (uploadThingUrls.length > 0) {
               const { deleteUploadThingFiles } = await import('@/lib/uploadthing-upload');
-              const cleanupPromise = deleteUploadThingFiles(urlsToClean);
+              const cleanupPromise = deleteUploadThingFiles(uploadThingUrls);
               const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Cleanup timeout')), 5000)
               );
               await Promise.race([cleanupPromise, timeoutPromise]);
               console.log('Cleaned up temporary files after error');
+            } else {
+              console.log('Cleanup skipped after error: No UploadThing URLs to delete');
             }
           } catch (cleanupError) {
             console.error('Failed to cleanup files after error:', cleanupError);
