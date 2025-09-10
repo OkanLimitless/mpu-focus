@@ -136,54 +136,84 @@ export async function POST(request: NextRequest) {
           const systemPrompt = `Je bent een professionele analist van Duitse juridische/bestuursrechtelijke documenten (MPU-context). Baseer ALLES uitsluitend op de OCR-tekst. Output in het Nederlands. Gebruik korte exacte Duitse citaten. Voeg bij elk feit paginaverwijzingen toe (gebruik de PAGINA-markers). Markeer ontbrekende gegevens als "Niet vermeld" of "Onzeker". Geen hallucinaties.`
           const userPrompt = `OCR-INVOER MET PAGINAMARKERS (totaal ${pages} pagina's):\n\n${markedText}\n\nOPDRACHT: Maak een gestructureerd rapport volgens dit strikte format:\n\nMPU Rapport / Dossieroverzicht\nDocumentinformatie\n- Bestandsnaam: …\n- Datum generatie rapport: …\n- Opmerking extractie: Systematische inventarisatie van meegeleverde pagina’s; ontbrekende gegevens gemarkeerd als \"Niet vermeld\".\n\nPersoonlijke Gegevens / Identificatie\n- Naam: …\n- Geboortedatum: …\n- Adres (vermeld in dossier): …\n- Rijbewijsnummer(s) in dossier: …\n- Totaal aantal punten (FAER): …\n- Belangrijkste aktenzeichen / dossiernummers: …\n\nOverzicht van Delicten / Sachverhalt (één blok per delict)\nDelict N: [korte titel + jaartal]\n- Pagina(s) bron: …\n- Wat is er gebeurd? …\n- Duits citaat ter onderbouwing: \"…\"\n- Wanneer? … (datums)\n- Waar / bevoegde instantie? …\n- Aktenzeichen: …\n- Wetsverwijzing(en): … (bijv. §-verwijzingen BtMG/StVG/StGB)\n- Boete / straf / maatregelen: … (geldstraf, Freiheitsstrafe, Fahrverbot/Entzug, MPU-verplichting)\n- Punten (Flensburg): …\n- Alcohol / Drugs / Bloedwaarden: … (met exacte waarden en citaten)\n- Overige maatregelen / status: … (kort)\n\nAlgemene Gegevens & Aanvullende Documenten\n- Overzicht overige relevante stukken (toxicologie, Führungszeugnis, ordonnanties, correspondentie) met kerncitaat + pagina.\n\nBelangrijke geciteerde fragmenten (kort)\n- \"…\" — Pagina X\n- \"…\" — Pagina Y\n\nSamenvatting & Aanbevelingen\n- Chronologische kernpunten (kort)\n- Belangrijk voor MPU-voorbereiding: …\n- Aanbevolen vervolg: …\n\nRegels:\n1) Geen verzinsels; schrijf \"Niet vermeld\" waar data ontbreekt.\n2) Voeg bij elk feit een Pagina-verwijzing (op basis van inputmarkers).\n3) Gebruik korte Duitse citaten om cruciale velden te staven.\n4) Wees volledig en systematisch zoals in het format.`
 
-          // AI request with timeout + fallback model
-          const modelPrimary = process.env.OCR_LLM_MODEL || 'gpt-4o'
-          const modelFallback = process.env.OCR_LLM_FALLBACK_MODEL || 'gpt-4o-mini'
-          const maxTokens = Math.max(1000, Math.min(12000, parseInt(process.env.OCR_LLM_MAX_TOKENS || '7000', 10) || 7000))
+          // Multi-pass LLM pipeline (fast models) for depth and coverage
+          logStep('AI Analysis', 78, 'Indexing and clustering OCR pages...')
+          const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`ai-timeout-${ms}`)), ms))])
+          const run = async (model: string, messages: any[], maxTokens: number, timeoutMs: number) => withTimeout(openai.chat.completions.create({ model, messages, max_completion_tokens: maxTokens }), timeoutMs)
+          const pass1Model = process.env.OCR_PASS1_MODEL || 'gpt-5-nano'
+          const pass2Model = process.env.OCR_PASS2_MODEL || 'gpt-5-mini'
+          const pass3Model = process.env.OCR_PASS3_MODEL || 'gpt-5-mini'
+          const pass4Model = process.env.OCR_PASS4_MODEL || 'gpt-5-nano'
+          const clusterConcurrency = Math.max(1, Math.min(4, parseInt(process.env.OCR_CLUSTER_CONCURRENCY || '2', 10) || 2))
           const aiTimeoutMs = Math.max(30000, Math.min(240000, parseInt(process.env.OCR_LLM_TIMEOUT_MS || '120000', 10) || 120000))
 
-          const approxTokens = Math.ceil(markedText.length / 4)
-          console.log('[VisionOCR] AI input approx tokens:', approxTokens, 'model:', modelPrimary, 'maxTokens:', maxTokens)
-          logStep('AI Analysis', 80, 'Structuring OCR text with AI...')
-
-          const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([
-            p,
-            new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`ai-timeout-${ms}`)), ms))
-          ])
-
-          const runAI = async (model: string) => {
-            const resp = await openai.chat.completions.create({
-              model,
-              messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ],
-              max_completion_tokens: maxTokens,
-            })
-            return resp.choices[0]?.message?.content || ''
-          }
-
-          let extractedData = ''
+          send({ phase: 'pass1', status: 'start', model: pass1Model, pages })
+          const pass1Sys = 'Je indexeert OCR-tekst (Duits) voor MPU-dossiers. Geef gestructureerde JSON (pages, offense_candidates).'
+          const pass1User = `OCR met paginamarkers (totaal ${pages}):\n\n${markedText}\n\nTAKEN:\n1) Per pagina: extraheer namen, datums, Aktenzeichen, §-verwijzingen, bloedwaarden (ng/ml), instanties.\n2) Vind kandidaat-delicten: titel + relevante paginalijst + 1 zin waarom.\n3) JSON output: {\"pages\":[{\"n\":int, \"entities\":{...}}], \"offense_candidates\":[{\"title\":\"…\",\"pages\":[..],\"reason\":\"…\"}]}`
+          let idxJson: any = { offense_candidates: [] }
           try {
-            send({ ai: 'start', model: modelPrimary, approxTokens, pages })
-            const t0 = Date.now()
-            extractedData = await withTimeout(runAI(modelPrimary), aiTimeoutMs)
-            const dur = Date.now() - t0
-            console.log('[VisionOCR] AI completed in', dur, 'ms with model', modelPrimary)
-            send({ ai: 'done', model: modelPrimary, durationMs: dur, outputChars: extractedData.length })
-          } catch (e: any) {
-            console.warn('[VisionOCR] AI primary failed:', e?.message || e, '— falling back to', modelFallback)
-            send({ ai: 'fail', model: modelPrimary, error: String(e?.message || e) })
-            logStep('AI Analysis', 82, 'Primary model busy; attempting fallback...')
-            try {
-              send({ ai: 'start', model: modelFallback, approxTokens, pages })
-              const t1 = Date.now()
-              extractedData = await withTimeout(runAI(modelFallback), aiTimeoutMs)
-              const dur2 = Date.now() - t1
-              console.log('[VisionOCR] AI fallback completed in', dur2, 'ms with model', modelFallback)
-              send({ ai: 'done', model: modelFallback, durationMs: dur2, outputChars: extractedData.length })
-            } catch (e2: any) {
-              console.error('[VisionOCR] AI fallback failed:', e2?.message || e2)
-              send({ ai: 'fail', model: modelFallback, error: String(e2?.message || e2) })
-              throw new Error('AI processing failed. Please retry or try a smaller document.')
+            const idxResp: any = await run(pass1Model, [ { role: 'system', content: pass1Sys }, { role: 'user', content: pass1User } ], 3000, aiTimeoutMs)
+            const idxText = idxResp.choices[0]?.message?.content || '{}'
+            idxJson = JSON.parse(idxText)
+          } catch {}
+          let candidates: { title: string; pages: number[] }[] = Array.isArray(idxJson?.offense_candidates) ? idxJson.offense_candidates : []
+          if (!candidates.length) {
+            const clusters = [] as any[]
+            const maxPagesPer = Math.max(6, Math.min(12, parseInt(process.env.OCR_MAX_CLUSTER_PAGES || '10', 10) || 10))
+            for (let i = 0; i < pages; i += maxPagesPer) {
+              clusters.push({ title: `Cluster ${Math.floor(i/maxPagesPer)+1}`, pages: Array.from({length: Math.min(maxPagesPer, pages - i)}, (_,k)=> i + k + 1) })
             }
+            candidates = clusters
+          }
+          send({ phase: 'pass1', status: 'done', candidates: candidates.length })
+
+          // Pass 2: Extract delicts per cluster
+          send({ phase: 'pass2', status: 'start', model: pass2Model, clusters: candidates.length })
+          const pageMap = new Map<number, string>(texts.map((t, i) => [i+1, t || '']))
+          const clusterText = (pgs: number[]) => pgs.map(n => `--- PAGINA ${n} ---\n${(pageMap.get(n) || '').trim()}`).join('\n\n')
+          const delicts: any[] = []
+          let i2 = 0
+          const worker = async (): Promise<void> => {
+            if (i2 >= candidates.length) return
+            const c = candidates[i2++]
+            const excerpt = clusterText(c.pages || [])
+            const sys = 'Je extraheert één delict uit de gegeven OCR-teksten. JSON output, geen vrije tekst.'
+            const usr = `Tekst (pagina's ${JSON.stringify(c.pages)}):\n\n${excerpt}\n\nJSON schema:\n{\"title\":\"\",\"pages\":[],\"what\":\"\",\"when\":\"\",\"where\":\"\",\"case_numbers\":[],\"laws\":[],\"penalties\":\"\",\"points\":\"\",\"blood_values\":\"\",\"status\":\"\",\"quotes\":[{\"quote\":\"\",\"page\":0}]}`
+            try {
+              send({ phase: 'pass2', status: 'cluster:start', cluster: c.title, pages: c.pages })
+              const r: any = await run(pass2Model, [ { role: 'system', content: sys }, { role: 'user', content: usr } ], 4000, aiTimeoutMs)
+              const txt = r.choices[0]?.message?.content || '{}'
+              delicts.push(JSON.parse(txt))
+              send({ phase: 'pass2', status: 'cluster:done', cluster: c.title })
+            } catch (e: any) {
+              send({ phase: 'pass2', status: 'cluster:fail', cluster: c.title, error: String(e?.message || e) })
+            }
+            await worker()
+          }
+          await Promise.all(Array.from({ length: Math.min(clusterConcurrency, Math.max(1, candidates.length)) }, () => worker()))
+          send({ phase: 'pass2', status: 'done', delicts: delicts.length })
+
+          // Pass 3: Consolidation
+          send({ phase: 'pass3', status: 'start', model: pass3Model })
+          const consSys = 'Je consolideert delict-JSON naar een volledig MPU-rapport (Nederlands) met paginaverwijzingen en korte Duitse citaten.'
+          const consUsr = `DELlCTS(JSON):\n${JSON.stringify(delicts).slice(0, 180000)}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}\n\nGenereer het volledige rapport exact volgens het format.`
+          const consResp: any = await run(pass3Model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 7000, aiTimeoutMs)
+          let extractedData = consResp.choices[0]?.message?.content || ''
+          send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
+
+          // Pass 4: Validation addendum
+          send({ phase: 'pass4', status: 'start', model: pass4Model })
+          const valSys = 'Je valideert dekking en geeft alleen een kort ADDENDUM met ontbrekende items (of: Geen addendum noodzakelijk).'
+          const valUsr = `RAPPORT:\n${extractedData.slice(0, 180000)}\n\nTAKEN: 1) Lijst ontbrekende verplichte velden/secties. 2) Kort ADDENDUM alleen met ontbrekende items; anders: \"Geen addendum noodzakelijk\".`
+          try {
+            const valResp: any = await run(pass4Model, [ { role: 'system', content: valSys }, { role: 'user', content: valUsr } ], 2000, aiTimeoutMs)
+            const addendum = valResp.choices[0]?.message?.content?.trim()
+            if (addendum && !/Geen addendum noodzakelijk/i.test(addendum)) {
+              extractedData += `\n\n---\nADDENDUM (dekking & ontbrekende velden)\n\n${addendum}`
+            }
+            send({ phase: 'pass4', status: 'done' })
+          } catch (e: any) {
+            send({ phase: 'pass4', status: 'skip', error: String(e?.message || e) })
           }
 
           const result = {
