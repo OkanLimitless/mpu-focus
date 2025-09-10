@@ -20,6 +20,8 @@ Goal: Create an adaptive, exam-like practice environment tailored to each user�
 
 ### Phase 2: Adaptive & Guidance
 - Adaptive selection: choose next session items based on historical weak areas + unattempted coverage.
+- Difficulty ramping: use recent correctness and (optional) confidence‑weighted scoring to shift between difficulty bands; prevent stagnation.
+- Fatigue safeguard: cap high‑difficulty or emotionally heavy items per session (e.g., ≤30%).
 - Guidance: after each session, show “what to study” with links to modules/videos.
 - Scheduling: lightweight spaced practice suggestions (e.g., “Next session recommended in 2 days”).
 
@@ -70,8 +72,9 @@ Notes:
   - MCQ (4 options, 1 correct, 3 plausible distractors with rationales)
   - Short answers (expected key points + concise rubric)
   - Scenario responses (model answer outline + rubric)
-- Output schema: Strict JSON with validated types; reject and retry if schema invalid.
+- Output schema: Strict JSON with validated types; retry with stricter prompts on failure; fall back to a minimal MCQ‑only set if validation keeps failing.
 - Safety: Strip PII from `facts`; map names to placeholders; keep evaluative language neutral.
+- Reuse & cost control: cache/reuse blueprints until `sourceHash` changes; allow light mutations (choice order, wording) to keep content fresh at low cost.
 
 ## UI/UX
 
@@ -84,6 +87,14 @@ Notes:
   - Short answer: submit => brief rubric-based feedback
   - Scenario: submit => coach-style feedback; allow retry
   - End screen: summary, competency chart, next recommended materials and session
+  - Hints (optional): for open‑ended prompts, offer one scaffolded hint (sub‑questions or key points).
+  - Session length options: quick (≈10 min), standard (≈20 min), extended (≈30 min).
+
+## Admin & Analytics
+
+- Dashboards: cohort competency trends, engagement, average session length.
+- Question quality: flag items with abnormal skip/incorrect rates for review.
+- Review loop: allow admins/therapists to mark items as unclear/too hard and trigger regeneration or edits without changing orchestration code.
 
 ## Adaptation Logic (Phase 2)
 
@@ -93,11 +104,21 @@ Notes:
   2) Fill remainder with low-mastery items and unseen items
   3) Adjust difficulty based on streaks
 
-## Security & Privacy
+## Security, Privacy & Ethics
 
 - Use only de-identified summaries in prompts; never send raw documents
 - Store minimal PII; encrypt sensitive fields if any
 - Server-only LLM calls; add audit logs for prompt/response (redacted)
+- Disclaimers: practice tool only — not an official exam predictor; emphasizes reflection and self‑awareness.
+- Anti‑overfitting: diversify phrasing/rotation and emphasize rationale‑based feedback.
+
+## Cost & Efficiency
+
+- Token budgets (typical, adjustable): keep case facts to ~400–800 tokens; blueprint prompt ~600–900 tokens with ~1,200–2,500 token outputs; short‑answer scoring ~300–550 tokens per item round‑trip.
+- Model choices: prefer cost‑efficient small models for generation/scoring; reserve higher‑end models for premium scenario feedback.
+- Caching & reuse: reuse blueprints across sessions until `sourceHash` changes; cache repeated evaluations briefly.
+- Estimated costs (order of magnitude with small models): blueprint (15Q) = a few cents; one 10–12 item session (3–5 short answers) ≈ <$0.05. Large models can be ~10× higher.
+- Rate limits: per‑user caps (e.g., 3 blueprint generations/day, 5 sessions/day) and backoff on errors.
 
 ## Testing & QA
 
@@ -117,4 +138,3 @@ Notes:
 - Can run one session, score MCQ, and record results
 - Presents rationales and session summary; persists results
 - Admin can view (basic) per-user quiz history
-
