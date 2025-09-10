@@ -104,6 +104,9 @@ export default function LoginPage() {
               >
                 {isLoading ? t('signingIn') : t('signIn')}
               </Button>
+              <div className="text-sm text-center mt-2">
+                <Link href="/reset-password" className="text-blue-600 hover:underline">Passwort vergessen?</Link>
+              </div>
             </form>
           </CardContent>
         </Card>

@@ -67,6 +67,8 @@ const UserSchema = new Schema<User>({
   verifiedAt: { type: Date },
   verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   verificationToken: { type: String },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
   // Document processing results from MPU documents
   documentProcessing: {
     extractedData: { type: String }, // The extracted text data from GPT analysis

@@ -95,6 +95,71 @@ export default function UserManagement() {
   const { toast } = useToast()
   const { t } = useI18n()
 
+  // View mode and columns
+  type ViewMode = 'list' | 'table'
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const ALL_COLUMNS = ['name','email','role','verification','progress','created','lastLogin'] as const
+  type ColumnId = typeof ALL_COLUMNS[number]
+  const [columns, setColumns] = useState<ColumnId[]>(['name','email','verification','progress'])
+
+  // Saved views (localStorage)
+  type SavedView = {
+    name: string
+    roleFilter: string
+    searchTerm: string
+    viewMode: ViewMode
+    columns: ColumnId[]
+  }
+  const [savedViews, setSavedViews] = useState<SavedView[]>([])
+  const [selectedViewName, setSelectedViewName] = useState<string>('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const sv = localStorage.getItem('admin_users_saved_views')
+      if (sv) setSavedViews(JSON.parse(sv))
+      const storedCols = localStorage.getItem('admin_users_columns')
+      if (storedCols) setColumns(JSON.parse(storedCols))
+      const storedMode = localStorage.getItem('admin_users_view_mode') as ViewMode | null
+      if (storedMode === 'table' || storedMode === 'list') setViewMode(storedMode)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem('admin_users_columns', JSON.stringify(columns))
+    localStorage.setItem('admin_users_view_mode', viewMode)
+  }, [columns, viewMode])
+
+  const applySavedView = (name: string) => {
+    const view = savedViews.find(v => v.name === name)
+    if (!view) return
+    setSelectedViewName(name)
+    setRoleFilter(view.roleFilter)
+    setSearchTerm(view.searchTerm)
+    setViewMode(view.viewMode)
+    setColumns(view.columns)
+  }
+
+  const saveCurrentView = () => {
+    const name = window.prompt('Name der Ansicht speichern:', selectedViewName || '')?.trim()
+    if (!name) return
+    const newView: SavedView = { name, roleFilter, searchTerm, viewMode, columns }
+    const next = [...savedViews.filter(v => v.name !== name), newView]
+    setSavedViews(next)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
+    setSelectedViewName(name)
+    toast({ title: 'Gespeichert', description: 'Ansicht gespeichert.' })
+  }
+
+  const deleteSavedView = () => {
+    if (!selectedViewName) return
+    const next = savedViews.filter(v => v.name !== selectedViewName)
+    setSavedViews(next)
+    if (typeof window !== 'undefined') localStorage.setItem('admin_users_saved_views', JSON.stringify(next))
+    setSelectedViewName('')
+  }
+
   // Helper function to get verification status badge
   const getVerificationStatusBadge = (status?: string) => {
     switch (status) {
@@ -478,6 +543,61 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="md:ml-auto">
+              <Label>Ansichten</Label>
+              <div className="flex gap-2">
+                <Select value={selectedViewName} onValueChange={applySavedView}>
+                  <SelectTrigger className="min-w-[160px]">
+                    <SelectValue placeholder="Ansicht wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedViews.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500">Keine gespeicherten Ansichten</div>
+                    ) : (
+                      savedViews.map(v => (
+                        <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={saveCurrentView}>Speichern</Button>
+                <Button variant="outline" disabled={!selectedViewName} onClick={deleteSavedView}>Löschen</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* View mode + Columns */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Label>Ansicht:</Label>
+              <Button variant={viewMode === 'list' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('list')}>Liste</Button>
+              <Button variant={viewMode === 'table' ? 'default' : 'outline'} size="sm" onClick={() => setViewMode('table')}>Tabelle</Button>
+            </div>
+            {viewMode === 'table' && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">Spalten</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[420px]">
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Spalten auswählen</h3>
+                    {ALL_COLUMNS.map((col) => (
+                      <label key={col} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={columns.includes(col)}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            setColumns((prev) => checked ? Array.from(new Set([...prev, col])) : prev.filter(c => c !== col))
+                          }}
+                        />
+                        <span>{col}</span>
+                      </label>
+                    ))}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {/* Removed: High-level metrics that are not useful here */}
@@ -487,7 +607,7 @@ export default function UserManagement() {
             <div className="text-center py-8 text-muted-foreground">
               {t('noUsersFound')}
             </div>
-          ) : (
+          ) : viewMode === 'list' ? (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
               {/* User List */}
               <div className="space-y-2 lg:col-span-1 rounded-lg border bg-white p-2 max-h-[70vh] overflow-y-auto">
@@ -699,6 +819,62 @@ export default function UserManagement() {
                   </Card>
                 )}
               </div>
+            </div>
+          ) : (
+            // Table view
+            <div className="overflow-auto">
+              <table className="min-w-full border rounded-md bg-white">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {columns.includes('name') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>}
+                    {columns.includes('email') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>}
+                    {columns.includes('role') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('role')}</th>}
+                    {columns.includes('verification') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('verificationStatus')}</th>}
+                    {columns.includes('progress') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('overallProgress')}</th>}
+                    {columns.includes('created') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('createdLabel')}</th>}
+                    {columns.includes('lastLogin') && <th className="p-3 text-left text-xs font-medium text-gray-500 uppercase">{t('lastLogin')}</th>}
+                    <th className="p-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user._id} className="border-t">
+                      {columns.includes('name') && <td className="p-3 whitespace-nowrap">{user.firstName} {user.lastName}</td>}
+                      {columns.includes('email') && <td className="p-3 whitespace-nowrap text-sm text-gray-700">{user.email}</td>}
+                      {columns.includes('role') && <td className="p-3 whitespace-nowrap text-sm text-gray-700 capitalize">{user.role}</td>}
+                      {columns.includes('verification') && <td className="p-3 whitespace-nowrap">{getVerificationStatusBadge(user.verificationStatus)}</td>}
+                      {columns.includes('progress') && <td className="p-3 whitespace-nowrap text-sm">{user.progress ? `${user.progress.averageProgress}%` : '-'}</td>}
+                      {columns.includes('created') && <td className="p-3 whitespace-nowrap text-sm text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</td>}
+                      {columns.includes('lastLogin') && <td className="p-3 whitespace-nowrap text-sm text-gray-500">{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : '-'}</td>}
+                      <td className="p-3 whitespace-nowrap text-right">
+                        <Dialog open={dialogOpen && selectedUser?._id === user._id} onOpenChange={(o) => { setDialogOpen(o); if (!o) setSelectedUser(null) }}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedUser(user); setDialogOpen(true) }}>Details</Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-y-auto">
+                            {selectedUser && (
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-semibold">{selectedUser.firstName} {selectedUser.lastName}</div>
+                                    <div className="text-sm text-gray-600">{selectedUser.email}</div>
+                                  </div>
+                                  {getVerificationStatusBadge(selectedUser.verificationStatus)}
+                                </div>
+                                {/* Reuse simple bits from existing detail panel */}
+                                {selectedUser.progress && (
+                                  <div className="text-sm">{t('overallProgress')}: {selectedUser.progress.averageProgress}%</div>
+                                )}
+                                <div className="text-xs text-gray-500">{t('createdLabel')}: {new Date(selectedUser.createdAt).toLocaleDateString()}</div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>

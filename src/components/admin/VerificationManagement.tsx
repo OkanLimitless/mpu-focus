@@ -74,6 +74,7 @@ export default function VerificationManagement() {
   const [allowResubmission, setAllowResubmission] = useState(false)
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
   const { t } = useI18n()
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
 
   useEffect(() => {
     fetchUsers()
@@ -286,10 +287,17 @@ export default function VerificationManagement() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters + View toggle */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('filters')}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t('filters')}</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Ansicht:</span>
+              <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'} onClick={() => setViewMode('list')}>Liste</Button>
+              <Button size="sm" variant={viewMode === 'board' ? 'default' : 'outline'} onClick={() => setViewMode('board')}>Board</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -328,84 +336,77 @@ export default function VerificationManagement() {
         </CardContent>
       </Card>
 
-      {/* Users List */}
+      {/* Users List / Board */}
       <Card>
         <CardContent>
-          <div className="space-y-4">
-            {loading ? (
-              <div className="text-center py-8 text-gray-500">
-                {t('loading')}
-              </div>
-            ) : users.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                {t('noUsersFound')}
-              </div>
-            ) : (
-              users.map((user) => (
-                <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex flex-col">
-                      <p className="font-medium">{user.firstName || 'N/A'} {user.lastName || ''}</p>
-                      <p className="text-sm text-gray-600">{user.email || 'N/A'}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">{t('statusHeader')}</p>
-                      {getStatusBadge(user.verificationStatus || 'pending')}
-                    </div>
-                    
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">{t('documentLabel')}</p>
-                      <div className="text-sm">
-                        {user.passportDocument ? (
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4 text-green-600" />
-                            <span>{t('uploaded')}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span>{t('missing')}</span>
-                          </div>
-                        )}
+          {viewMode === 'list' ? (
+            <div className="space-y-4">
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">{t('loading')}</div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">{t('noUsersFound')}</div>
+              ) : (
+                users.map((user) => (
+                  <div key={user._id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex flex-col">
+                        <p className="font-medium">{user.firstName || 'N/A'} {user.lastName || ''}</p>
+                        <p className="text-sm text-gray-600">{user.email || 'N/A'}</p>
                       </div>
                     </div>
-                    
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">{t('contractLabel')}</p>
-                      <div className="text-sm">
-                        {user.contractSigned?.signedAt ? (
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-green-600" />
-                            <span>{t('signedLabel')}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <span>{t('pendingLabel')}</span>
-                          </div>
-                        )}
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500 mb-1">{t('statusHeader')}</p>
+                        {getStatusBadge(user.verificationStatus || 'pending')}
                       </div>
-                    </div>
-                    
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReviewUser(user)}
-                          disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          {t('review')}
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{t('userVerificationReview')}</DialogTitle>
-                        </DialogHeader>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500 mb-1">{t('documentLabel')}</p>
+                        <div className="text-sm">
+                          {user.passportDocument ? (
+                            <div className="flex items-center space-x-2">
+                              <FileText className="h-4 w-4 text-green-600" />
+                              <span>{t('uploaded')}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <XCircle className="h-4 w-4 text-red-600" />
+                              <span>{t('missing')}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500 mb-1">{t('contractLabel')}</p>
+                        <div className="text-sm">
+                          {user.contractSigned?.signedAt ? (
+                            <div className="flex items-center space-x-2">
+                              <User className="h-4 w-4 text-green-600" />
+                              <span>{t('signedLabel')}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <XCircle className="h-4 w-4 text-red-600" />
+                              <span>{t('pendingLabel')}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReviewUser(user)}
+                            disabled={user.verificationStatus === 'pending' || user.verificationStatus === 'documents_uploaded'}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            {t('review')}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>{t('userVerificationReview')}</DialogTitle>
+                          </DialogHeader>
                         
                         {selectedUser && (
                           <div className="space-y-6">
@@ -558,13 +559,58 @@ export default function VerificationManagement() {
                             </div>
                           </div>
                         )}
-                      </DialogContent>
-                    </Dialog>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            // Board view
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
+              {[
+                { key: 'pending', title: t('status_pending') },
+                { key: 'documents_uploaded', title: t('status_documents_uploaded') },
+                { key: 'contract_signed', title: t('underReview') },
+                { key: 'resubmission_required', title: t('status_resubmission_required') },
+                { key: 'verified', title: t('status_verified') },
+                { key: 'rejected', title: t('status_rejected') },
+              ].map((col) => (
+                <div key={col.key} className="bg-gray-50 border rounded-lg p-3 min-h-[260px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-semibold">{col.title}</div>
+                    <div className="text-xs text-gray-500">{users.filter(u => u.verificationStatus === (col.key as any)).length}</div>
+                  </div>
+                  <div className="space-y-2">
+                    {users.filter(u => u.verificationStatus === (col.key as any)).map((u) => (
+                      <div key={u._id} className="bg-white border rounded p-2 text-sm">
+                        <div className="font-medium truncate">{u.firstName} {u.lastName}</div>
+                        <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                        {col.key === 'contract_signed' && (
+                          <div className="mt-2 flex gap-1">
+                            <Button size="sm" className="h-7 px-2" onClick={() => { setSelectedUser(u); setReviewAction('approve'); handleSubmitReview() }}>
+                              {t('approve')}
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => { setSelectedUser(u); setReviewAction('reject'); setAllowResubmission(true); setRejectionReason('Bitte laden Sie ein klareres Foto Ihres Ausweises hoch.'); handleSubmitReview() }}>
+                              {t('reject')}
+                            </Button>
+                          </div>
+                        )}
+                        {col.key === 'resubmission_required' && (
+                          <div className="mt-2">
+                            <Button size="sm" className="h-7 px-2" onClick={() => { setSelectedUser(u); setReviewAction('approve'); handleSubmitReview() }}>
+                              {t('approve')}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

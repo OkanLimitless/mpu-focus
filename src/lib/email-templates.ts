@@ -408,3 +408,35 @@ If you need to reset your password, please use the password reset option on the 
     `
   }
 }
+
+// Minimal German templates for verification emails
+export function getVerificationApprovedEmailTemplateDe(user: User) {
+  const firstName = user.firstName || 'Kunde'
+  const loginUrl = `${process.env.NEXTAUTH_URL}/login`
+  return {
+    subject: '🎉 Ihr MPU-Focus Konto wurde verifiziert!',
+    html: `
+      <p>Hallo ${firstName},</p>
+      <p><strong>Glückwunsch!</strong> Ihre Dokumente wurden erfolgreich geprüft und Ihr Konto ist nun aktiviert.</p>
+      <p><a href="${loginUrl}">Hier einloggen</a> und mit der MPU-Vorbereitung starten.</p>
+      <p>Ihr MPU-Focus Team</p>
+    `,
+    text: `Verifizierung abgeschlossen. Login: ${loginUrl}`
+  }
+}
+
+export function getVerificationRejectedEmailTemplateDe(user: User, rejectionReason: string, allowResubmission: boolean) {
+  const firstName = user.firstName || 'Kunde'
+  const resubmissionUrl = allowResubmission && user.verificationToken ? `${process.env.NEXTAUTH_URL}/verification/${user.verificationToken}` : ''
+  return {
+    subject: allowResubmission ? '⚠️ Verifizierung unvollständig – Bitte Dokumente erneut einreichen' : '❌ Verifizierung abgelehnt – Aktion erforderlich',
+    html: `
+      <p>Hallo ${firstName},</p>
+      <p>Zur Verifizierung benötigen wir folgende Aktualisierung:</p>
+      <p><strong>${rejectionReason}</strong></p>
+      ${allowResubmission ? `<p>Sie können neue Dokumente hier hochladen: <a href="${resubmissionUrl}">${resubmissionUrl}</a></p>` : '<p>Bitte kontaktieren Sie unseren Support für die nächsten Schritte.</p>'}
+      <p>Ihr MPU-Focus Team</p>
+    `,
+    text: allowResubmission ? `Aktualisierung nötig. Neue Dokumente: ${resubmissionUrl}` : 'Verifizierung abgelehnt. Bitte Support kontaktieren.'
+  }
+}

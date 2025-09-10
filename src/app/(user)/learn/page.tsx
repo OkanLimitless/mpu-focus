@@ -14,11 +14,14 @@ type VideoProgress = {
 
 type Video = {
   _id: string
+  title?: string
+  duration?: number
   progress?: VideoProgress | null
 }
 
 type Chapter = {
   _id: string
+  title?: string
   order: number
   videos: Video[]
 }
@@ -81,6 +84,24 @@ export default function LearnHomePage() {
     return target
   }, [modules, userProgress])
 
+  const nextSteps = useMemo(() => {
+    // Find next 1-2 videos based on current chapter order
+    if (!modules.length || !userProgress) return [] as Array<{ title: string; moduleKey: string; chapterId: string; duration?: number }>
+    const currentOrder = userProgress.currentChapterOrder
+    const items: Array<{ title: string; moduleKey: string; chapterId: string; duration?: number }> = []
+    modules.forEach(group => {
+      group.chapters.forEach(ch => {
+        if (ch.order === currentOrder) {
+          const nextVideo = ch.videos.find(v => !v.progress?.isCompleted)
+          if (nextVideo) {
+            items.push({ title: nextVideo.title || 'Nächste Lektion', moduleKey: group.key, chapterId: ch._id, duration: nextVideo.duration })
+          }
+        }
+      })
+    })
+    return items.slice(0, 2)
+  }, [modules, userProgress])
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -106,6 +127,25 @@ export default function LearnHomePage() {
               <Button className="bg-green-600 hover:bg-green-700" onClick={() => router.push(`/learn/${continueTarget.key}/${continueTarget.chapterId}`)}>
                 {t('resume')}
               </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Next steps */}
+        {nextSteps.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Nächste Schritte</CardTitle>
+              <CardDescription>Beginne mit der nächsten Lektion</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {nextSteps.map((step, idx) => (
+                  <Button key={idx} variant="outline" onClick={() => router.push(`/learn/${step.moduleKey}/${step.chapterId}`)}>
+                    Weiter in Modul
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -138,6 +178,30 @@ export default function LearnHomePage() {
             )
           })}
         </div>
+
+        {/* Course Map */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Kurskarte</CardTitle>
+            <CardDescription>Überblick über Module und Kapitel</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {modules.map((group) => (
+                <div key={group.key} className="border rounded-lg p-3">
+                  <div className="font-semibold mb-2">{group.label}</div>
+                  <div className="space-y-1 text-sm">
+                    {group.chapters.map((ch) => (
+                      <button key={ch._id} onClick={() => router.push(`/learn/${group.key}/${ch._id}`)} className="block w-full text-left p-2 rounded hover:bg-gray-50">
+                        {ch.order}. {ch.title || ch._id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
