@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
 
     const extracted = (user.documentProcessing?.extractedData || '').trim()
     const intake = await UserIntake.findOne({ userId: user._id })
+    if (!intake?.completedAt) {
+      return NextResponse.json({ error: 'Baseline intake not completed' }, { status: 400 })
+    }
     const intakeJSON = JSON.stringify(intake?.responses || {})
     const hasDoc = extracted.length > 0
     const hasIntake = intakeJSON !== '{}' && intakeJSON.length > 2

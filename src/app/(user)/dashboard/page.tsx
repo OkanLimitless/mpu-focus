@@ -36,6 +36,7 @@ export default function DashboardPage() {
     overallProgress: 0
   })
   const [userDetails, setUserDetails] = useState<any>(null)
+  const [intake, setIntake] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showVerificationDialog, setShowVerificationDialog] = useState(false)
   const [verificationToken, setVerificationToken] = useState<string | null>(null)
@@ -62,6 +63,15 @@ export default function DashboardPage() {
     // Load user progress and details
     fetchUserProgress()
     fetchUserDetails()
+    ;(async () => {
+      try {
+        const res = await fetch('/api/quiz/intake')
+        if (res.ok) {
+          const data = await res.json()
+          setIntake(data.intake || null)
+        }
+      } catch {}
+    })()
   }, [session, status, router])
 
   useEffect(() => {
@@ -465,6 +475,25 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               )}
+
+            {/* Baseline Intake Prompt */}
+            {(!intake || !intake.completedAt) && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-blue-900">{t('baselineTitle')}</h3>
+                      <p className="text-sm text-blue-800 mt-1">{t('baselineRequiredMsg') || 'Please complete your baseline intake to personalize your practice.'}</p>
+                      <div className="mt-4 flex gap-2 flex-wrap">
+                        <Button onClick={() => router.push('/intake')} className="bg-blue-600 hover:bg-blue-700">{t('startBaseline')}</Button>
+                        <Button variant="outline" onClick={() => router.push('/quiz')}>{t('practiceBeta')}</Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             </div>
           </main>
         </div>

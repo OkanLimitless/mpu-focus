@@ -90,6 +90,14 @@ export default function QuizPage() {
   const startPractice = async () => {
     setBusy(true)
     try {
+      // gate: baseline must be completed
+      const intakeRes = await fetch('/api/quiz/intake')
+      const intakeData = await intakeRes.json().catch(() => ({}))
+      if (!intakeData?.intake?.completedAt) {
+        alert(t('baselineRequiredMsg') || 'Please complete your baseline intake first.')
+        router.push('/intake')
+        return
+      }
       // sync profile
       await fetch('/api/quiz/profile/sync', { method: 'POST' })
       // ensure blueprint
@@ -128,7 +136,12 @@ export default function QuizPage() {
                 <p className="text-sm text-gray-600">{t('quizInstructions')}</p>
                 <div className="flex gap-2">
                   <Button onClick={startPractice} disabled={busy}>{t('quizStartPractice')}</Button>
-                  <Button variant="outline" disabled={busy} onClick={async () => { setBusy(true); try { await fetch('/api/quiz/blueprint', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ force: true }) }); await startPractice() } finally { setBusy(false) } }}>{t('regenerateSet') || 'Regenerate Set'}</Button>
+                  <Button variant="outline" disabled={busy} onClick={async () => { 
+                    // gate baseline
+                    const intakeRes = await fetch('/api/quiz/intake')
+                    const intakeData = await intakeRes.json().catch(() => ({}))
+                    if (!intakeData?.intake?.completedAt) { alert(t('baselineRequiredMsg') || 'Please complete your baseline intake first.'); router.push('/intake'); return }
+                    setBusy(true); try { await fetch('/api/quiz/blueprint', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ force: true }) }); await startPractice() } finally { setBusy(false) } }}>{t('regenerateSet') || 'Regenerate Set'}</Button>
                   <Button variant="outline" onClick={() => router.push('/intake')}>{t('startBaseline')}</Button>
                 </div>
               </div>

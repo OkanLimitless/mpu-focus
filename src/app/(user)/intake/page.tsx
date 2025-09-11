@@ -1,46 +1,50 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useI18n } from '@/components/providers/i18n-provider'
+import { sections, labelFor, type Field, type Section as IntakeSection } from '@/lib/baseline-schema'
+
+type BranchKey = 'alcohol' | 'cannabis' | 'drugs' | 'points' | 'aggression' | 'medical'
+
+function get(obj: any, path: string[]): any {
+  return path.reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), obj)
+}
+function set(obj: any, path: string[], value: any): any {
+  if (path.length === 0) return obj
+  const [head, ...rest] = path
+  return {
+    ...obj,
+    [head]: rest.length === 0 ? value : set(obj[head] || {}, rest, value),
+  }
+}
+
+function stripValueWrappers(input: any): any {
+  if (!input || typeof input !== 'object') return input
+  if ('value' in input && Object.keys(input).length <= 2) return (input as any).value
+  const out: any = Array.isArray(input) ? [] : {}
+  for (const k of Object.keys(input)) {
+    out[k] = stripValueWrappers((input as any)[k])
+  }
+  return out
+}
 
 export default function IntakePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { t } = useI18n()
+  const { t, lang } = useI18n() as any
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
-  const [form, setForm] = useState<any>({
-    incident_summary: '',
-    substance_and_frequency: '',
-    bac_or_values: '',
-    abstinence_or_controlled_use: '',
-    therapy_or_support: '',
-    behavior_change_steps: '',
-    risk_situations_and_strategies: '',
-    support_network: '',
-    motivation_to_change: '',
-    goals_and_next_steps: '',
-  })
-  const steps = [
-    { key: 'incident_summary', label: t('q_incident_summary'), hint: t('hint_incident_summary') },
-    { key: 'substance_and_frequency', label: t('q_substance_and_frequency'), hint: t('hint_substance_and_frequency') },
-    { key: 'bac_or_values', label: t('q_bac_or_values'), hint: t('hint_bac_or_values') },
-    { key: 'abstinence_or_controlled_use', label: t('q_abstinence_or_controlled_use'), hint: t('hint_abstinence_or_controlled_use') },
-    { key: 'therapy_or_support', label: t('q_therapy_or_support'), hint: t('hint_therapy_or_support') },
-    { key: 'behavior_change_steps', label: t('q_behavior_change_steps'), hint: t('hint_behavior_change_steps') },
-    { key: 'risk_situations_and_strategies', label: t('q_risk_situations_and_strategies'), hint: t('hint_risk_situations_and_strategies') },
-    { key: 'support_network', label: t('q_support_network'), hint: t('hint_support_network') },
-    { key: 'motivation_to_change', label: t('q_motivation_to_change'), hint: t('hint_motivation_to_change') },
-    { key: 'goals_and_next_steps', label: t('q_goals_and_next_steps'), hint: t('hint_goals_and_next_steps') },
-  ] as const
-  const [idx, setIdx] = useState(0)
+  const [form, setForm] = useState<any>({})
+  const [activeBranches, setActiveBranches] = useState<Record<BranchKey, boolean>>({ alcohol: false, cannabis: false, drugs: false, points: false, aggression: false, medical: false })
 
   useEffect(() => {
     if (status === 'loading') return
@@ -50,10 +54,38 @@ export default function IntakePage() {
       try {
         const res = await fetch('/api/quiz/intake')
         const data = await res.json()
-        if (data?.intake?.responses) setForm((prev: any) => ({ ...prev, ...data.intake.responses }))
+        if (data?.intake?.responses) {
+          const values = stripValueWrappers(data.intake.responses)
+          setForm(values)
+          // derive active branches from C2_violation_types if present
+          const vtypes: string[] = get(values, ['C2_official_case_data','C2_violation_types']) || []
+          setActiveBranches({
+            alcohol: vtypes.includes('alcohol'),
+            cannabis: vtypes.includes('cannabis'),
+            drugs: vtypes.includes('drugs'),
+            points: vtypes.includes('points'),
+            aggression: vtypes.includes('aggression'),
+            medical: vtypes.includes('medical'),
+          })
+        }
       } finally { setLoading(false) }
     })()
   }, [session, status, router])
+
+  // auto-sync branch toggles when violation types change
+  useEffect(() => {
+    const vtypes: string[] = get(form, ['C2_official_case_data','C2_violation_types']) || []
+    if (!vtypes) return
+    setActiveBranches((prev) => ({
+      ...prev,
+      alcohol: vtypes.includes('alcohol'),
+      cannabis: vtypes.includes('cannabis'),
+      drugs: vtypes.includes('drugs'),
+      points: vtypes.includes('points'),
+      aggression: vtypes.includes('aggression'),
+      medical: vtypes.includes('medical'),
+    }))
+  }, [form])
 
   const save = async (complete = false) => {
     setSaving(true)
@@ -65,6 +97,104 @@ export default function IntakePage() {
     }
   }
 
+  const renderField = (field: Field, path: string[]) => {
+    const label = labelFor(lang, field.label)
+    const value = get(form, path)
+    const setValue = (v: any) => setForm((f: any) => set(f, path, v))
+    switch (field.type) {
+      case 'long_text':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <Textarea rows={5} value={value || ''} onChange={(e) => setValue(e.target.value)} />
+          </div>
+        )
+      case 'text':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <Input value={value || ''} onChange={(e) => setValue(e.target.value)} />
+          </div>
+        )
+      case 'number':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <Input type="number" value={value ?? ''} onChange={(e) => setValue(e.target.value === '' ? '' : Number(e.target.value))} />
+          </div>
+        )
+      case 'date':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <Input type="date" value={value || ''} onChange={(e) => setValue(e.target.value)} />
+          </div>
+        )
+      case 'select_single':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <Select value={value || ''} onValueChange={(v) => setValue(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="-" />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options?.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{labelFor(lang, opt.label)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )
+      case 'checkboxes':
+        return (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">{label}</label>
+            <div className="space-y-2">
+              {field.options?.map((opt) => {
+                const arr: string[] = Array.isArray(value) ? value : []
+                const checked = arr.includes(opt.value)
+                return (
+                  <label key={opt.value} className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={checked} onCheckedChange={() => {
+                      const setv = new Set(arr)
+                      checked ? setv.delete(opt.value) : setv.add(opt.value)
+                      setValue(Array.from(setv))
+                    }} />
+                    <span>{labelFor(lang, opt.label)}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )
+      case 'date_list':
+        return (
+          <DateListEditor label={label} list={Array.isArray(value) ? value : []} onChange={setValue} />
+        )
+      case 'text_list':
+        return (
+          <TextListEditor label={label} list={Array.isArray(value) ? value : []} onChange={setValue} />
+        )
+      case 'multi':
+        return (
+          <div className="space-y-3">
+            <div className="text-sm font-medium">{label}</div>
+            <div className="space-y-3">
+              {field.fields?.map((sf) => (
+                <div key={sf.id}>{renderField(sf, [...path, sf.id])}</div>
+              ))}
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  const core = useMemo(() => sections.find(s => s.key === 'core') as IntakeSection, [])
+  const branches = useMemo(() => sections.filter(s => s.key !== 'core') as IntakeSection[], [])
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin h-10 w-10 rounded-full border-b-2 border-primary"/></div>
 
   return (
@@ -75,7 +205,7 @@ export default function IntakePage() {
             <CardTitle>{t('baselineTitle')}</CardTitle>
             <CardDescription>{t('baselineSubtitle')}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             {done ? (
               <div className="space-y-3">
                 <div className="text-sm text-green-700">{t('baselineSaved')}</div>
@@ -84,28 +214,96 @@ export default function IntakePage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{t('stepOf', { current: idx+1, total: steps.length })}</span>
-                  <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>{t('finishLater')}</Button>
+              <>
+                {/* Core Section */}
+                <div className="space-y-4">
+                  <div className="text-base font-semibold">{labelFor(lang, core.title)}</div>
+                  <div className="space-y-4">
+                    {core.items.map((f) => (
+                      <div key={f.id} className="p-3 border rounded bg-white">{renderField(f, [f.id])}</div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{steps[idx].label}</label>
-                  <Textarea rows={6} value={form[steps[idx].key]} onChange={(e) => setForm((f: any) => ({ ...f, [steps[idx].key]: e.target.value }))} />
-                  {steps[idx].hint && <p className="text-xs text-gray-500">{steps[idx].hint}</p>}
+
+                {/* Branch toggles */}
+                <div className="space-y-3">
+                  <div className="text-base font-semibold">Branch modules</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {(branches as IntakeSection[]).map((b) => (
+                      <label key={b.key as string} className="flex items-center gap-2 text-sm p-2 border rounded bg-white">
+                        <Checkbox checked={activeBranches[b.key as BranchKey]} onCheckedChange={(v) => setActiveBranches((ab) => ({ ...ab, [b.key as BranchKey]: !!v }))} />
+                        <span>{labelFor(lang, b.title)}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => { if (idx>0) setIdx(idx-1) }} disabled={idx===0 || saving}>{t('previous')}</Button>
-                  {idx < steps.length - 1 ? (
-                    <Button onClick={async () => { await save(false); setIdx(idx+1) }} disabled={saving}>{t('next')}</Button>
-                  ) : (
-                    <Button onClick={() => save(true)} disabled={saving}>{t('completeBaseline')}</Button>
-                  )}
+
+                {/* Branch Sections */}
+                <div className="space-y-6">
+                  {branches.map((b) => (
+                    activeBranches[b.key as BranchKey] ? (
+                      <div key={b.key} className="space-y-3">
+                        <div className="text-base font-semibold">{labelFor(lang, b.title)}</div>
+                        <div className="space-y-4">
+                          {b.items.map((f) => (
+                            <div key={f.id} className="p-3 border rounded bg-white">{renderField(f, [f.id])}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null
+                  ))}
                 </div>
-              </div>
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => save(false)} disabled={saving}>{t('save') || 'Save'}</Button>
+                  <Button onClick={() => save(true)} disabled={saving}>{t('completeBaseline')}</Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
+      </div>
+    </div>
+  )
+}
+
+function TextListEditor({ label, list, onChange }: { label: string; list: string[]; onChange: (next: string[]) => void }) {
+  const [value, setValue] = useState('')
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="flex gap-2">
+        <Input placeholder="https://..." value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (value.trim()) { onChange([...(list||[]), value.trim()]); setValue('') } } }} />
+        <Button variant="outline" onClick={() => { if (value.trim()) { onChange([...(list||[]), value.trim()]); setValue('') } }}>Add</Button>
+      </div>
+      <div className="space-y-1">
+        {(list || []).map((item, i) => (
+          <div key={i} className="flex items-center justify-between border rounded px-2 py-1 text-sm">
+            <span className="truncate">{item}</span>
+            <Button size="sm" variant="ghost" onClick={() => onChange(list.filter((_, idx) => idx !== i))}>×</Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DateListEditor({ label, list, onChange }: { label: string; list: string[]; onChange: (next: string[]) => void }) {
+  const [value, setValue] = useState('')
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium">{label}</label>
+      <div className="flex gap-2">
+        <Input type="date" value={value} onChange={(e) => setValue(e.target.value)} />
+        <Button variant="outline" onClick={() => { if (value) { onChange([...(list||[]), value]); setValue('') } }}>Add</Button>
+      </div>
+      <div className="space-y-1">
+        {(list || []).map((item, i) => (
+          <div key={i} className="flex items-center justify-between border rounded px-2 py-1 text-sm">
+            <span className="truncate">{item}</span>
+            <Button size="sm" variant="ghost" onClick={() => onChange(list.filter((_, idx) => idx !== i))}>×</Button>
+          </div>
+        ))}
       </div>
     </div>
   )
