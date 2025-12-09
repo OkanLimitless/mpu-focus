@@ -52,6 +52,16 @@ export default function DocumentProcessor() {
   const [isDragActive, setIsDragActive] = useState(false)
   const [debugLogs, setDebugLogs] = useState<DebugLog[]>([])
   const [showDebugLogs, setShowDebugLogs] = useState(false)
+  const appendDebugLog = (log: DebugLog) => setDebugLogs(prev => [...prev, log].slice(-100))
+  const normalizeDebugLog = (log: any, fallbackLevel: DebugLog['level'] = 'info'): DebugLog => {
+    const level: DebugLog['level'] = log?.level === 'warn' || log?.level === 'error' || log?.level === 'info' ? log.level : fallbackLevel
+    return {
+      level,
+      message: typeof log?.message === 'string' ? log.message : '',
+      timestamp: typeof log?.timestamp === 'string' ? log.timestamp : new Date().toISOString(),
+      ...(typeof log?.data === 'string' ? { data: log.data } : {})
+    }
+  }
 
   useEffect(() => {
     // Check URL parameters for user ID and name
@@ -291,8 +301,9 @@ export default function DocumentProcessor() {
             
             // Handle debug logs
             if (data.log) {
-              setDebugLogs(prev => [...prev, data.log].slice(-100)) // Keep last 100 logs
-              if (data.log.level === 'error') {
+              const logEntry = normalizeDebugLog(data.log)
+              appendDebugLog(logEntry) // Keep last 100 logs
+              if (logEntry.level === 'error') {
                 setShowDebugLogs(true) // Auto-show on errors
               }
             }
@@ -301,11 +312,11 @@ export default function DocumentProcessor() {
             if (data.phase) {
               const phaseMsg = `Phase ${data.phase}: ${data.status || 'processing'}`
               if (data.status === 'cluster:fail' || data.status === 'skip') {
-                setDebugLogs(prev => [...prev, {
+                appendDebugLog({
                   level: 'warn',
                   message: `${phaseMsg}${data.error ? ` - ${data.error}` : ''}`,
                   timestamp: new Date().toISOString()
-                }].slice(-100))
+                })
               }
             }
             
@@ -323,12 +334,12 @@ export default function DocumentProcessor() {
           } catch (parseError) {
             // Log parsing errors instead of silently swallowing them
             console.error('Error parsing SSE data:', parseError, 'Line:', line.slice(0, 200))
-            setDebugLogs(prev => [...prev, {
+            appendDebugLog({
               level: 'error',
               message: `Failed to parse server message: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
               timestamp: new Date().toISOString(),
               data: line.slice(0, 200)
-            }].slice(-100))
+            })
           }
         }
       }

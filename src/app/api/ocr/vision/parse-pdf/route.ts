@@ -207,13 +207,14 @@ export async function POST(request: NextRequest) {
           send({ phase: 'pass2', status: 'done', delicts: delicts.length })
 
           // Pass 3: Consolidation
+          let extractedData = '' // hoist so validation/addendum/result can reuse the consolidated report
           send({ phase: 'pass3', status: 'start', model: pass3Model })
           logDebug('info', `Starting pass3 consolidation with ${delicts.length} delicts`)
           const consSys = 'Je consolideert delict-JSON naar een volledig MPU-rapport (Nederlands) met paginaverwijzingen en korte Duitse citaten.'
           const consUsr = `DELlCTS(JSON):\n${JSON.stringify(delicts).slice(0, 180000)}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}\n\nGenereer het volledige rapport exact volgens het format.`
           try {
             const consResp: any = await run(pass3Model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 7000, aiTimeoutMs)
-            let extractedData = consResp.choices[0]?.message?.content || ''
+            extractedData = consResp.choices[0]?.message?.content || ''
             send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
             logDebug('info', 'Pass3 completed', { outputLength: extractedData.length })
           } catch (e: any) {
