@@ -150,6 +150,8 @@ export async function POST(request: NextRequest) {
           const pass4Model = process.env.OCR_PASS4_MODEL || 'gpt-5-nano'
           const clusterConcurrency = Math.max(1, Math.min(4, parseInt(process.env.OCR_CLUSTER_CONCURRENCY || '2', 10) || 2))
           const aiTimeoutMs = Math.max(30000, Math.min(240000, parseInt(process.env.OCR_LLM_TIMEOUT_MS || '120000', 10) || 120000))
+          const clusterProgressBase = 78 // after pass1/vision; keep bar moving through clustering
+          const clusterProgressSpan = 16  // finish around 94 before pass3
 
           send({ phase: 'pass1', status: 'start', model: pass1Model, pages })
           const pass1Sys = 'Je indexeert OCR-tekst (Duits) voor MPU-dossiers. Geef gestructureerde JSON (pages, offense_candidates).'
@@ -182,6 +184,12 @@ export async function POST(request: NextRequest) {
           const clusterText = (pgs: number[]) => pgs.map(n => `--- PAGINA ${n} ---\n${(pageMap.get(n) || '').trim()}`).join('\n\n')
           const delicts: any[] = []
           let i2 = 0
+          const totalClusters = Math.max(1, candidates.length)
+          let clustersDone = 0
+          const reportClusterProgress = (status: 'ok' | 'fail', title: string) => {
+            const pct = clusterProgressBase + Math.min(clusterProgressSpan, Math.round((clustersDone / totalClusters) * clusterProgressSpan))
+            send({ step: 'AI Analysis', progress: pct, message: `${status === 'ok' ? 'Cluster' : 'Cluster (retry/skipped)'}: ${title}` })
+          }
           const worker = async (): Promise<void> => {
             if (i2 >= candidates.length) return
             const c = candidates[i2++]
@@ -196,10 +204,14 @@ export async function POST(request: NextRequest) {
               delicts.push(JSON.parse(txt))
               send({ phase: 'pass2', status: 'cluster:done', cluster: c.title })
               logDebug('info', `Cluster ${c.title} completed`)
+              clustersDone += 1
+              reportClusterProgress('ok', c.title)
             } catch (e: any) {
               const errorMsg = String(e?.message || e)
               logDebug('error', `Cluster ${c.title} failed`, { error: errorMsg })
               send({ phase: 'pass2', status: 'cluster:fail', cluster: c.title, error: errorMsg })
+              clustersDone += 1
+              reportClusterProgress('fail', c.title)
             }
             await worker()
           }
@@ -209,6 +221,7 @@ export async function POST(request: NextRequest) {
           // Pass 3: Consolidation
           let extractedData = '' // hoist so validation/addendum/result can reuse the consolidated report
           send({ phase: 'pass3', status: 'start', model: pass3Model })
+          send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 1, message: 'Consolideren van delict-JSON...' })
           logDebug('info', `Starting pass3 consolidation with ${delicts.length} delicts`)
           const consSys = 'Je consolideert delict-JSON naar een volledig MPU-rapport (Nederlands) met paginaverwijzingen en korte Duitse citaten.'
           const consUsr = `DELlCTS(JSON):\n${JSON.stringify(delicts).slice(0, 180000)}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}\n\nGenereer het volledige rapport exact volgens het format.`
@@ -217,6 +230,7 @@ export async function POST(request: NextRequest) {
             extractedData = consResp.choices[0]?.message?.content || ''
             send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
             logDebug('info', 'Pass3 completed', { outputLength: extractedData.length })
+            send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 4, message: 'Validatie-addendum voorbereiden...' })
           } catch (e: any) {
             logDebug('error', 'Pass3 failed', { error: e?.message || String(e) })
             throw e // Re-throw to be caught by outer catch
@@ -224,6 +238,7 @@ export async function POST(request: NextRequest) {
 
           // Pass 4: Validation addendum
           send({ phase: 'pass4', status: 'start', model: pass4Model })
+          send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 6, message: 'Validatie-addendum genereren...' })
           const valSys = 'Je valideert dekking en geeft alleen een kort ADDENDUM met ontbrekende items (of: Geen addendum noodzakelijk).'
           const valUsr = `RAPPORT:\n${extractedData.slice(0, 180000)}\n\nTAKEN: 1) Lijst ontbrekende verplichte velden/secties. 2) Kort ADDENDUM alleen met ontbrekende items; anders: \"Geen addendum noodzakelijk\".`
           try {
@@ -233,6 +248,7 @@ export async function POST(request: NextRequest) {
               extractedData += `\n\n---\nADDENDUM (dekking & ontbrekende velden)\n\n${addendum}`
             }
             send({ phase: 'pass4', status: 'done' })
+            send({ step: 'AI Analysis', progress: 99, message: 'Rapport afronden...' })
           } catch (e: any) {
             logDebug('warn', 'Pass4 validation skipped', { error: e?.message || String(e) })
             send({ phase: 'pass4', status: 'skip', error: String(e?.message || e) })
