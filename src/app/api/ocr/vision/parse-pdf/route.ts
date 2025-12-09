@@ -10,6 +10,10 @@ export async function POST(request: NextRequest) {
     start(controller) {
       const send = (data: any) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
       const logStep = (step: string, progress: number, message: string) => send({ step, progress, message })
+      const logDebug = (level: 'info' | 'warn' | 'error', message: string, data?: any) => {
+        console.log(`[VisionOCR][${level.toUpperCase()}]`, message, data || '')
+        send({ log: { level, message, timestamp: new Date().toISOString(), data: data ? JSON.stringify(data).slice(0, 500) : undefined } })
+      }
 
       const run = async () => {
         // Hoist variables for cleanup access in catch
@@ -152,10 +156,15 @@ export async function POST(request: NextRequest) {
           const pass1User = `OCR met paginamarkers (totaal ${pages}):\n\n${markedText}\n\nTAKEN:\n1) Per pagina: extraheer namen, datums, Aktenzeichen, §-verwijzingen, bloedwaarden (ng/ml), instanties.\n2) Vind kandidaat-delicten: titel + relevante paginalijst + 1 zin waarom.\n3) JSON output: {\"pages\":[{\"n\":int, \"entities\":{...}}], \"offense_candidates\":[{\"title\":\"…\",\"pages\":[..],\"reason\":\"…\"}]}`
           let idxJson: any = { offense_candidates: [] }
           try {
+            logDebug('info', `Starting pass1 with model ${pass1Model}`)
             const idxResp: any = await run(pass1Model, [ { role: 'system', content: pass1Sys }, { role: 'user', content: pass1User } ], 3000, aiTimeoutMs)
             const idxText = idxResp.choices[0]?.message?.content || '{}'
             idxJson = JSON.parse(idxText)
-          } catch {}
+            logDebug('info', 'Pass1 completed successfully', { candidates: idxJson?.offense_candidates?.length || 0 })
+          } catch (e: any) {
+            logDebug('error', 'Pass1 failed, using fallback clustering', { error: e?.message || String(e) })
+            console.error('[VisionOCR] Pass1 error:', e)
+          }
           let candidates: { title: string; pages: number[] }[] = Array.isArray(idxJson?.offense_candidates) ? idxJson.offense_candidates : []
           if (!candidates.length) {
             const clusters = [] as any[]
@@ -181,12 +190,16 @@ export async function POST(request: NextRequest) {
             const usr = `Tekst (pagina's ${JSON.stringify(c.pages)}):\n\n${excerpt}\n\nJSON schema:\n{\"title\":\"\",\"pages\":[],\"what\":\"\",\"when\":\"\",\"where\":\"\",\"case_numbers\":[],\"laws\":[],\"penalties\":\"\",\"points\":\"\",\"blood_values\":\"\",\"status\":\"\",\"quotes\":[{\"quote\":\"\",\"page\":0}]}`
             try {
               send({ phase: 'pass2', status: 'cluster:start', cluster: c.title, pages: c.pages })
+              logDebug('info', `Processing cluster: ${c.title}`, { pages: c.pages })
               const r: any = await run(pass2Model, [ { role: 'system', content: sys }, { role: 'user', content: usr } ], 4000, aiTimeoutMs)
               const txt = r.choices[0]?.message?.content || '{}'
               delicts.push(JSON.parse(txt))
               send({ phase: 'pass2', status: 'cluster:done', cluster: c.title })
+              logDebug('info', `Cluster ${c.title} completed`)
             } catch (e: any) {
-              send({ phase: 'pass2', status: 'cluster:fail', cluster: c.title, error: String(e?.message || e) })
+              const errorMsg = String(e?.message || e)
+              logDebug('error', `Cluster ${c.title} failed`, { error: errorMsg })
+              send({ phase: 'pass2', status: 'cluster:fail', cluster: c.title, error: errorMsg })
             }
             await worker()
           }
@@ -195,11 +208,18 @@ export async function POST(request: NextRequest) {
 
           // Pass 3: Consolidation
           send({ phase: 'pass3', status: 'start', model: pass3Model })
+          logDebug('info', `Starting pass3 consolidation with ${delicts.length} delicts`)
           const consSys = 'Je consolideert delict-JSON naar een volledig MPU-rapport (Nederlands) met paginaverwijzingen en korte Duitse citaten.'
           const consUsr = `DELlCTS(JSON):\n${JSON.stringify(delicts).slice(0, 180000)}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}\n\nGenereer het volledige rapport exact volgens het format.`
-          const consResp: any = await run(pass3Model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 7000, aiTimeoutMs)
-          let extractedData = consResp.choices[0]?.message?.content || ''
-          send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
+          try {
+            const consResp: any = await run(pass3Model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 7000, aiTimeoutMs)
+            let extractedData = consResp.choices[0]?.message?.content || ''
+            send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
+            logDebug('info', 'Pass3 completed', { outputLength: extractedData.length })
+          } catch (e: any) {
+            logDebug('error', 'Pass3 failed', { error: e?.message || String(e) })
+            throw e // Re-throw to be caught by outer catch
+          }
 
           // Pass 4: Validation addendum
           send({ phase: 'pass4', status: 'start', model: pass4Model })
@@ -213,6 +233,7 @@ export async function POST(request: NextRequest) {
             }
             send({ phase: 'pass4', status: 'done' })
           } catch (e: any) {
+            logDebug('warn', 'Pass4 validation skipped', { error: e?.message || String(e) })
             send({ phase: 'pass4', status: 'skip', error: String(e?.message || e) })
           }
 
@@ -260,7 +281,10 @@ export async function POST(request: NextRequest) {
           send({ result })
           controller.close()
         } catch (e: any) {
-          send({ step: 'Error', progress: 0, message: e?.message || 'Processing failed', error: true })
+          const errorMsg = e?.message || 'Processing failed'
+          logDebug('error', 'Processing failed', { error: errorMsg, stack: e?.stack })
+          console.error('[VisionOCR] Fatal error:', e)
+          send({ step: 'Error', progress: 0, message: errorMsg, error: true, log: { level: 'error', message: errorMsg, timestamp: new Date().toISOString() } })
           // Attempt cleanup on failure (best-effort)
           try {
             if (typeof inputBucket === 'string' && typeof inputKey === 'string') {

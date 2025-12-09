@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Bug } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +15,13 @@ interface ProcessingStatus {
   step: string;
   progress: number;
   message: string;
+}
+
+interface DebugLog {
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  timestamp: string;
+  data?: string;
 }
 
 interface ExtractionResult {
@@ -43,6 +50,8 @@ export default function DocumentProcessor() {
   const { toast } = useToast()
   const { t } = useI18n()
   const [isDragActive, setIsDragActive] = useState(false)
+  const [debugLogs, setDebugLogs] = useState<DebugLog[]>([])
+  const [showDebugLogs, setShowDebugLogs] = useState(false)
 
   useEffect(() => {
     // Check URL parameters for user ID and name
@@ -233,6 +242,7 @@ export default function DocumentProcessor() {
     setIsProcessing(true);
     setError(null);
     setResult(null);
+    setDebugLogs([]); // Clear previous logs
     try {
       // Upload original PDF to UploadThing to obtain a public URL
       setProcessingStatus({ step: 'Uploading PDF', progress: 10, message: 'Uploading PDF to secure storage...' });
@@ -268,6 +278,7 @@ export default function DocumentProcessor() {
 
       const ocrReader = ocrResp.body.getReader();
       const decoder = new TextDecoder();
+      setDebugLogs([]) // Clear previous logs
       while (true) {
         const { done, value } = await ocrReader.read();
         if (done) break;
@@ -277,6 +288,27 @@ export default function DocumentProcessor() {
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            
+            // Handle debug logs
+            if (data.log) {
+              setDebugLogs(prev => [...prev, data.log].slice(-100)) // Keep last 100 logs
+              if (data.log.level === 'error') {
+                setShowDebugLogs(true) // Auto-show on errors
+              }
+            }
+            
+            // Handle phase updates (pass1, pass2, etc.)
+            if (data.phase) {
+              const phaseMsg = `Phase ${data.phase}: ${data.status || 'processing'}`
+              if (data.status === 'cluster:fail' || data.status === 'skip') {
+                setDebugLogs(prev => [...prev, {
+                  level: 'warn',
+                  message: `${phaseMsg}${data.error ? ` - ${data.error}` : ''}`,
+                  timestamp: new Date().toISOString()
+                }].slice(-100))
+              }
+            }
+            
             if (data.error) throw new Error(data.message || 'Processing failed');
             if (typeof data.progress === 'number') {
               setProcessingStatus({ step: data.step || 'Processing', progress: Math.min(100, Math.max(10, Math.round(data.progress))), message: data.message || 'Processing...' });
@@ -288,7 +320,16 @@ export default function DocumentProcessor() {
                 saveResultsToUser(data.result);
               }
             }
-          } catch {}
+          } catch (parseError) {
+            // Log parsing errors instead of silently swallowing them
+            console.error('Error parsing SSE data:', parseError, 'Line:', line.slice(0, 200))
+            setDebugLogs(prev => [...prev, {
+              level: 'error',
+              message: `Failed to parse server message: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+              timestamp: new Date().toISOString(),
+              data: line.slice(0, 200)
+            }].slice(-100))
+          }
         }
       }
     } catch (err) {
@@ -566,6 +607,65 @@ export default function DocumentProcessor() {
                    <p className="text-sm text-gray-600">{processingStatus.message}</p>
                   </div>
                 </CardContent>
+              </Card>
+            )}
+
+            {/* Debug Logs Panel */}
+            {(debugLogs.length > 0 || isProcessing) && (
+              <Card className="border-gray-300">
+                <CardHeader className="pb-3">
+                  <button
+                    onClick={() => setShowDebugLogs(!showDebugLogs)}
+                    className="flex items-center justify-between w-full text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Bug className="h-4 w-4 text-gray-500" />
+                      <CardTitle className="text-sm font-medium">
+                        Debug Logs {debugLogs.length > 0 && `(${debugLogs.length})`}
+                      </CardTitle>
+                      {debugLogs.filter(l => l.level === 'error').length > 0 && (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                          {debugLogs.filter(l => l.level === 'error').length} errors
+                        </span>
+                      )}
+                    </div>
+                    {showDebugLogs ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </button>
+                </CardHeader>
+                {showDebugLogs && (
+                  <CardContent>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-xs max-h-96 overflow-y-auto">
+                      {debugLogs.length === 0 ? (
+                        <div className="text-gray-500">No debug logs yet...</div>
+                      ) : (
+                        <div className="space-y-1">
+                          {debugLogs.map((log, idx) => {
+                            const time = new Date(log.timestamp).toLocaleTimeString()
+                            const levelColors = {
+                              info: 'text-blue-400',
+                              warn: 'text-yellow-400',
+                              error: 'text-red-400'
+                            }
+                            return (
+                              <div key={idx} className="flex gap-2">
+                                <span className="text-gray-500">{time}</span>
+                                <span className={levelColors[log.level]}>[{log.level.toUpperCase()}]</span>
+                                <span className="flex-1">{log.message}</span>
+                                {log.data && (
+                                  <span className="text-gray-500 text-xs">({log.data})</span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
 
