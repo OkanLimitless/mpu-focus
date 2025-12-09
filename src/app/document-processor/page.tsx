@@ -62,6 +62,54 @@ export default function DocumentProcessor() {
       ...(typeof log?.data === 'string' ? { data: log.data } : {})
     }
   }
+  const processSseBuffer = (
+    buffer: string,
+    onMessage: (data: any) => void,
+    source: string
+  ): string => {
+    const events = buffer.split('\n\n')
+    const remainder = events.pop() ?? ''
+    for (const evt of events) {
+      const payload = evt
+        .split('\n')
+        .filter(line => line.startsWith('data:'))
+        .map(line => line.replace(/^data:\s?/, ''))
+        .join('\n')
+      if (!payload) continue
+      let data: any
+      try {
+        data = JSON.parse(payload)
+      } catch (err) {
+        console.error(`Error parsing SSE data from ${source}:`, err, 'Payload fragment:', payload.slice(0, 200))
+        appendDebugLog({
+          level: 'error',
+          message: `Failed to parse server message (${source}): ${err instanceof Error ? err.message : String(err)}`,
+          timestamp: new Date().toISOString(),
+          data: payload.slice(0, 200)
+        })
+        continue
+      }
+      onMessage(data)
+    }
+    return remainder
+  }
+  const consumeSseStream = async (
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    onMessage: (data: any) => void,
+    source: string
+  ) => {
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      buffer = processSseBuffer(buffer, onMessage, source)
+    }
+    if (buffer.trim()) {
+      processSseBuffer(`${buffer}\n\n`, onMessage, source) // flush remaining partial event
+    }
+  }
 
   useEffect(() => {
     // Check URL parameters for user ID and name
@@ -211,34 +259,17 @@ export default function DocumentProcessor() {
       }
 
       const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
       if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.status) {
-                  setProcessingStatus(data.status);
-                } else if (data.result) {
-                  setResult(data.result);
-                  setIsProcessing(false);
-                } else if (data.error) {
-                  throw new Error(data.error);
-                }
-              } catch (e) {
-                // Ignore JSON parse errors for incomplete chunks
-              }
-            }
+        await consumeSseStream(reader, data => {
+          if (data.status) {
+            setProcessingStatus(data.status);
+          } else if (data.result) {
+            setResult(data.result);
+            setIsProcessing(false);
+          } else if (data.error) {
+            throw new Error(data.error);
           }
-        }
+        }, 'process-from-url')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -287,62 +318,41 @@ export default function DocumentProcessor() {
       }
 
       const ocrReader = ocrResp.body.getReader();
-      const decoder = new TextDecoder();
       setDebugLogs([]) // Clear previous logs
-      while (true) {
-        const { done, value } = await ocrReader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            
-            // Handle debug logs
-            if (data.log) {
-              const logEntry = normalizeDebugLog(data.log)
-              appendDebugLog(logEntry) // Keep last 100 logs
-              if (logEntry.level === 'error') {
-                setShowDebugLogs(true) // Auto-show on errors
-              }
-            }
-            
-            // Handle phase updates (pass1, pass2, etc.)
-            if (data.phase) {
-              const phaseMsg = `Phase ${data.phase}: ${data.status || 'processing'}`
-              if (data.status === 'cluster:fail' || data.status === 'skip') {
-                appendDebugLog({
-                  level: 'warn',
-                  message: `${phaseMsg}${data.error ? ` - ${data.error}` : ''}`,
-                  timestamp: new Date().toISOString()
-                })
-              }
-            }
-            
-            if (data.error) throw new Error(data.message || 'Processing failed');
-            if (typeof data.progress === 'number') {
-              setProcessingStatus({ step: data.step || 'Processing', progress: Math.min(100, Math.max(10, Math.round(data.progress))), message: data.message || 'Processing...' });
-            }
-            if (data.result) {
-              setResult(data.result);
-              setIsProcessing(false);
-              if (targetUserId && data.result.extractedData) {
-                saveResultsToUser(data.result);
-              }
-            }
-          } catch (parseError) {
-            // Log parsing errors instead of silently swallowing them
-            console.error('Error parsing SSE data:', parseError, 'Line:', line.slice(0, 200))
+      await consumeSseStream(ocrReader, data => {
+        // Handle debug logs
+        if (data.log) {
+          const logEntry = normalizeDebugLog(data.log)
+          appendDebugLog(logEntry) // Keep last 100 logs
+          if (logEntry.level === 'error') {
+            setShowDebugLogs(true) // Auto-show on errors
+          }
+        }
+
+        // Handle phase updates (pass1, pass2, etc.)
+        if (data.phase) {
+          const phaseMsg = `Phase ${data.phase}: ${data.status || 'processing'}`
+          if (data.status === 'cluster:fail' || data.status === 'skip') {
             appendDebugLog({
-              level: 'error',
-              message: `Failed to parse server message: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-              timestamp: new Date().toISOString(),
-              data: line.slice(0, 200)
+              level: 'warn',
+              message: `${phaseMsg}${data.error ? ` - ${data.error}` : ''}`,
+              timestamp: new Date().toISOString()
             })
           }
         }
-      }
+
+        if (data.error) throw new Error(data.message || 'Processing failed');
+        if (typeof data.progress === 'number') {
+          setProcessingStatus({ step: data.step || 'Processing', progress: Math.min(100, Math.max(10, Math.round(data.progress))), message: data.message || 'Processing...' });
+        }
+        if (data.result) {
+          setResult(data.result);
+          setIsProcessing(false);
+          if (targetUserId && data.result.extractedData) {
+            saveResultsToUser(data.result);
+          }
+        }
+      }, 'vision-parse-pdf')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsProcessing(false);
@@ -364,33 +374,22 @@ export default function DocumentProcessor() {
     }
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const data = JSON.parse(line.slice(6));
-          if (data.error) throw new Error(data.message || 'Processing failed');
-          const adjustedProgress = 75 + (data.progress || 0) * 0.25;
-          setProcessingStatus({
-            step: data.step || 'Processing',
-            progress: Math.min(100, Math.round(adjustedProgress)),
-            message: data.message || 'Processing...'
-          });
-          if (data.result) {
-            setResult(data.result);
-            setIsProcessing(false);
-            if (targetUserId && data.result.extractedData) {
-              saveResultsToUser(data.result);
-            }
-          }
-        } catch {}
+    await consumeSseStream(reader, data => {
+      if (data.error) throw new Error(data.message || 'Processing failed');
+      const adjustedProgress = 75 + (data.progress || 0) * 0.25;
+      setProcessingStatus({
+        step: data.step || 'Processing',
+        progress: Math.min(100, Math.round(adjustedProgress)),
+        message: data.message || 'Processing...'
+      });
+      if (data.result) {
+        setResult(data.result);
+        setIsProcessing(false);
+        if (targetUserId && data.result.extractedData) {
+          saveResultsToUser(data.result);
+        }
       }
-    }
+    }, 'process-image-urls')
   };
 
   const resetForm = () => {
