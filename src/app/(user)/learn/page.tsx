@@ -1,212 +1,130 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { BookOpen } from 'lucide-react'
-import { useI18n } from '@/components/providers/i18n-provider'
 
-type VideoProgress = {
-  isCompleted?: boolean
+type VideoItem = {
+  id: string
+  title: string
+  description: string | null
+  videoUrl: string
+  thumbnailUrl: string | null
+  durationSeconds: number | null
+  category: string
+  orderIndex: number
 }
 
-type Video = {
-  _id: string
-  title?: string
-  duration?: number
-  progress?: VideoProgress | null
-}
-
-type Chapter = {
-  _id: string
-  title?: string
-  order: number
-  videos: Video[]
-}
-
-type ModuleGroup = {
-  key: string
-  label: string
-  chapters: Chapter[]
-}
-
-export default function LearnHomePage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const { t } = useI18n()
-  const [modules, setModules] = useState<ModuleGroup[]>([])
-  const [userProgress, setUserProgress] = useState<{ currentChapterOrder: number } | null>(null)
+export default function LearnPage() {
+  const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeVideo, setActiveVideo] = useState<VideoItem | null>(null)
 
   useEffect(() => {
-    if (status === 'loading') return
-    if (!session) {
-      router.push('/login')
-      return
-    }
-    if (session.user.role === 'admin') {
-      router.push('/admin')
-      return
-    }
     ;(async () => {
       try {
-        const detailsRes = await fetch('/api/user/details')
-        const details = detailsRes.ok ? await detailsRes.json() : null
-        if (!details?.user || details.user.verificationStatus !== 'verified') {
-          router.push('/dashboard')
-          return
+        const response = await fetch('/api/videos', { cache: 'no-store' })
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Failed to load videos')
         }
-        const courseRes = await fetch('/api/course')
-        if (courseRes.ok) {
-          const data = await courseRes.json()
-          setModules(data.modules || [])
-          setUserProgress(data.userProgress || null)
-        }
+        const list: VideoItem[] = payload?.videos || []
+        setVideos(list)
+        setActiveVideo(list[0] || null)
+      } catch (err: any) {
+        setError(err?.message || 'Failed to load videos')
       } finally {
         setLoading(false)
       }
     })()
-  }, [session, status, router])
+  }, [])
 
-  const continueTarget = useMemo<{ key: string; chapterId: string } | null>(() => {
-    if (!modules.length || !userProgress) return null
-    const currentOrder = userProgress.currentChapterOrder
-    let target: { key: string; chapterId: string } | null = null
-    modules.forEach(group => {
-      group.chapters.forEach(ch => {
-        if (!target && ch.order === currentOrder) {
-          target = { key: group.key, chapterId: ch._id }
-        }
-      })
-    })
-    return target
-  }, [modules, userProgress])
-
-  const nextSteps = useMemo(() => {
-    // Find next 1-2 videos based on current chapter order
-    if (!modules.length || !userProgress) return [] as Array<{ title: string; moduleKey: string; chapterId: string; duration?: number }>
-    const currentOrder = userProgress.currentChapterOrder
-    const items: Array<{ title: string; moduleKey: string; chapterId: string; duration?: number }> = []
-    modules.forEach(group => {
-      group.chapters.forEach(ch => {
-        if (ch.order === currentOrder) {
-          const nextVideo = ch.videos.find(v => !v.progress?.isCompleted)
-          if (nextVideo) {
-            items.push({ title: nextVideo.title || 'Nächste Lektion', moduleKey: group.key, chapterId: ch._id, duration: nextVideo.duration })
-          }
-        }
-      })
-    })
-    return items.slice(0, 2)
-  }, [modules, userProgress])
-
-  if (status === 'loading' || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
+  const grouped = useMemo(() => {
+    return videos.reduce<Record<string, VideoItem[]>>((acc, item) => {
+      if (!acc[item.category]) acc[item.category] = []
+      acc[item.category].push(item)
+      return acc
+    }, {})
+  }, [videos])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="relative h-40 md:h-56 bg-gray-800 flex items-center justify-center">
-        <h1 className="text-2xl md:text-4xl font-extrabold text-white">{t('campusTitle')}</h1>
-      </div>
-
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-        {continueTarget && (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="py-4 flex items-center justify-between gap-4">
-              <div>
-                <div className="text-sm text-green-700 font-medium">{t('continueWhereLeftOff')}</div>
-                <div className="text-xs text-green-700/80">{t('resumeCourse')}</div>
-              </div>
-              <Button className="bg-green-600 hover:bg-green-700" onClick={() => router.push(`/learn/${continueTarget.key}/${continueTarget.chapterId}`)}>
-                {t('resume')}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Next steps */}
-        {nextSteps.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('nextSteps')}</CardTitle>
-              <CardDescription>{t('nextStepsSubtitle')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {nextSteps.map((step, idx) => (
-                  <Button key={idx} variant="outline" onClick={() => router.push(`/learn/${step.moduleKey}/${step.chapterId}`)}>
-                    {t('continueInModule')}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <h2 className="text-2xl md:text-3xl font-bold">{t('yourCourse')}</h2>
-
-        <div className="space-y-6">
-          {modules.map((group) => {
-            const hasProgress = group.chapters.some(ch => ch.videos.some(v => v.progress?.isCompleted))
-            return (
-              <Card key={group.key} className="overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl">{group.label}</CardTitle>
-                    <CardDescription>
-                      {t('watchVideosAndTrack')}
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => router.push(`/learn/${group.key}`)} className="bg-green-500 hover:bg-green-600">
-                    {hasProgress ? t('resume') : t('startCourse')}
-                  </Button>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center gap-3 text-sm text-gray-600">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{t('modulesCount', { count: group.chapters.length })}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
+        <div className="rounded-xl bg-white border p-6">
+          <h1 className="text-2xl md:text-3xl font-bold">Learning Environment</h1>
+          <p className="text-sm text-slate-600 mt-2">
+            Stream your training content directly from the Supabase video library.
+          </p>
         </div>
 
-        {/* Course Map */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Kurskarte</CardTitle>
-            <CardDescription>Überblick über Module und Kapitel</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="border rounded-lg p-3 bg-blue-50 border-blue-200">
-                <div className="font-semibold mb-2">{t('practiceBeta')}</div>
-                <p className="text-sm text-blue-800 mb-3">{t('quizSubtitle')}</p>
-                <Button variant="outline" onClick={() => router.push('/quiz')}>{t('quizStartPractice')}</Button>
-              </div>
-              {modules.map((group) => (
-                <div key={group.key} className="border rounded-lg p-3">
-                  <div className="font-semibold mb-2">{group.label}</div>
-                  <div className="space-y-1 text-sm">
-                    {group.chapters.map((ch) => (
-                      <button key={ch._id} onClick={() => router.push(`/learn/${group.key}/${ch._id}`)} className="block w-full text-left p-2 rounded hover:bg-gray-50">
-                        {ch.order}. {ch.title || ch._id}
-                      </button>
-                    ))}
+        {loading && (
+          <Card>
+            <CardContent className="py-10 text-center text-slate-600">Loading videos...</CardContent>
+          </Card>
+        )}
+
+        {error && (
+          <Card>
+            <CardContent className="py-10 text-center text-red-600">{error}</CardContent>
+          </Card>
+        )}
+
+        {!loading && !error && (
+          <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6 items-start">
+            <Card className="overflow-hidden">
+              <CardHeader>
+                <CardTitle>{activeVideo?.title || 'Select a lesson'}</CardTitle>
+                <CardDescription>{activeVideo?.description || 'Choose a video from the library.'}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeVideo ? (
+                  <video
+                    key={activeVideo.id}
+                    controls
+                    className="w-full rounded-lg bg-black"
+                    poster={activeVideo.thumbnailUrl || undefined}
+                    src={activeVideo.videoUrl}
+                  />
+                ) : (
+                  <div className="text-sm text-slate-600">No videos are published yet.</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Video Library</CardTitle>
+                <CardDescription>{videos.length} published lesson(s)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {Object.entries(grouped).map(([category, items]) => (
+                  <div key={category} className="space-y-2">
+                    <Badge variant="secondary">{category}</Badge>
+                    <div className="space-y-2">
+                      {items.map((video) => (
+                        <Button
+                          key={video.id}
+                          type="button"
+                          variant={activeVideo?.id === video.id ? 'default' : 'outline'}
+                          className="w-full justify-start h-auto py-2"
+                          onClick={() => setActiveVideo(video)}
+                        >
+                          <span className="truncate text-left">
+                            {video.title}
+                            {video.durationSeconds ? ` • ${Math.round(video.durationSeconds / 60)} min` : ''}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+                {!videos.length && <p className="text-sm text-slate-600">No videos available yet.</p>}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )

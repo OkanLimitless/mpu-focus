@@ -1,160 +1,177 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Lead from '@/models/Lead'
+import { assertAdminRequest } from '@/lib/admin-auth'
+import { supabaseCount, supabaseRest } from '@/lib/supabase-rest'
+
+type SignupRow = {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  goals: string | null
+  status: 'new' | 'contacted' | 'enrolled' | 'closed'
+  notes: string | null
+  created_at: string
+  updated_at: string
+  source: string | null
+  tags: string[] | null
+}
+
+function formatLead(row: SignupRow) {
+  return {
+    _id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    goals: row.goals,
+    status: row.status,
+    notes: row.notes,
+    source: row.source,
+    tags: row.tags || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function buildGoals(body: any): string {
+  const parts: string[] = []
+  if (body?.goals) parts.push(String(body.goals))
+  if (body?.timeframe) parts.push(`Timeframe: ${body.timeframe}`)
+  if (body?.reason) parts.push(`Reason: ${body.reason}`)
+  if (Array.isArray(body?.concerns) && body.concerns.length) {
+    parts.push(`Concerns: ${body.concerns.join(', ')}`)
+  }
+  if (Array.isArray(body?.mpuChallenges) && body.mpuChallenges.length) {
+    parts.push(`Challenges: ${body.mpuChallenges.join(', ')}`)
+  }
+  if (Array.isArray(body?.availability) && body.availability.length) {
+    parts.push(`Availability: ${body.availability.join(', ')}`)
+  }
+  if (typeof body?.jobLoss === 'boolean') {
+    parts.push(`Job loss: ${body.jobLoss ? 'Yes' : 'No'}`)
+  }
+  return parts.join('\n').slice(0, 4000)
+}
+
+function validateEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB()
-
     const body = await request.json()
-    
-    // Validate required fields
-    const {
-      firstName,
-      lastName,
-      email,
-      phone,
-      timeframe,
-      reason,
-      jobLoss,
-      mpuChallenges,
-      concerns,
-      availability
-    } = body
+    const firstName = String(body?.firstName || '').trim()
+    const lastName = String(body?.lastName || '').trim()
+    const email = String(body?.email || '').trim().toLowerCase()
+    const phone = String(body?.phone || '').trim()
 
-    if (!firstName || !lastName || !email || !phone || !timeframe || !reason || 
-        jobLoss === undefined || !mpuChallenges || !concerns || !availability) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      )
+    if (!firstName || !lastName || !email || !phone) {
+      return NextResponse.json({ error: 'firstName, lastName, email and phone are required' }, { status: 400 })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
+    if (!validateEmail(email)) {
+      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
 
-    // Check if lead with this email already exists
-    const existingLead = await Lead.findOne({ email: email.toLowerCase() })
-    if (existingLead) {
-      return NextResponse.json(
-        { error: 'A lead with this email already exists' },
-        { status: 409 }
-      )
-    }
-
-    // Create new lead
-    const newLead = new Lead({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone.trim(),
-      timeframe,
-      reason,
-      jobLoss,
-      mpuChallenges: Array.isArray(mpuChallenges) ? mpuChallenges : [],
-      concerns: Array.isArray(concerns) ? concerns : [],
-      availability: Array.isArray(availability) ? availability : [],
-      status: 'new'
+    const { data } = await supabaseRest<SignupRow[]>({
+      path: 'mpu_signups',
+      method: 'POST',
+      body: {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        goals: buildGoals(body) || null,
+        source: body?.source ? String(body.source) : 'website',
+      },
+      prefer: 'return=representation',
     })
 
-    await newLead.save()
-
-    // Return success response (without sensitive data)
     return NextResponse.json({
       success: true,
-      message: 'Lead created successfully',
-      leadId: newLead._id
+      message: 'Signup created successfully',
+      leadId: data?.[0]?.id,
     }, { status: 201 })
-
-  } catch (error) {
-    console.error('Error creating lead:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    const message = String(error?.message || '')
+    if (message.toLowerCase().includes('duplicate') || message.toLowerCase().includes('unique')) {
+      return NextResponse.json({ error: 'A signup with this email already exists' }, { status: 409 })
+    }
+    console.error('Error creating signup:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB()
+    assertAdminRequest(request)
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const status = searchParams.get('status') || 'all'
-    const search = searchParams.get('search') || ''
+    const page = Math.max(1, Number(searchParams.get('page') || 1))
+    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || 20)))
+    const status = String(searchParams.get('status') || 'all')
+    const search = String(searchParams.get('search') || '').trim()
+    const offset = (page - 1) * limit
 
-    // Build query
-    const query: any = {}
-    
+    const query: Record<string, string | number> = {
+      select: '*',
+      order: 'created_at.desc',
+      limit,
+      offset,
+    }
+
     if (status !== 'all') {
-      query.status = status
+      query.status = `eq.${status}`
     }
 
     if (search) {
-      query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
-      ]
+      // PostgREST OR syntax: or=(first_name.ilike.*abc*,email.ilike.*abc*)
+      query.or = `(first_name.ilike.*${search}*,last_name.ilike.*${search}*,email.ilike.*${search}*,phone.ilike.*${search}*)`
     }
 
-    // Get total count
-    const total = await Lead.countDocuments(query)
-
-    // Get leads with pagination
-    const leads = await Lead.find(query)
-      .populate('contactedBy', 'firstName lastName email')
-      .populate('convertedToUserId', 'firstName lastName email')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-
-    // Get statistics
-    const stats = await Lead.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
+    const [{ data: rows }, total, newCount, contactedCount, enrolledCount, closedCount] = await Promise.all([
+      supabaseRest<SignupRow[]>({
+        path: 'mpu_signups',
+        query,
+        useServiceRole: true,
+      }),
+      supabaseCount({
+        path: 'mpu_signups',
+        query: {
+          ...(status !== 'all' ? { status: `eq.${status}` } : {}),
+          ...(search
+            ? { or: `(first_name.ilike.*${search}*,last_name.ilike.*${search}*,email.ilike.*${search}*,phone.ilike.*${search}*)` }
+            : {}),
+        },
+        useServiceRole: true,
+      }),
+      supabaseCount({ path: 'mpu_signups', query: { status: 'eq.new' }, useServiceRole: true }),
+      supabaseCount({ path: 'mpu_signups', query: { status: 'eq.contacted' }, useServiceRole: true }),
+      supabaseCount({ path: 'mpu_signups', query: { status: 'eq.enrolled' }, useServiceRole: true }),
+      supabaseCount({ path: 'mpu_signups', query: { status: 'eq.closed' }, useServiceRole: true }),
     ])
 
-    const statusCounts = {
-      new: 0,
-      contacted: 0,
-      converted: 0,
-      closed: 0
-    }
-
-    stats.forEach(stat => {
-      statusCounts[stat._id as keyof typeof statusCounts] = stat.count
-    })
-
     return NextResponse.json({
-      leads,
+      leads: (rows || []).map(formatLead),
       pagination: {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit),
       },
-      stats: statusCounts
+      stats: {
+        new: newCount,
+        contacted: contactedCount,
+        converted: enrolledCount,
+        closed: closedCount,
+      },
     })
-
-  } catch (error) {
-    console.error('Error fetching leads:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error: any) {
+    if (String(error?.message) === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    console.error('Error fetching signups:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

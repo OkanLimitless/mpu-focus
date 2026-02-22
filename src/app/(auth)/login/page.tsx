@@ -39,7 +39,7 @@ export default function LoginPage() {
           title: t('loginSuccessTitle'),
           description: t('redirecting'),
         })
-        router.push('/dashboard')
+        router.push('/learn')
       }
     } catch (error) {
       toast({

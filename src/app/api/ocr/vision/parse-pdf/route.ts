@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
           const pass4Model = process.env.OCR_PASS4_MODEL || 'gpt-5-nano'
           const clusterConcurrency = Math.max(1, Math.min(4, parseInt(process.env.OCR_CLUSTER_CONCURRENCY || '2', 10) || 2))
           const aiTimeoutMs = Math.max(30000, Math.min(240000, parseInt(process.env.OCR_LLM_TIMEOUT_MS || '120000', 10) || 120000))
+          const pass3TimeoutMs = Math.min(240000, Math.max(aiTimeoutMs, 180000)) // consolidation often needs a bit more time
           const clusterProgressBase = 78 // after pass1/vision; keep bar moving through clustering
           const clusterProgressSpan = 16  // finish around 94 before pass3
 
@@ -224,16 +225,53 @@ export async function POST(request: NextRequest) {
           send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 1, message: 'Consolideren van delict-JSON...' })
           logDebug('info', `Starting pass3 consolidation with ${delicts.length} delicts`)
           const consSys = 'Je consolideert delict-JSON naar een volledig MPU-rapport (Nederlands) met paginaverwijzingen en korte Duitse citaten.'
-          const consUsr = `DELlCTS(JSON):\n${JSON.stringify(delicts).slice(0, 180000)}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}\n\nGenereer het volledige rapport exact volgens het format.`
-          try {
-            const consResp: any = await run(pass3Model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 7000, aiTimeoutMs)
-            extractedData = consResp.choices[0]?.message?.content || ''
-            send({ phase: 'pass3', status: 'done', outputChars: extractedData.length })
-            logDebug('info', 'Pass3 completed', { outputLength: extractedData.length })
-            send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 4, message: 'Validatie-addendum voorbereiden...' })
-          } catch (e: any) {
-            logDebug('error', 'Pass3 failed', { error: e?.message || String(e) })
-            throw e // Re-throw to be caught by outer catch
+          const compactDelicts = (arr: any[]) => arr.map(d => ({
+            title: d?.title || '',
+            pages: Array.isArray(d?.pages) ? d.pages : [],
+            what: (d?.what || '').slice(0, 400),
+            when: (d?.when || '').slice(0, 200),
+            where: (d?.where || '').slice(0, 200),
+            case_numbers: Array.isArray(d?.case_numbers) ? (d.case_numbers as any[]).slice(0, 3) : [],
+            laws: Array.isArray(d?.laws) ? (d.laws as any[]).slice(0, 5) : [],
+            penalties: (d?.penalties || '').slice(0, 300),
+            points: (d?.points || '').slice(0, 120),
+            blood_values: (d?.blood_values || '').slice(0, 200),
+            status: (d?.status || '').slice(0, 200),
+            quotes: Array.isArray(d?.quotes) ? d.quotes.slice(0, 2).map((q: any) => ({ quote: (q?.quote || '').slice(0, 160), page: q?.page })) : []
+          }))
+          const buildConsUser = (items: any[], note?: string) => {
+            const jsonBlock = JSON.stringify(items).slice(0, 180000)
+            const metaNote = note ? `\n\nLET OP: ${note}` : ''
+            return `DELlCTS(JSON):\n${jsonBlock}\n\nMetadata:\n- Bestandsnaam: ${fileName || 'Niet vermeld'}\n- Totaal pagina's: ${pages}\n- Datum rapport: ${new Date().toLocaleDateString('de-DE')}${metaNote}\n\nGenereer het volledige rapport exact volgens het format.`
+          }
+          const consAttempts = [
+            { model: pass3Model, timeout: pass3TimeoutMs, payload: delicts, note: undefined as string | undefined, label: 'primary' },
+            { model: process.env.OCR_PASS3_FALLBACK_MODEL || pass3Model || 'gpt-5-nano', timeout: Math.min(pass3TimeoutMs + 60000, 240000), payload: compactDelicts(delicts), note: 'Compacte input na time-out; gebruik alleen deze feiten en geen aannames.' }
+          ]
+          let consError: any
+          for (let attempt = 0; attempt < consAttempts.length; attempt++) {
+            const { model, timeout, payload, note, label } = consAttempts[attempt]
+            const attemptName = `pass3-${attempt + 1}-${label}`
+            if (attempt > 0) {
+              send({ phase: 'pass3', status: 'retry', attempt: attempt + 1, model, reason: consError?.message || 'retry' })
+              logDebug('warn', 'Pass3 retrying', { attempt: attempt + 1, model, timeout })
+            }
+            const consUsr = buildConsUser(payload, note)
+            try {
+              const consResp: any = await run(model, [ { role: 'system', content: consSys }, { role: 'user', content: consUsr } ], 6000, timeout)
+              extractedData = consResp.choices[0]?.message?.content || ''
+              send({ phase: 'pass3', status: 'done', outputChars: extractedData.length, attempt: attempt + 1 })
+              logDebug('info', 'Pass3 completed', { attempt: attemptName, outputLength: extractedData.length })
+              send({ step: 'AI Analysis', progress: clusterProgressBase + clusterProgressSpan + 4, message: 'Validatie-addendum voorbereiden...' })
+              consError = null
+              break
+            } catch (e: any) {
+              consError = e
+              logDebug('error', 'Pass3 failed', { attempt: attemptName, error: e?.message || String(e) })
+            }
+          }
+          if (!extractedData) {
+            throw consError || new Error('Pass3 failed after retries')
           }
 
           // Pass 4: Validation addendum

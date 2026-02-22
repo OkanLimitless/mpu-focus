@@ -1,171 +1,104 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import mongoose from 'mongoose'
+import { assertAdminRequest } from '@/lib/admin-auth'
+import { supabaseRest } from '@/lib/supabase-rest'
 
-// Force dynamic rendering for this API route
-export const dynamic = 'force-dynamic'
+type VideoRow = {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  thumbnail_url: string | null
+  duration_seconds: number | null
+  category: string
+  order_index: number
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
+function mapVideo(row: VideoRow) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    videoUrl: row.video_url,
+    thumbnailUrl: row.thumbnail_url,
+    durationSeconds: row.duration_seconds,
+    category: row.category,
+    orderIndex: row.order_index,
+    isPublished: row.is_published,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    assertAdminRequest(request)
 
-    const { default: connectDB } = await import('@/lib/mongodb')
-    const { default: User } = await import('@/models/User')
-    const { default: Video } = await import('@/models/Video')
-    const { default: Chapter } = await import('@/models/Chapter')
-    
-    await connectDB()
-
-    // Check if user is admin
-    const adminUser = await User.findOne({ email: session.user.email })
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      )
-    }
-
-    // Get all videos with chapter information
-    const videos = await Video.find()
-      .populate('chapterId', 'title')
-      .sort({ order: 1, createdAt: -1 })
-      .lean()
-
-    return NextResponse.json({
-      videos: videos.map(video => ({
-        ...video,
-        chapterTitle: video.chapterId?.title || 'No Chapter'
-      }))
+    const { data } = await supabaseRest<VideoRow[]>({
+      path: 'mpu_video_library',
+      query: {
+        select: '*',
+        order: 'order_index.asc,created_at.desc',
+      },
+      useServiceRole: true,
     })
 
+    return NextResponse.json({ videos: (data || []).map(mapVideo) })
   } catch (error: any) {
+    if (String(error?.message) === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error fetching videos:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
-    
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    assertAdminRequest(request)
+
+    const body = await request.json()
+    const title = String(body?.title || '').trim()
+    const videoUrl = String(body?.videoUrl || '').trim()
+    const description = body?.description ? String(body.description).trim() : null
+    const category = body?.category ? String(body.category).trim() : 'general'
+    const thumbnailUrl = body?.thumbnailUrl ? String(body.thumbnailUrl).trim() : null
+    const durationSeconds = body?.durationSeconds ? Number(body.durationSeconds) : null
+    const orderIndex = body?.orderIndex ? Number(body.orderIndex) : 0
+    const isPublished = body?.isPublished !== undefined ? Boolean(body.isPublished) : true
+
+    if (!title || !videoUrl) {
+      return NextResponse.json({ error: 'title and videoUrl are required' }, { status: 400 })
     }
 
-    const { default: connectDB } = await import('@/lib/mongodb')
-    const { default: User } = await import('@/models/User')
-    const { default: Video } = await import('@/models/Video')
-    const { default: Chapter } = await import('@/models/Chapter')
-    const { default: Course } = await import('@/models/Course')
-    const { getMuxAsset } = await import('@/lib/mux')
-    
-    await connectDB()
-
-    // Check if user is admin
-    const adminUser = await User.findOne({ email: session.user.email })
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      )
-    }
-
-    const { title, description, muxAssetId, order, chapterId } = await request.json()
-
-    if (!title || !chapterId) {
-      return NextResponse.json(
-        { error: 'Title and Chapter are required' },
-        { status: 400 }
-      )
-    }
-
-    if (!description || description.trim() === '') {
-      return NextResponse.json(
-        { error: 'Description is required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate that chapterId is a valid ObjectId
-    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
-      return NextResponse.json(
-        { error: 'Invalid Chapter ID format' },
-        { status: 400 }
-      )
-    }
-
-    // If Mux Asset ID is provided, fetch details from Mux
-    let muxPlaybackId = ''
-    let duration = 0
-    let status = 'ready' // Default to ready for videos without Mux
-
-    if (muxAssetId) {
-      try {
-        const muxAsset = await getMuxAsset(muxAssetId)
-        // Prefer signed playback id
-        const signed = (muxAsset.playbackIds || []).find((p: any) => p.policy === 'signed')
-        muxPlaybackId = (signed?.id) || muxAsset.playbackId || ''
-        duration = muxAsset.duration || 0
-        status = muxAsset.status || 'preparing'
-      } catch (error) {
-        console.error('Error fetching Mux asset:', error)
-        return NextResponse.json(
-          { error: 'Invalid Mux Asset ID or unable to fetch asset details' },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Verify chapter exists
-    const chapter = await Chapter.findById(chapterId)
-    if (!chapter) {
-      return NextResponse.json(
-        { error: 'Chapter not found' },
-        { status: 404 }
-      )
-    }
-
-    // Create new video
-    const video = new Video({
-      title,
-      description: description.trim(),
-      muxAssetId: muxAssetId || undefined,
-      muxPlaybackId: muxPlaybackId || undefined,
-      duration,
-      order: order || 1,
-      chapterId: new mongoose.Types.ObjectId(chapterId),
-      status: status,
-      isActive: true
+    const { data } = await supabaseRest<VideoRow[]>({
+      path: 'mpu_video_library',
+      method: 'POST',
+      body: {
+        title,
+        video_url: videoUrl,
+        description,
+        category,
+        thumbnail_url: thumbnailUrl,
+        duration_seconds: durationSeconds,
+        order_index: orderIndex,
+        is_published: isPublished,
+      },
+      useServiceRole: true,
+      prefer: 'return=representation',
     })
-
-    await video.save()
 
     return NextResponse.json({
-      message: 'Video created successfully',
-      video: {
-        ...video.toObject(),
-        status
-      }
-    })
-
+      success: true,
+      video: data?.[0] ? mapVideo(data[0]) : null,
+    }, { status: 201 })
   } catch (error: any) {
+    if (String(error?.message) === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error creating video:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

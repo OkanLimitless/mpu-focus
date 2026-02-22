@@ -1,207 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import Lead from '@/models/Lead'
-import User from '@/models/User'
-import { getServerSession } from 'next-auth'
-import bcrypt from 'bcryptjs'
+import { assertAdminRequest } from '@/lib/admin-auth'
+import { supabaseRest } from '@/lib/supabase-rest'
+
+type SignupRow = {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  goals: string | null
+  status: 'new' | 'contacted' | 'enrolled' | 'closed'
+  notes: string | null
+  source: string | null
+  tags: string[] | null
+  created_at: string
+  updated_at: string
+  last_contacted_at: string | null
+}
+
+function mapLead(row: SignupRow) {
+  return {
+    _id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    goals: row.goals,
+    status: row.status,
+    notes: row.notes,
+    source: row.source,
+    tags: row.tags || [],
+    lastContactedAt: row.last_contacted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await connectDB()
+    assertAdminRequest(request)
 
-    const lead = await Lead.findById(params.id)
-      .populate('contactedBy', 'firstName lastName email')
-      .populate('convertedToUserId', 'firstName lastName email')
+    const { data } = await supabaseRest<SignupRow[]>({
+      path: 'mpu_signups',
+      query: {
+        select: '*',
+        id: `eq.${params.id}`,
+        limit: 1,
+      },
+      useServiceRole: true,
+    })
 
+    const lead = data?.[0]
     if (!lead) {
-      return NextResponse.json(
-        { error: 'Lead not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ lead })
-
-  } catch (error) {
+    return NextResponse.json({ lead: mapLead(lead) })
+  } catch (error: any) {
+    if (String(error?.message) === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error fetching lead:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    await connectDB()
-
-    const session = await getServerSession()
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    assertAdminRequest(request)
 
     const body = await request.json()
-    const { status, notes, contactedBy } = body
+    const status = body?.status ? String(body.status) : undefined
+    const notes = body?.notes !== undefined ? String(body.notes || '') : undefined
 
-    const lead = await Lead.findById(params.id)
-    if (!lead) {
-      return NextResponse.json(
-        { error: 'Lead not found' },
-        { status: 404 }
-      )
+    const patch: Record<string, string | null> = {}
+    if (status) patch.status = status
+    if (notes !== undefined) patch.notes = notes
+    if (status === 'contacted') patch.last_contacted_at = new Date().toISOString()
+
+    if (!Object.keys(patch).length) {
+      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
     }
 
-    // Update fields
-    if (status) {
-      lead.status = status
-      
-      // Set contacted timestamp if status is 'contacted'
-      if (status === 'contacted' && lead.status !== 'contacted') {
-        lead.contactedAt = new Date()
-        if (contactedBy) {
-          lead.contactedBy = contactedBy
-        }
-      }
+    const { data } = await supabaseRest<SignupRow[]>({
+      path: 'mpu_signups',
+      method: 'PATCH',
+      query: {
+        id: `eq.${params.id}`,
+        select: '*',
+      },
+      body: patch,
+      useServiceRole: true,
+      prefer: 'return=representation',
+    })
+
+    const updated = data?.[0]
+    if (!updated) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
-
-    if (notes !== undefined) {
-      lead.notes = notes
-    }
-
-    await lead.save()
-
-    // Populate references before returning
-    await lead.populate([
-      { path: 'contactedBy', select: 'firstName lastName email' },
-      { path: 'convertedToUserId', select: 'firstName lastName email' }
-    ])
 
     return NextResponse.json({
       success: true,
-      lead
+      lead: mapLead(updated),
     })
-
-  } catch (error) {
+  } catch (error: any) {
+    if (String(error?.message) === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     console.error('Error updating lead:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await connectDB()
-
-    const session = await getServerSession()
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json()
-    const { action, password } = body
-
-    if (action !== 'convert-to-user') {
-      return NextResponse.json(
-        { error: 'Invalid action' },
-        { status: 400 }
-      )
-    }
-
-    const lead = await Lead.findById(params.id)
-    if (!lead) {
-      return NextResponse.json(
-        { error: 'Lead not found' },
-        { status: 404 }
-      )
-    }
-
-    if (lead.status === 'converted') {
-      return NextResponse.json(
-        { error: 'Lead already converted' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user with this email already exists
-    const existingUser = await User.findOne({ email: lead.email })
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 409 }
-      )
-    }
-
-    if (!password || password.length < 6) {
-      // Auto-generate a strong temporary password if not provided
-      const gen = () => {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*'
-        let p = ''
-        for (let i = 0; i < 12; i++) p += chars[Math.floor(Math.random() * chars.length)]
-        return p
-      }
-      body.password = gen()
-    }
-
-    // Create user account
-    const newUser = new User({
-      email: lead.email,
-      password: body.password, // Will be hashed by the User model pre-save hook
-      firstName: lead.firstName,
-      lastName: lead.lastName,
-      role: 'user',
-      isActive: true
-    })
-
-    await newUser.save()
-
-    // Update lead status
-    lead.status = 'converted'
-    lead.convertedToUserId = newUser._id
-    lead.convertedAt = new Date()
-    await lead.save()
-
-    // Populate references before returning
-    await lead.populate([
-      { path: 'contactedBy', select: 'firstName lastName email' },
-      { path: 'convertedToUserId', select: 'firstName lastName email' }
-    ])
-
-    return NextResponse.json({
-      success: true,
-      message: 'Lead converted to user successfully',
-      lead,
-      user: {
-        _id: newUser._id,
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName
-      },
-      // Return the generated or provided plaintext password for follow-up email
-      password: body.password
-    })
-
-  } catch (error) {
-    console.error('Error converting lead to user:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Lead conversion is not part of the new CRM flow' },
+    { status: 400 },
+  )
 }
