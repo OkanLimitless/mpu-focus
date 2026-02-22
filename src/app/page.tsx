@@ -183,17 +183,23 @@ export default function HomePage() {
                     Kostenlose Erstberatung
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                  <div className="flex -space-x-3 items-center ml-2">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="h-10 w-10 rounded-full border-2 border-white bg-slate-200 overflow-hidden ring-2 ring-emerald-50">
-                        <Image src={`https://i.pravatar.cc/100?img=${i + 10}`} alt="Rating" width={40} height={40} />
+                  <div className="flex items-center gap-4">
+                    <div className="flex -space-x-3 items-center">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-10 w-10 rounded-full border-2 border-white bg-slate-100 overflow-hidden ring-2 ring-emerald-50/50">
+                          <img
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 42}`}
+                            alt="User Profile"
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <div className="flex gap-0.5 mb-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />)}
                       </div>
-                    ))}
-                    <div className="ml-6 flex flex-col">
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-3 w-3 fill-yellow-400 text-yellow-400" />)}
-                      </div>
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-tighter">4.9/5 | 500+ Beratungen</span>
+                      <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">4.9/5 | 500+ Beratungen</span>
                     </div>
                   </div>
                 </div>
