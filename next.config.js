@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['uploadthing.com', 'utfs.io', 'image.mux.com'],
+    domains: ['uploadthing.com', 'utfs.io', 'image.mux.com', 'api.dicebear.com'],
   },
   webpack: (config) => {
     config.resolve.fallback = {
@@ -32,7 +32,7 @@ const nextConfig = {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com",
+      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com https://api.dicebear.com",
       "font-src 'self' data:",
       // Allow UploadThing ingest regions
       "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com https://*.ingest.uploadthing.com",
