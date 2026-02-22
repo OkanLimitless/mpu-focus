@@ -41,4 +41,6 @@ next-env.d.ts
 *.swo
 
 # OS
-Thumbs.dbadspower-google-auth/
+Thumbs.db
+
+adspower-google-auth/
