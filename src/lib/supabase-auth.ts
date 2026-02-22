@@ -41,14 +41,19 @@ function parseErrorMessage(payload: SupabaseAuthError, fallback: string): string
 }
 
 export async function signInWithSupabasePassword(email: string, password: string): Promise<SupabaseAuthUser> {
-  const response = await fetch(`${getSupabaseUrl()}/auth/v1/token?grant_type=password`, {
+  const normalizedEmail = normalizeEmail(email)
+  const url = `${getSupabaseUrl()}/auth/v1/token?grant_type=password`
+
+  console.log(`[Auth] Attempting sign-in for: ${normalizedEmail}`)
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       apikey: getAnonKey(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      email: normalizeEmail(email),
+      email: normalizedEmail,
       password,
     }),
     cache: 'no-store',
@@ -56,8 +61,14 @@ export async function signInWithSupabasePassword(email: string, password: string
 
   const payload = await response.json().catch(() => ({}))
 
-  if (!response.ok || !payload?.user?.id || !payload?.user?.email) {
+  if (!response.ok) {
+    console.error(`[Auth] Supabase returned ${response.status}:`, payload)
     throw new Error(parseErrorMessage(payload, 'Invalid login credentials'))
+  }
+
+  if (!payload?.user?.id || !payload?.user?.email) {
+    console.error(`[Auth] Missing user data in payload:`, payload)
+    throw new Error('Invalid login credentials')
   }
 
   return payload.user as SupabaseAuthUser
