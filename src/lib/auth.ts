@@ -50,9 +50,9 @@ export const authOptions: NextAuthOptions = {
             lastName: profile.last_name,
             role: profile.role === 'admin' ? 'admin' : 'user',
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Auth error:', error)
-          throw new Error('Anmeldung fehlgeschlagen')
+          throw new Error(error?.message || 'Anmeldung fehlgeschlagen')
         }
       }
     })
