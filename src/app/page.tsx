@@ -190,23 +190,23 @@ export default function HomePage() {
                     Kostenlose Erstberatung
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-5">
                     <div className="flex -space-x-3 items-center">
                       {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-10 w-10 rounded-full border-2 border-white bg-slate-100 overflow-hidden ring-2 ring-blue-50/50">
+                        <div key={i} className="h-10 w-10 rounded-full border-2 border-white bg-blue-50 overflow-hidden ring-2 ring-blue-50/30">
                           <img
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 42}`}
-                            alt="User Profile"
+                            src={`https://api.dicebear.com/9.x/personas/svg?seed=${i + 123}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
+                            alt="Klient"
                             className="h-full w-full object-cover"
                           />
                         </div>
                       ))}
                     </div>
                     <div className="flex flex-col justify-center">
-                      <div className="flex gap-0.5 mb-0.5">
+                      <div className="flex gap-1 mb-1">
                         {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />)}
                       </div>
-                      <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">4.9/5 | 500+ Beratungen</span>
+                      <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">4.9/5 | 500+ Beratungen</span>
                     </div>
                   </div>
                 </div>
