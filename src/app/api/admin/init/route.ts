@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
+import { createSupabaseAuthUser, findSupabaseAuthUserByEmail } from '@/lib/supabase-auth'
+import { normalizeEmail, upsertProfile } from '@/lib/mpu-profiles'
 
 export async function POST(request: NextRequest) {
   try {
-    // Disable in production
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ message: 'Not available' }, { status: 404 })
-    }
-
     // Require a strong install token
     const installToken = process.env.ADMIN_INSTALL_TOKEN
     const provided = request.headers.get('x-install-token') || ''
@@ -16,45 +11,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
     }
 
-    await connectDB()
-
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@mpu-focus.com'
+    const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL || 'admin@mpu-focus.com')
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123456'
 
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ email: adminEmail })
-    
-    if (existingAdmin) {
-      return NextResponse.json(
-        { message: 'Admin user already exists' },
-        { status: 400 }
-      )
+    let authUser = await findSupabaseAuthUserByEmail(adminEmail)
+
+    if (!authUser) {
+      authUser = await createSupabaseAuthUser({
+        email: adminEmail,
+        password: adminPassword,
+        firstName: 'Admin',
+        lastName: 'User',
+        role: 'admin',
+      })
     }
 
-    // Create admin user
-    const adminUser = new User({
+    await upsertProfile({
       email: adminEmail,
-      password: adminPassword,
+      authUserId: authUser.id,
       firstName: 'Admin',
       lastName: 'User',
       role: 'admin',
       isActive: true,
     })
 
-    await adminUser.save()
-
     return NextResponse.json(
-      { 
-        message: 'Admin user created successfully',
-        email: adminEmail 
+      {
+        message: 'Admin user is ready in Supabase',
+        email: adminEmail,
       },
-      { status: 201 }
+      { status: 201 },
     )
   } catch (error) {
-    console.error('Error creating admin user:', error)
+    console.error('Error creating Supabase admin user:', error)
     return NextResponse.json(
       { message: 'Failed to create admin user' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
