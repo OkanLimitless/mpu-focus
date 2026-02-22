@@ -1,204 +1,99 @@
-import { Document, Types } from 'mongoose'
+// Basic types for the application (non-library dependent)
 
-export interface User extends Document {
-  _id: string
-  email: string
-  password: string
-  firstName: string
-  lastName: string
-  role: 'user' | 'admin'
-  isActive: boolean
-  // Document verification fields
-  verificationStatus: 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'
-  passportDocument?: {
-    filename: string
-    url?: string
-    uploadedAt: Date
-    status: 'pending' | 'approved' | 'rejected'
-    rejectionReason?: string
-    resubmissionCount?: number
-    allowResubmission?: boolean
-  }
-  contractSigned?: {
-    signedAt: Date
-    ipAddress: string
-    userAgent: string
-    signatureData?: string
-    signatureMethod?: 'checkbox' | 'digital_signature' | 'qes'
-  }
-  verifiedAt?: Date
-  verifiedBy?: Types.ObjectId | string
-  verificationToken?: string // For email verification links
-  resetPasswordToken?: string
-  resetPasswordExpires?: Date
-  // Document processing results from MPU documents
-  documentProcessing?: {
-    extractedData: string
-    htmlContent?: string
-    fileName: string
-    totalPages: number
-    processedAt: Date
-    processingMethod: string
-    processingNotes: string
-    pdfUrl?: string
-  }
-  // Admin notes for this user
-  adminNotes?: Array<{
-    note: string
-    createdBy: Types.ObjectId | string
+export interface User {
+    id: string
+    _id: string // Legacy support
+    email: string
+    firstName: string
+    lastName: string
+    role: 'user' | 'admin'
+    isActive: boolean
+    verificationStatus: verificationStatus
+    passportDocument?: {
+        filename: string
+        url?: string
+        uploadedAt: Date
+        status: 'pending' | 'approved' | 'rejected'
+        rejectionReason?: string
+    }
+    contractSigned?: {
+        signedAt: Date
+        ipAddress: string
+        userAgent: string
+        signatureData?: string
+        signatureMethod?: signatureMethod
+    }
+    verifiedAt?: Date
     createdAt: Date
-    isPrivate: boolean
-  }>
-  createdAt: Date
-  updatedAt: Date
+    updatedAt: Date
 }
 
-export interface Course extends Document {
-  _id: string
-  title: string
-  description: string
-  chapters: Chapter[]
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
+export interface Course {
+    id: string
+    _id: string
+    title: string
+    description: string
+    isActive: boolean
 }
 
 export type ModuleKey =
-  | 'alcohol_drugs'
-  | 'traffic_points'
-  | 'medicinal_cannabis'
-  | 'extras'
+    | 'alcohol_drugs'
+    | 'traffic_points'
+    | 'medicinal_cannabis'
+    | 'extras'
 
-export interface Chapter extends Document {
-  _id: string
-  courseId: Types.ObjectId | string
-  moduleKey: ModuleKey
-  title: string
-  description: string
-  order: number
-  videos: Video[]
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
+export interface Chapter {
+    id: string
+    _id: string
+    courseId: string
+    moduleKey: ModuleKey
+    title: string
+    description: string
+    order: number
+    isActive: boolean
 }
 
-export interface Video extends Document {
-  _id: string
-  chapterId: Types.ObjectId | string
-  title: string
-  description: string
-  muxAssetId?: string
-  muxPlaybackId?: string
-  duration: number
-  order: number
-  isActive: boolean
-  status: 'preparing' | 'ready' | 'errored' | 'deleted'
-  createdAt: Date
-  updatedAt: Date
+export interface Video {
+    id: string
+    _id: string
+    chapterId: string
+    title: string
+    description: string
+    muxAssetId?: string
+    muxPlaybackId?: string
+    duration: number
+    order: number
+    isActive: boolean
 }
 
-export interface CourseProgress extends Document {
-  _id: string
-  userId: Types.ObjectId | string
-  courseId: Types.ObjectId | string
-  chapterId: Types.ObjectId | string
-  videoId: Types.ObjectId | string
-  watchedDuration: number
-  totalDuration: number
-  isCompleted: boolean
-  completedAt?: Date
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface UserDocument extends Document {
-  _id: string
-  userId: Types.ObjectId | string
-  fileName: string
-  originalName: string
-  fileSize: number
-  mimeType: string
-  uploadUrl: string
-  status: 'pending' | 'reviewed' | 'approved' | 'rejected'
-  reviewedBy?: Types.ObjectId | string
-  reviewedAt?: Date
-  notes?: string
-  createdAt: Date
-  updatedAt: Date
+export interface Lead {
+    id: string
+    _id: string // Legacy support
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+    timeframe: string
+    reason: string
+    jobLoss: boolean
+    mpuChallenges: string[]
+    concerns: string[]
+    availability: string[]
+    status: 'new' | 'contacted' | 'converted' | 'closed'
+    notes?: string
+    convertedToUserId?: string
+    convertedAt?: Date | string
+    createdAt: Date | string
+    updatedAt: Date | string
 }
 
 export interface DashboardStats {
-  totalUsers: number
-  activeUsers: number
-  totalCourses: number
-  totalDocuments: number
-  pendingDocuments: number
-  completionRate: number
-}
-
-export interface UserProgress {
-  totalChapters: number
-  completedChapters: number
-  totalVideos: number
-  completedVideos: number
-  overallProgress: number
-  currentChapter?: Chapter
-  nextVideo?: Video
-}
-
-export interface UserRequest extends Document {
-  _id: string
-  firstName: string
-  lastName: string
-  email: string
-  reason?: string
-  status: 'pending' | 'approved' | 'rejected'
-  reviewedBy?: Types.ObjectId | string
-  reviewedAt?: Date
-  notes?: string
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface VideoProgress extends Document {
-  _id: string
-  userId: Types.ObjectId | string
-  videoId: Types.ObjectId | string
-  chapterId: Types.ObjectId | string
-  courseId: Types.ObjectId | string
-  watchedDuration: number
-  totalDuration: number
-  currentTime: number
-  isCompleted: boolean
-  completedAt?: Date
-  lastWatchedAt: Date
-  completionPercentage: number
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface Lead extends Document {
-  _id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  // Quiz responses
-  timeframe: string // "Innerhalb von 3 Monaten" | "3-6 Monate" | "6-12 Monate" | "Über 1 Jahr"
-  reason: string // "Alkohol" | "Drogen" | "Punkte" | "Straftat" | "Andere"
-  jobLoss: boolean
-  mpuChallenges: string[] // Multiple selection
-  concerns: string[] // Multiple selection  
-  availability: string[] // Multiple selection
-  // Status and tracking
-  status: 'new' | 'contacted' | 'converted' | 'closed'
-  contactedBy?: Types.ObjectId | string
-  contactedAt?: Date
-  convertedToUserId?: Types.ObjectId | string
-  convertedAt?: Date
-  notes?: string
-  createdAt: Date
-  updatedAt: Date
+    totalUsers: number
+    activeUsers: number
+    totalCourses: number
+    totalDocuments: number
+    pendingDocuments: number
+    completionRate: number
 }
 
 export type verificationStatus = 'pending' | 'documents_uploaded' | 'contract_signed' | 'verified' | 'rejected' | 'resubmission_required'

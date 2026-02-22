@@ -13,7 +13,7 @@ export async function requireSession() {
 export async function requireAdmin() {
   const sessionRes = await requireSession()
   if (!sessionRes.ok) return sessionRes
-  const email = sessionRes.session!.user!.email
+  const email = sessionRes.session!.user!.email as string
   const profile = await getProfileByEmail(email)
   if (!profile || !profile.is_active || profile.role !== 'admin') {
     return { ok: false as const, status: 403 as const, error: 'Forbidden' as const, session: sessionRes.session }

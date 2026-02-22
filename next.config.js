@@ -10,10 +10,6 @@ const nextConfig = {
     };
     return config;
   },
-  // Configure API route limits for document processing
-  experimental: {
-    serverComponentsExternalPackages: ['pdf-poppler'],
-  },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production'
 
