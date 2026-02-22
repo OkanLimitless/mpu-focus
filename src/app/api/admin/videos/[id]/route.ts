@@ -37,7 +37,7 @@ export async function PUT(
   { params }: { params: { id: string } },
 ) {
   try {
-    assertAdminRequest(request)
+    await assertAdminRequest()
 
     const body = await request.json()
     const patch: Record<string, unknown> = {}
@@ -77,6 +77,9 @@ export async function PUT(
     if (String(error?.message) === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (String(error?.message) === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     console.error('Error updating video:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -87,7 +90,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
-    assertAdminRequest(request)
+    await assertAdminRequest()
 
     await supabaseRest({
       path: 'mpu_video_library',
@@ -102,6 +105,9 @@ export async function DELETE(
   } catch (error: any) {
     if (String(error?.message) === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (String(error?.message) === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     console.error('Error deleting video:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

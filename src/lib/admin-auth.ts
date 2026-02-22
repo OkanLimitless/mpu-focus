@@ -1,15 +1,18 @@
-import { NextRequest } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { getProfileByEmail } from '@/lib/mpu-profiles'
 
-export function assertAdminRequest(request: NextRequest): { ok: true } {
-  const expected = process.env.ADMIN_DASHBOARD_KEY
-  if (!expected) {
-    throw new Error('ADMIN_DASHBOARD_KEY is not configured')
-  }
-
-  const provided = request.headers.get('x-admin-key')
-  if (!provided || provided !== expected) {
+export async function assertAdminRequest(): Promise<{ ok: true; email: string }> {
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email?.trim().toLowerCase()
+  if (!email) {
     throw new Error('Unauthorized')
   }
 
-  return { ok: true }
+  const profile = await getProfileByEmail(email)
+  if (!profile || !profile.is_active || profile.role !== 'admin') {
+    throw new Error('Forbidden')
+  }
+
+  return { ok: true, email }
 }

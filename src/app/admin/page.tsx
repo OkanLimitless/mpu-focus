@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Space_Grotesk, Plus_Jakarta_Sans } from 'next/font/google'
+import { signOut, useSession } from 'next-auth/react'
 import {
   BarChart3,
   CheckCircle2,
@@ -111,8 +112,8 @@ function formatDuration(seconds?: number | null) {
 }
 
 export default function AdminPage() {
-  const [adminKeyInput, setAdminKeyInput] = useState('')
-  const [adminKey, setAdminKey] = useState<string>('')
+  const { data: session, status } = useSession()
+  const isAdmin = session?.user?.role === 'admin'
   const [stats, setStats] = useState<Stats>(defaultStats)
   const [leads, setLeads] = useState<LeadItem[]>([])
   const [videos, setVideos] = useState<VideoItem[]>([])
@@ -141,24 +142,10 @@ export default function AdminPage() {
     isPublished: true,
   })
 
-  useEffect(() => {
-    const saved = localStorage.getItem('mpu_admin_key')
-    if (saved) {
-      setAdminKey(saved)
-      setAdminKeyInput(saved)
-    }
-  }, [])
-
-  const headers = useMemo(
-    () => ({
-      'Content-Type': 'application/json',
-      'x-admin-key': adminKey,
-    }),
-    [adminKey],
-  )
+  const jsonHeaders = { 'Content-Type': 'application/json' }
 
   const loadAll = async () => {
-    if (!adminKey) return
+    if (!isAdmin) return
 
     setLoading(true)
     setError(null)
@@ -172,9 +159,9 @@ export default function AdminPage() {
       })
 
       const [statsRes, leadsRes, videosRes] = await Promise.all([
-        fetch('/api/admin/dashboard-stats', { headers, cache: 'no-store' }),
-        fetch(`/api/leads?${leadsParams.toString()}`, { headers, cache: 'no-store' }),
-        fetch('/api/admin/videos', { headers, cache: 'no-store' }),
+        fetch('/api/admin/dashboard-stats', { cache: 'no-store' }),
+        fetch(`/api/leads?${leadsParams.toString()}`, { cache: 'no-store' }),
+        fetch('/api/admin/videos', { cache: 'no-store' }),
       ])
 
       const statsPayload = await statsRes.json().catch(() => ({}))
@@ -206,23 +193,13 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (!adminKey) return
+    if (status !== 'authenticated' || !isAdmin) return
     loadAll()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey, statusFilter, appliedSearch])
+  }, [status, isAdmin, statusFilter, appliedSearch])
 
-  const loginAdmin = (e: React.FormEvent) => {
-    e.preventDefault()
-    const nextKey = adminKeyInput.trim()
-    if (!nextKey) return
-    setAdminKey(nextKey)
-    localStorage.setItem('mpu_admin_key', nextKey)
-  }
-
-  const logoutAdmin = () => {
-    localStorage.removeItem('mpu_admin_key')
-    setAdminKey('')
-    setAdminKeyInput('')
+  const logoutAdmin = async () => {
+    await signOut({ callbackUrl: '/login' })
   }
 
   const updateLead = async (leadId: string, patch: { status?: LeadStatus; notes?: string }) => {
@@ -230,7 +207,7 @@ export default function AdminPage() {
       setSavingLeadId(leadId)
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'PATCH',
-        headers,
+        headers: jsonHeaders,
         body: JSON.stringify(patch),
       })
       const payload = await response.json().catch(() => ({}))
@@ -251,7 +228,7 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/admin/videos', {
         method: 'POST',
-        headers,
+        headers: jsonHeaders,
         body: JSON.stringify({
           title: newVideo.title,
           videoUrl: newVideo.videoUrl,
@@ -290,7 +267,7 @@ export default function AdminPage() {
       setBusyVideoId(video.id)
       const response = await fetch(`/api/admin/videos/${video.id}`, {
         method: 'PUT',
-        headers,
+        headers: jsonHeaders,
         body: JSON.stringify({ isPublished: !video.isPublished }),
       })
       const payload = await response.json().catch(() => ({}))
@@ -308,7 +285,6 @@ export default function AdminPage() {
       setBusyVideoId(videoId)
       const response = await fetch(`/api/admin/videos/${videoId}`, {
         method: 'DELETE',
-        headers,
       })
       const payload = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(payload?.error || 'Failed to delete video')
@@ -367,7 +343,17 @@ export default function AdminPage() {
     },
   ]
 
-  if (!adminKey) {
+  if (status === 'loading') {
+    return (
+      <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
+        <Card className="mx-auto max-w-xl rounded-3xl border-slate-200 bg-white/95 shadow-xl">
+          <CardContent className="py-12 text-center text-slate-600">Checking admin session...</CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated') {
     return (
       <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -379,7 +365,7 @@ export default function AdminPage() {
               CRM + Learning Admin
             </h1>
             <p className="mt-4 max-w-md text-cyan-50/95">
-              Manage signups and lesson videos from one secure panel. Optimized for both desktop and mobile.
+              Admin key login has been removed. Use your Supabase account at `/login`, then open `/admin`.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-sm text-cyan-50/90">
               <Badge className="border-white/25 bg-white/10 text-white">Lead workflow</Badge>
@@ -392,29 +378,48 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle className={`${displayFont.className} text-2xl`}>Admin Access</CardTitle>
               <CardDescription>
-                Enter your `ADMIN_DASHBOARD_KEY` to unlock CRM and video operations.
+                Sign in first, then this page opens automatically for `admin` users.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4" onSubmit={loginAdmin}>
-                <Input
-                  type="password"
-                  placeholder="Admin key"
-                  value={adminKeyInput}
-                  onChange={(e) => setAdminKeyInput(e.target.value)}
-                  className="h-11 rounded-xl border-slate-300"
-                  required
-                />
-                <Button type="submit" className="h-11 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800">
-                  Open Admin
-                </Button>
+              <div className="space-y-4">
+                <Link href="/login">
+                  <Button className="h-11 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800">
+                    Go to Login
+                  </Button>
+                </Link>
                 <Link href="/" className="block text-center text-sm text-slate-500 hover:text-slate-800">
                   Back to landing page
                 </Link>
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
+        <Card className="mx-auto max-w-xl rounded-3xl border-amber-200 bg-amber-50/80 shadow-lg">
+          <CardHeader>
+            <CardTitle className={`${displayFont.className} text-2xl text-amber-900`}>Admin Role Required</CardTitle>
+            <CardDescription className="text-amber-800">
+              Your account is authenticated but does not have `admin` role in `mpu_profiles`.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button className="rounded-xl bg-slate-900 text-white hover:bg-slate-800" onClick={logoutAdmin}>
+              Sign out
+            </Button>
+            <Link href="/">
+              <Button variant="outline" className="rounded-xl border-slate-300">
+                Back to landing page
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     )
   }

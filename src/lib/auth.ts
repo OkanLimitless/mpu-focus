@@ -1,8 +1,7 @@
-import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import connectDB from '@/lib/mongodb'
-import User from '@/models/User'
 import type { NextAuthOptions } from 'next-auth'
+import { ensureProfileForAuthUser, normalizeEmail } from '@/lib/mpu-profiles'
+import { signInWithSupabasePassword } from '@/lib/supabase-auth'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -18,32 +17,38 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          await connectDB()
-          
-          const emailNormalized = credentials.email.trim().toLowerCase()
+          const emailNormalized = normalizeEmail(credentials.email)
           const passwordNormalized = credentials.password.trim()
-          
-          const user = await User.findOne({ 
-            email: emailNormalized,
-            isActive: true 
-          }).select('+password')
+          const configuredAdminEmail = process.env.ADMIN_EMAIL
+            ? normalizeEmail(process.env.ADMIN_EMAIL)
+            : ''
+          const roleHint = configuredAdminEmail && configuredAdminEmail === emailNormalized
+            ? 'admin'
+            : 'student'
 
-          if (!user) {
-            throw new Error('Ungültige Anmeldedaten')
-          }
+          const authUser = await signInWithSupabasePassword(emailNormalized, passwordNormalized)
+          const metadata = authUser.user_metadata || {}
 
-          const isPasswordValid = await user.comparePassword(passwordNormalized)
-          
-          if (!isPasswordValid) {
-            throw new Error('Ungültige Anmeldedaten')
+          const profile = await ensureProfileForAuthUser({
+            authUserId: authUser.id,
+            email: authUser.email,
+            firstName:
+              typeof metadata.first_name === 'string' ? metadata.first_name : undefined,
+            lastName:
+              typeof metadata.last_name === 'string' ? metadata.last_name : undefined,
+            roleHint,
+          })
+
+          if (!profile.is_active) {
+            throw new Error('Benutzerkonto ist deaktiviert')
           }
 
           return {
-            id: user._id.toString(),
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role,
+            id: authUser.id,
+            email: profile.email,
+            firstName: profile.first_name,
+            lastName: profile.last_name,
+            role: profile.role === 'admin' ? 'admin' : 'user',
           }
         } catch (error) {
           console.error('Auth error:', error)

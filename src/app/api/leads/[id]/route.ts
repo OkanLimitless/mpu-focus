@@ -41,7 +41,7 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   try {
-    assertAdminRequest(request)
+    await assertAdminRequest()
 
     const { data } = await supabaseRest<SignupRow[]>({
       path: 'mpu_signups',
@@ -63,6 +63,9 @@ export async function GET(
     if (String(error?.message) === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (String(error?.message) === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     console.error('Error fetching lead:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -73,7 +76,7 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   try {
-    assertAdminRequest(request)
+    await assertAdminRequest()
 
     const body = await request.json()
     const status = body?.status ? String(body.status) : undefined
@@ -112,6 +115,9 @@ export async function PATCH(
   } catch (error: any) {
     if (String(error?.message) === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (String(error?.message) === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     console.error('Error updating lead:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

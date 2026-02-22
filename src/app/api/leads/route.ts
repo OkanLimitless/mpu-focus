@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    assertAdminRequest(request)
+    await assertAdminRequest()
 
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, Number(searchParams.get('page') || 1))
@@ -170,6 +170,9 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     if (String(error?.message) === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (String(error?.message) === 'Forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     console.error('Error fetching signups:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
