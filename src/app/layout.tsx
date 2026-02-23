@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Toaster } from '@/components/ui/toaster'
-import { LanguageSwitcher } from '@/components/providers/i18n-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -48,9 +47,7 @@ export default function RootLayout({
     <html lang="de">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="fixed top-3 right-3 z-50">
-            <LanguageSwitcher />
-          </div>
+
           {children}
           <Toaster />
         </AuthProvider>
