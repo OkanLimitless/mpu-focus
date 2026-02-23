@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Space_Grotesk, Plus_Jakarta_Sans } from 'next/font/google'
 import { signOut, useSession } from 'next-auth/react'
+import { useI18n } from '@/components/providers/i18n-provider'
 import {
   BarChart3,
   CheckCircle2,
@@ -112,6 +113,7 @@ function formatDuration(seconds?: number | null) {
 }
 
 export default function AdminPage() {
+  const { t } = useI18n()
   const { data: session, status } = useSession()
   const isAdmin = session?.user?.role === 'admin'
   const [stats, setStats] = useState<Stats>(defaultStats)
@@ -345,51 +347,52 @@ export default function AdminPage() {
 
   if (status === 'loading') {
     return (
-      <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
-        <Card className="mx-auto max-w-xl rounded-3xl border-slate-200 bg-white/95 shadow-xl">
-          <CardContent className="py-12 text-center text-slate-600">Checking admin session...</CardContent>
-        </Card>
+      <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-slate-50")}>
+        <div className="flex flex-col items-center gap-4 text-slate-800">
+          <RefreshCw className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-medium">{t('loading')}</p>
+        </div>
       </div>
     )
   }
 
   if (status === 'unauthenticated') {
     return (
-      <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
+      <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10")}>
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-cyan-700 p-8 text-white shadow-2xl">
-            <p className="mb-3 inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs tracking-wide">
-              Private control center
-            </p>
-            <h1 className={`${displayFont.className} text-4xl leading-tight md:text-5xl`}>
-              CRM + Learning Admin
+          <div className="rounded-3xl bg-gradient-to-br from-primary via-blue-700 to-primary p-8 text-white shadow-2xl shadow-primary/20">
+            <Badge variant="outline" className="mb-4 border-white/30 bg-white/10 text-white font-medium uppercase tracking-wider">
+              Admin-Zentrale
+            </Badge>
+            <h1 className={cn(displayFont.className, "text-4xl leading-tight md:text-5xl font-bold")}>
+              MPU-Focus <span className="text-accent italic">Admin</span>
             </h1>
-            <p className="mt-4 max-w-md text-cyan-50/95">
-              Admin key login has been removed. Use your Supabase account at `/login`, then open `/admin`.
+            <p className="mt-4 max-w-md text-white/90 text-lg leading-relaxed">
+              Bitte melden Sie sich an, um Zugriff auf die Lead-Verwaltung und Video-Akademie zu erhalten.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-sm text-cyan-50/90">
-              <Badge className="border-white/25 bg-white/10 text-white">Lead workflow</Badge>
-              <Badge className="border-white/25 bg-white/10 text-white">Video publishing</Badge>
-              <Badge className="border-white/25 bg-white/10 text-white">Supabase live data</Badge>
+            <div className="mt-8 flex flex-wrap gap-2">
+              <Badge className="border-white/25 bg-white/10 text-white">Lead Workflow</Badge>
+              <Badge className="border-white/25 bg-white/10 text-white">Video Publishing</Badge>
+              <Badge className="border-white/25 bg-white/10 text-white">Live-Daten</Badge>
             </div>
           </div>
 
-          <Card className="rounded-3xl border-slate-200 bg-white/95 shadow-xl">
-            <CardHeader>
-              <CardTitle className={`${displayFont.className} text-2xl`}>Admin Access</CardTitle>
-              <CardDescription>
-                Sign in first, then this page opens automatically for `admin` users.
+          <Card className="rounded-3xl border-slate-200 bg-white shadow-xl">
+            <CardHeader className="pt-8 px-8">
+              <CardTitle className={cn(displayFont.className, "text-2xl font-bold")}>Anmeldung erforderlich</CardTitle>
+              <CardDescription className="text-slate-500 text-base">
+                Dieser Bereich ist nur für autorisierte Administratoren zugänglich.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8">
               <div className="space-y-4">
                 <Link href="/login">
-                  <Button className="h-11 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800">
-                    Go to Login
+                  <Button className="h-12 w-full rounded-xl bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 font-bold transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    {t('signIn')}
                   </Button>
                 </Link>
-                <Link href="/" className="block text-center text-sm text-slate-500 hover:text-slate-800">
-                  Back to landing page
+                <Link href="/" className="block text-center text-sm font-medium text-slate-400 hover:text-primary transition-colors">
+                  {t('back')}
                 </Link>
               </div>
             </CardContent>
@@ -401,21 +404,24 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className={`${bodyFont.className} min-h-screen bg-[#e9eef5] px-4 py-10`}>
-        <Card className="mx-auto max-w-xl rounded-3xl border-amber-200 bg-amber-50/80 shadow-lg">
-          <CardHeader>
-            <CardTitle className={`${displayFont.className} text-2xl text-amber-900`}>Admin Role Required</CardTitle>
-            <CardDescription className="text-amber-800">
-              Your account is authenticated but does not have `admin` role in `mpu_profiles`.
+      <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10")}>
+        <Card className="mx-auto max-w-xl rounded-3xl border-accent/20 bg-accent/5 shadow-lg">
+          <CardHeader className="pt-8 px-8">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/20">
+              <Lock className="h-8 w-8 text-accent" />
+            </div>
+            <CardTitle className={cn(displayFont.className, "text-2xl font-bold text-slate-900")}>Admin-Berechtigung erforderlich</CardTitle>
+            <CardDescription className="text-slate-600 text-base">
+              Ihr Konto ist authentifiziert, verfügt aber nicht über die Administrator-Rolle.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button className="rounded-xl bg-slate-900 text-white hover:bg-slate-800" onClick={logoutAdmin}>
-              Sign out
+          <CardContent className="p-8 flex flex-col gap-3">
+            <Button className="h-11 rounded-xl bg-primary text-white hover:bg-primary/90 font-bold" onClick={logoutAdmin}>
+              {t('logout')}
             </Button>
             <Link href="/">
-              <Button variant="outline" className="rounded-xl border-slate-300">
-                Back to landing page
+              <Button variant="outline" className="h-11 w-full rounded-xl border-slate-200">
+                Zurück zur Startseite
               </Button>
             </Link>
           </CardContent>
@@ -425,219 +431,231 @@ export default function AdminPage() {
   }
 
   return (
-    <div className={`${bodyFont.className} min-h-screen bg-[#edf2f8] text-slate-900`}>
-      <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-900 to-cyan-700 p-6 text-white shadow-2xl md:p-8">
-          <div className="pointer-events-none absolute inset-0 opacity-30">
-            <div className="absolute -top-20 right-8 h-56 w-56 rounded-full bg-cyan-300/40 blur-3xl" />
-            <div className="absolute -bottom-24 left-10 h-56 w-56 rounded-full bg-blue-300/30 blur-3xl" />
+    <div className={cn(bodyFont.className, "min-h-screen bg-slate-50 text-slate-900 font-sans pb-20")}>
+      <div className="mx-auto max-w-7xl px-4 py-6 md:py-8 lg:px-8">
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary via-blue-800 to-primary p-6 text-white shadow-2xl shadow-primary/20 md:p-10">
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 right-8 h-80 w-80 rounded-full bg-accent/30 blur-[100px]" />
+            <div className="absolute -bottom-24 left-10 h-80 w-80 rounded-full bg-blue-400/20 blur-[100px]" />
           </div>
-          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="mb-2 inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs tracking-wide">
-                Control Room
-              </p>
-              <h1 className={`${displayFont.className} text-3xl leading-tight md:text-5xl`}>
-                Teaching CRM Dashboard
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-4">
+              <Badge variant="outline" className="border-white/30 bg-white/10 text-white px-4 py-1 text-xs font-bold uppercase tracking-[0.2em]">
+                MPU-Focus | <span className="text-accent-foreground font-black">Control Center</span>
+              </Badge>
+              <h1 className={cn(displayFont.className, "text-4xl leading-tight md:text-5xl lg:text-6xl font-black")}>
+                Admin <span className="text-accent italic">Zentrale</span>
               </h1>
-              <p className="mt-3 max-w-2xl text-cyan-50/90">
-                Monitor signup pipeline, update lead statuses, and publish video lessons from one workflow.
+              <p className="max-w-xl text-white/80 text-lg md:text-xl font-medium leading-relaxed">
+                Willkommen zurück, Okan. Verwalten Sie Leads, Kurse und Statistiken in Echtzeit.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={loadAll}
+                className="h-12 gap-2 rounded-2xl bg-white px-6 font-bold text-primary hover:bg-white/95 transition-all hover:shadow-xl active:scale-95 shadow-lg shadow-white/10"
                 disabled={loading}
-                className="h-10 rounded-xl border border-white/35 bg-white/10 text-white hover:bg-white/20"
               >
-                <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
-                {loading ? 'Refreshing' : 'Refresh'}
+                <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
+                Aktualisieren
               </Button>
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-white/35 bg-white text-slate-900 hover:bg-slate-100"
                 onClick={logoutAdmin}
+                className="h-12 gap-2 rounded-2xl border-white/30 bg-white/10 px-6 font-bold text-white hover:bg-white/20 transition-all active:scale-95"
               >
-                <Lock className="mr-2 h-4 w-4" />
-                Lock
+                {t('logout')}
               </Button>
             </div>
           </div>
         </section>
 
-        <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+        <section className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
           {statCards.map((item) => (
-            <Card key={item.title} className="rounded-2xl border-slate-200 bg-white/95 shadow-sm">
+            <Card key={item.title} className="rounded-2xl border-slate-200 bg-white/95 shadow-sm transition-all hover:shadow-md">
               <CardContent className="p-4">
-                <div className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${item.tone} text-white`}>
-                  <item.icon className="h-4 w-4" />
+                <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${item.tone} text-white shadow-sm`}>
+                  <item.icon className="h-5 w-5" />
                 </div>
-                <p className="text-xs text-slate-500">{item.title}</p>
-                <p className={`${displayFont.className} text-2xl leading-none`}>{item.value}</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.title}</p>
+                <p className={`${displayFont.className} mt-1 text-2xl font-bold leading-none text-slate-900`}>{item.value}</p>
               </CardContent>
             </Card>
           ))}
         </section>
 
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant={activeTab === 'crm' ? 'default' : 'ghost'}
               className={cn(
-                'h-11 rounded-xl',
-                activeTab === 'crm' && 'bg-slate-900 text-white hover:bg-slate-800',
+                'h-12 rounded-2xl font-bold transition-all',
+                activeTab === 'crm' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:bg-slate-50',
               )}
               onClick={() => setActiveTab('crm')}
             >
-              <Users className="mr-2 h-4 w-4" />
-              CRM
+              <Users className="mr-2 h-5 w-5" />
+              Lead Management
             </Button>
             <Button
               type="button"
               variant={activeTab === 'videos' ? 'default' : 'ghost'}
               className={cn(
-                'h-11 rounded-xl',
-                activeTab === 'videos' && 'bg-slate-900 text-white hover:bg-slate-800',
+                'h-12 rounded-2xl font-bold transition-all',
+                activeTab === 'videos' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:bg-slate-50',
               )}
               onClick={() => setActiveTab('videos')}
             >
-              <Clapperboard className="mr-2 h-4 w-4" />
-              Videos
+              <Clapperboard className="mr-2 h-5 w-5" />
+              Video Akademie
             </Button>
           </div>
         </section>
 
         {error && (
-          <Card className="mt-4 border-red-200 bg-red-50">
-            <CardContent className="py-3 text-sm text-red-700">{error}</CardContent>
+          <Card className="mt-6 border-red-200 bg-red-50/50 backdrop-blur-sm">
+            <CardContent className="flex items-center gap-3 py-4 text-sm font-medium text-red-700">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">!</div>
+              {error}
+            </CardContent>
           </Card>
         )}
 
         {activeTab === 'crm' && (
-          <section className="mt-4 space-y-4">
-            <Card className="rounded-2xl border-slate-200">
-              <CardContent className="p-4">
-                <div className="grid gap-3 lg:grid-cols-[1fr_220px_140px]">
-                  <form
-                    className="relative"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      setAppliedSearch(searchInput.trim())
-                    }}
-                  >
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <section className="mt-8 space-y-6">
+            <Card className="rounded-[2rem] border-slate-200 shadow-sm overflow-hidden">
+              <CardContent className="p-6 bg-slate-50/50">
+                <div className="grid gap-4 lg:grid-cols-[1fr_240px_160px]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <Input
-                      placeholder="Search by name, email, or phone"
+                      placeholder="Suche nach Name, E-Mail oder Telefon..."
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
-                      className="h-11 rounded-xl border-slate-300 pl-9"
+                      onKeyDown={(e) => e.key === 'Enter' && setAppliedSearch(searchInput.trim())}
+                      className="h-12 rounded-2xl border-slate-200 bg-white pl-11 shadow-sm focus:ring-primary"
                     />
-                  </form>
+                  </div>
                   <div className="relative">
-                    <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Filter className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <select
-                      className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-11 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as 'all' | LeadStatus)}
                     >
-                      <option value="all">All statuses</option>
-                      <option value="new">New</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="enrolled">Enrolled</option>
-                      <option value="closed">Closed</option>
+                      <option value="all">Alle Stati</option>
+                      <option value="new">Neu</option>
+                      <option value="contacted">Kontaktiert</option>
+                      <option value="enrolled">Eingeschrieben</option>
+                      <option value="closed">Abgeschlossen</option>
                     </select>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 rounded-xl border-slate-300"
+                    className="h-12 rounded-2xl border-slate-200 bg-white font-bold shadow-sm hover:bg-slate-50"
                     onClick={loadAll}
                     disabled={loading}
                   >
                     <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
-                    Reload
+                    Laden
                   </Button>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                  <Badge className="border-slate-200 bg-slate-100 text-slate-700">{filteredLeadsCount} loaded</Badge>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Badge className="bg-primary text-white px-3 py-1 text-xs font-bold rounded-lg">{filteredLeadsCount} Leads geladen</Badge>
                   {appliedSearch && (
                     <button
                       type="button"
-                      className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-blue-700"
+                      className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-primary/10"
                       onClick={() => {
                         setSearchInput('')
                         setAppliedSearch('')
                       }}
                     >
-                      Search: {appliedSearch} (clear)
+                      Suche: {appliedSearch} <span className="ml-1 opacity-50">✕</span>
                     </button>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            <div className="space-y-3">
+            <div className="grid gap-4">
               {leads.map((lead) => (
-                <Card key={lead._id} className="rounded-2xl border-slate-200">
-                  <CardContent className="p-4 md:p-5">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className={`${displayFont.className} text-xl text-slate-900`}>
-                              {lead.firstName} {lead.lastName}
-                            </h3>
-                            <Badge className={cn('border', leadStatusBadgeClass[lead.status])}>
-                              {leadStatusLabels[lead.status]}
+                <Card key={lead._id} className="rounded-3xl border-slate-200 transition-all hover:shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-4 flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className={`${displayFont.className} text-2xl font-bold text-slate-900`}>
+                            {lead.firstName} {lead.lastName}
+                          </h3>
+                          <Badge className={cn('px-4 py-1 rounded-full font-bold text-xs uppercase tracking-wider', leadStatusBadgeClass[lead.status])}>
+                            {leadStatusLabels[lead.status]}
+                          </Badge>
+                          {lead.source && (
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 rounded-lg">
+                              {lead.source}
                             </Badge>
-                            {lead.source && <Badge variant="outline">{lead.source}</Badge>}
-                          </div>
-                          <div className="mt-2 grid gap-1 text-sm text-slate-600">
-                            <p className="inline-flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-slate-400" />
-                              <span className="truncate">{lead.email}</span>
-                            </p>
-                            <p className="inline-flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-slate-400" />
-                              {lead.phone}
-                            </p>
-                            <p className="text-xs text-slate-500">Created: {formatDate(lead.createdAt)}</p>
-                          </div>
+                          )}
                         </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <p className="inline-flex items-center gap-3 text-sm font-medium text-slate-600 bg-slate-50 px-3 py-2 rounded-xl">
+                            <Mail className="h-4 w-4 text-primary" />
+                            <span className="truncate">{lead.email}</span>
+                          </p>
+                          <p className="inline-flex items-center gap-3 text-sm font-medium text-slate-600 bg-slate-50 px-3 py-2 rounded-xl">
+                            <Phone className="h-4 w-4 text-primary" />
+                            {lead.phone}
+                          </p>
+                          <p className="inline-flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-3 py-2 rounded-xl">
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Erstellt: {formatDate(lead.createdAt)}
+                          </p>
+                        </div>
+                        {lead.goals && (
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 text-sm text-slate-700 leading-relaxed italic">
+                            &ldquo;{lead.goals}&rdquo;
+                          </div>
+                        )}
+                      </div>
 
-                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[190px]">
+                      <div className="flex flex-col gap-3 min-w-[240px]">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Status ändern</label>
                           <select
-                            className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold focus:ring-2 focus:ring-primary"
                             value={lead.status}
                             onChange={(e) => updateLead(lead._id, { status: e.target.value as LeadStatus })}
                           >
-                            <option value="new">New</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="enrolled">Enrolled</option>
-                            <option value="closed">Closed</option>
+                            <option value="new">Neu</option>
+                            <option value="contacted">Kontaktiert</option>
+                            <option value="enrolled">Eingeschrieben</option>
+                            <option value="closed">Abgeschlossen</option>
                           </select>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-10 rounded-xl border-slate-300"
-                            onClick={() => updateLead(lead._id, { notes: notesDrafts[lead._id] || '' })}
-                            disabled={savingLeadId === lead._id}
-                          >
-                            {savingLeadId === lead._id ? 'Saving...' : 'Save Notes'}
-                          </Button>
                         </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-11 rounded-xl border-slate-200 font-bold hover:bg-slate-50"
+                          onClick={() => updateLead(lead._id, { notes: notesDrafts[lead._id] || '' })}
+                          disabled={savingLeadId === lead._id}
+                        >
+                          {savingLeadId === lead._id ? (
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+                          )}
+                          Notiz speichern
+                        </Button>
                       </div>
+                    </div>
 
-                      {lead.goals && (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
-                          {lead.goals}
-                        </div>
-                      )}
-
+                    <div className="mt-6 space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Administrative Notizen</label>
                       <Textarea
                         rows={3}
-                        placeholder="Add notes for this lead"
+                        placeholder="Interne Notizen zu diesem Lead hinzufügen..."
                         value={notesDrafts[lead._id] || ''}
                         onChange={(e) =>
                           setNotesDrafts((prev) => ({
@@ -645,7 +663,7 @@ export default function AdminPage() {
                             [lead._id]: e.target.value,
                           }))
                         }
-                        className="rounded-xl border-slate-300"
+                        className="rounded-2xl border-slate-200 bg-white shadow-sm focus:ring-primary resize-none p-4"
                       />
                     </div>
                   </CardContent>
@@ -653,9 +671,12 @@ export default function AdminPage() {
               ))}
 
               {!leads.length && (
-                <Card className="rounded-2xl border-dashed border-slate-300 bg-white">
-                  <CardContent className="py-10 text-center text-sm text-slate-600">
-                    No signups found for the current filter.
+                <Card className="rounded-3xl border-dashed border-slate-300 bg-white">
+                  <CardContent className="py-20 text-center flex flex-col items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center">
+                      <Search className="h-8 w-8 text-slate-300" />
+                    </div>
+                    <p className="text-slate-500 font-medium">Keine Anmeldungen für den aktuellen Filter gefunden.</p>
                   </CardContent>
                 </Card>
               )}
@@ -664,59 +685,59 @@ export default function AdminPage() {
         )}
 
         {activeTab === 'videos' && (
-          <section className="mt-4 grid gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
-            <Card className="rounded-2xl border-slate-200 lg:sticky lg:top-6">
-              <CardHeader>
-                <CardTitle className={`${displayFont.className} text-2xl`}>Create Lesson Video</CardTitle>
-                <CardDescription>Add a new item to your public learning library.</CardDescription>
+          <section className="mt-8 grid gap-8 lg:grid-cols-[380px_1fr] lg:items-start">
+            <Card className="rounded-[2rem] border-slate-200 shadow-sm lg:sticky lg:top-8 bg-slate-50/30">
+              <CardHeader className="pb-4">
+                <CardTitle className={`${displayFont.className} text-2xl font-bold`}>Lektion erstellen</CardTitle>
+                <CardDescription>Fügen Sie neue Inhalte zur Video-Akademie hinzu.</CardDescription>
               </CardHeader>
               <CardContent>
-                <form className="space-y-3" onSubmit={createVideo}>
-                  <Input
-                    placeholder="Title"
-                    value={newVideo.title}
-                    onChange={(e) => setNewVideo((prev) => ({ ...prev, title: e.target.value }))}
-                    className="h-11 rounded-xl border-slate-300"
-                    required
-                  />
-                  <Input
-                    placeholder="Video URL"
-                    value={newVideo.videoUrl}
-                    onChange={(e) => setNewVideo((prev) => ({ ...prev, videoUrl: e.target.value }))}
-                    className="h-11 rounded-xl border-slate-300"
-                    required
-                  />
-                  <Input
-                    placeholder="Thumbnail URL (optional)"
-                    value={newVideo.thumbnailUrl}
-                    onChange={(e) => setNewVideo((prev) => ({ ...prev, thumbnailUrl: e.target.value }))}
-                    className="h-11 rounded-xl border-slate-300"
-                  />
-                  <div className="grid grid-cols-2 gap-3">
+                <form className="space-y-4" onSubmit={createVideo}>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Titel</label>
                     <Input
-                      placeholder="Category"
-                      value={newVideo.category}
-                      onChange={(e) => setNewVideo((prev) => ({ ...prev, category: e.target.value }))}
-                      className="h-11 rounded-xl border-slate-300"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Order"
-                      value={newVideo.orderIndex}
-                      onChange={(e) => setNewVideo((prev) => ({ ...prev, orderIndex: Number(e.target.value || 0) }))}
-                      className="h-11 rounded-xl border-slate-300"
+                      placeholder="z.B. Einführung in die MPU"
+                      value={newVideo.title}
+                      onChange={(e) => setNewVideo((prev) => ({ ...prev, title: e.target.value }))}
+                      className="h-12 rounded-2xl border-slate-200 bg-white px-4"
+                      required
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Video URL (Vimeo/YouTube)</label>
                     <Input
-                      type="number"
-                      placeholder="Duration sec"
-                      value={newVideo.durationSeconds}
-                      onChange={(e) => setNewVideo((prev) => ({ ...prev, durationSeconds: e.target.value }))}
-                      className="h-11 rounded-xl border-slate-300"
+                      placeholder="https://..."
+                      value={newVideo.videoUrl}
+                      onChange={(e) => setNewVideo((prev) => ({ ...prev, videoUrl: e.target.value }))}
+                      className="h-12 rounded-2xl border-slate-200 bg-white px-4"
+                      required
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 ml-1">Kategorie</label>
+                      <Input
+                        placeholder="Allgemein"
+                        value={newVideo.category}
+                        onChange={(e) => setNewVideo((prev) => ({ ...prev, category: e.target.value }))}
+                        className="h-12 rounded-2xl border-slate-200 bg-white px-4"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 ml-1">Reihenfolge</label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={newVideo.orderIndex}
+                        onChange={(e) => setNewVideo((prev) => ({ ...prev, orderIndex: Number(e.target.value || 0) }))}
+                        className="h-12 rounded-2xl border-slate-200 bg-white px-4"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Status</label>
                     <select
-                      className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold"
                       value={newVideo.isPublished ? 'published' : 'draft'}
                       onChange={(e) =>
                         setNewVideo((prev) => ({
@@ -725,94 +746,104 @@ export default function AdminPage() {
                         }))
                       }
                     >
-                      <option value="published">Published</option>
-                      <option value="draft">Draft</option>
+                      <option value="published">Veröffentlicht</option>
+                      <option value="draft">Entwurf</option>
                     </select>
                   </div>
-                  <Textarea
-                    placeholder="Description"
-                    value={newVideo.description}
-                    onChange={(e) => setNewVideo((prev) => ({ ...prev, description: e.target.value }))}
-                    className="rounded-xl border-slate-300"
-                    rows={4}
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 ml-1">Beschreibung</label>
+                    <Textarea
+                      placeholder="Worum geht es in dieser Lektion?"
+                      value={newVideo.description}
+                      onChange={(e) => setNewVideo((prev) => ({ ...prev, description: e.target.value }))}
+                      className="rounded-2xl border-slate-200 bg-white p-4 resize-none"
+                      rows={4}
+                    />
+                  </div>
                   <Button
                     type="submit"
-                    className="h-11 w-full rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+                    className="h-12 w-full rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
                     disabled={creatingVideo}
                   >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    {creatingVideo ? 'Creating...' : 'Create Video'}
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    {creatingVideo ? 'Wird erstellt...' : 'Video hinzufügen'}
                   </Button>
                 </form>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border-slate-200">
-              <CardHeader>
-                <CardTitle className={`${displayFont.className} text-2xl`}>Video Library</CardTitle>
-                <CardDescription>{videos.length} video(s) synced from Supabase</CardDescription>
+            <Card className="rounded-[2rem] border-slate-200 shadow-sm overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className={`${displayFont.className} text-2xl font-bold`}>Video Mediathek</CardTitle>
+                <CardDescription>{videos.length} Inhalte in der Akademie</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {videos.map((video) => (
-                  <div key={video.id} className="rounded-2xl border border-slate-200 p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className={`${displayFont.className} text-xl leading-tight`}>{video.title}</h3>
-                          <Badge className={video.isPublished ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'}>
-                            {video.isPublished ? 'Published' : 'Draft'}
-                          </Badge>
-                          <Badge variant="outline">{video.category}</Badge>
+              <CardContent className="p-0">
+                <div className="divide-y divide-slate-100">
+                  {videos.map((video) => (
+                    <div key={video.id} className="p-6 transition-colors hover:bg-slate-50/50">
+                      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 space-y-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h3 className={`${displayFont.className} text-xl font-bold text-slate-900`}>{video.title}</h3>
+                            <Badge className={cn('px-3 py-1 rounded-lg font-bold text-xs uppercase', video.isPublished ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200')}>
+                              {video.isPublished ? 'Live' : 'Entwurf'}
+                            </Badge>
+                            <Badge variant="outline" className="border-slate-200 bg-white font-bold rounded-lg text-slate-500">
+                              {video.category}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">{video.description || 'Keine Beschreibung vorhanden.'}</p>
+                          <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-400">
+                            <span className="inline-flex items-center gap-1.5"><RefreshCw className="h-3 w-3" /> Position: {video.orderIndex}</span>
+                            <span className="inline-flex items-center gap-1.5"><BarChart3 className="h-3 w-3" /> Dauer: {formatDuration(video.durationSeconds)}</span>
+                            {video.updatedAt && (
+                              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3" /> Zuletzt aktualisiert: {formatDate(video.updatedAt)}</span>
+                            )}
+                          </div>
+                          <a
+                            href={video.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center text-sm font-bold text-primary hover:text-blue-800 group"
+                          >
+                            Source ansehen
+                            <ExternalLink className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                          </a>
                         </div>
-                        <p className="mt-1 text-sm text-slate-600">{video.description || 'No description provided.'}</p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
-                          <span className="rounded-full bg-slate-100 px-2 py-1">Order: {video.orderIndex}</span>
-                          <span className="rounded-full bg-slate-100 px-2 py-1">Duration: {formatDuration(video.durationSeconds)}</span>
-                          {video.updatedAt && (
-                            <span className="rounded-full bg-slate-100 px-2 py-1">Updated: {formatDate(video.updatedAt)}</span>
-                          )}
-                        </div>
-                        <a
-                          href={video.videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-3 inline-flex items-center text-sm text-blue-700 hover:text-blue-900"
-                        >
-                          Open source URL
-                          <ExternalLink className="ml-1 h-3.5 w-3.5" />
-                        </a>
-                      </div>
 
-                      <div className="flex w-full flex-col gap-2 sm:w-auto">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-10 rounded-xl border-slate-300"
-                          disabled={busyVideoId === video.id}
-                          onClick={() => togglePublish(video)}
-                        >
-                          {video.isPublished ? 'Unpublish' : 'Publish'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          className="h-10 rounded-xl"
-                          disabled={busyVideoId === video.id}
-                          onClick={() => deleteVideo(video.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </Button>
+                        <div className="flex flex-col gap-2 min-w-[160px]">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-11 rounded-xl border-slate-200 font-bold bg-white shadow-sm hover:bg-slate-50"
+                            disabled={busyVideoId === video.id}
+                            onClick={() => togglePublish(video)}
+                          >
+                            {video.isPublished ? 'Deaktivieren' : 'Aktivieren'}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            className="h-11 rounded-xl font-bold shadow-sm"
+                            disabled={busyVideoId === video.id}
+                            onClick={() => deleteVideo(video.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Löschen
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                {!videos.length && (
-                  <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600">
-                    No videos yet. Create your first lesson on the left.
-                  </div>
-                )}
+                  ))}
+                  {!videos.length && (
+                    <div className="p-20 text-center flex flex-col items-center gap-4">
+                      <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center">
+                        <Clapperboard className="h-8 w-8 text-slate-300" />
+                      </div>
+                      <p className="text-slate-500 font-medium">Noch keine Videos vorhanden. Erstellen Sie Ihre erste Lektion links.</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </section>
