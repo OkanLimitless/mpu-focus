@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { getSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -39,7 +39,9 @@ export default function LoginPage() {
           title: t('loginSuccessTitle'),
           description: t('redirecting'),
         })
-        router.push('/learn')
+        const session = await getSession()
+        const role = session?.user?.role
+        router.push(role === 'admin' ? '/admin' : '/learn')
       }
     } catch (error) {
       toast({
