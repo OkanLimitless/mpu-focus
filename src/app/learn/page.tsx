@@ -10,9 +10,12 @@ import {
   CheckCircle2,
   Layout,
   BookOpen,
-  ArrowLeft
+  ArrowLeft,
+  Share2,
+  Bookmark,
+  MoreVertical,
+  Maximize2
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -54,7 +57,6 @@ export default function LearnPage() {
           throw new Error(payload?.error || 'Fehler beim Laden der Videos')
         }
         const list: VideoItem[] = payload?.videos || []
-        // Sort by orderIndex
         const sorted = list.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
         setVideos(sorted)
         setActiveVideo(sorted[0] || null)
@@ -77,156 +79,221 @@ export default function LearnPage() {
 
   if (loading) {
     return (
-      <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-slate-50")}>
-        <div className="flex flex-col items-center gap-4 text-slate-800">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-lg font-medium">Lernakademie lädt...</p>
+      <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-premium-dark text-white")}>
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative h-20 w-20">
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+            <div className="relative flex h-full w-full items-center justify-center rounded-full border-2 border-primary/20 bg-slate-900/50 backdrop-blur-xl">
+              <PlayCircle className="h-8 w-8 animate-pulse text-primary" />
+            </div>
+          </div>
+          <p className={cn(displayFont.className, "text-xl font-medium tracking-widest uppercase opacity-50")}>Masterclass lädt...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={cn(bodyFont.className, "min-h-screen bg-slate-50 text-slate-900")}>
-      {/* Premium Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-4 md:px-8">
-          <div className="flex items-center gap-4">
+    <div className={cn(bodyFont.className, "min-h-screen bg-premium-dark text-slate-200 selection:bg-primary selection:text-white")}>
+      {/* Cinematic Background Glow */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        {activeVideo?.thumbnailUrl && (
+          <div
+            className="absolute inset-0 opacity-20 blur-[150px] scale-150 transition-all duration-1000"
+            style={{
+              backgroundImage: `url(${activeVideo.thumbnailUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-slate-950/80" />
+      </div>
+
+      {/* Premium Navigation Header */}
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-5 md:px-12">
+          <div className="flex items-center gap-6">
             <Link href="/">
-              <Button variant="ghost" size="icon" className="rounded-xl border-slate-200 hover:bg-slate-100">
-                <ArrowLeft className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="group rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all">
+                <ArrowLeft className="h-5 w-5 text-slate-400 group-hover:text-white transition-colors" />
               </Button>
             </Link>
+            <div className="h-8 w-px bg-white/5" />
             <div>
-              <h1 className={cn(displayFont.className, "text-xl font-bold md:text-2xl")}>
-                MPU-Focus <span className="text-primary">Lernakademie</span>
+              <h1 className={cn(displayFont.className, "text-xl font-black text-white md:text-2xl tracking-tight")}>
+                MPU-Focus <span className="text-primary italic">Academy</span>
               </h1>
-              <p className="hidden text-xs font-medium text-slate-500 md:block">
-                Ihr professioneller Weg zur erfolgreichen MPU
+              <p className="hidden text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 md:block">
+                Professional License Recovery Program
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-700 md:inline-flex px-3 py-1">
-              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-              Eingeschrieben
+          <div className="flex items-center gap-4">
+            <Badge className="hidden border-emerald-500/20 bg-emerald-500/10 text-emerald-400 md:inline-flex px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-xl glow-emerald">
+              <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+              Aktiviert
             </Badge>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-blue-700 shadow-lg shadow-primary/20" />
+            <div className="h-10 w-10 cursor-pointer rounded-xl bg-gradient-to-br from-primary to-blue-700 shadow-lg shadow-primary/20 transition-transform hover:scale-110 active:scale-95" />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-8 lg:py-10">
+      <main className="mx-auto max-w-[1600px] px-6 py-8 md:px-12 lg:py-12">
         {error ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="mb-4 h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-              <span className="text-2xl text-red-600">!</span>
+          <div className="glass-dark flex flex-col items-center justify-center py-32 text-center rounded-[3rem] border border-red-500/20">
+            <div className="mb-6 h-20 w-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
+              <span className="text-4xl text-white font-black">!</span>
             </div>
-            <h2 className="text-xl font-bold">Hoppla! Es gab ein Problem.</h2>
-            <p className="text-slate-500">{error}</p>
-            <Button className="mt-6 rounded-xl bg-primary" onClick={() => window.location.reload()}>Erneut versuchen</Button>
+            <h2 className={cn(displayFont.className, "text-2xl font-black text-white")}>System-Fehler</h2>
+            <p className="mt-2 text-slate-400 max-w-md">{error}</p>
+            <Button className="mt-8 rounded-2xl bg-white text-slate-950 font-black px-10 h-14 hover:bg-slate-200 transition-all" onClick={() => window.location.reload()}>Erneut versuchen</Button>
           </div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-            {/* Main Content (Video Player) */}
-            <div className="space-y-6">
-              <div className="group relative aspect-video overflow-hidden rounded-[2rem] bg-black shadow-2xl ring-1 ring-slate-200 transition-all">
+          <div className="grid gap-12 lg:grid-cols-[1fr_420px]">
+            {/* Cinematic Content Area */}
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+              {/* Theater Mode Video Container */}
+              <div className="relative group overflow-hidden rounded-[3rem] bg-black shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/5 ring-1 ring-white/10 transition-all hover:ring-white/20">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
+
                 {activeVideo ? (
-                  <video
-                    key={activeVideo.id}
-                    controls
-                    className="h-full w-full"
-                    poster={activeVideo.thumbnailUrl || undefined}
-                    src={activeVideo.videoUrl}
-                  />
+                  <div className="aspect-video relative">
+                    <video
+                      key={activeVideo.id}
+                      controls
+                      className="h-full w-full object-contain"
+                      poster={activeVideo.thumbnailUrl || undefined}
+                      src={activeVideo.videoUrl}
+                    />
+                  </div>
                 ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-slate-900 text-white">
-                    <PlayCircle className="h-16 w-16 opacity-20" />
-                    <p className="text-slate-400">Wählen Sie eine Lektion aus der Liste rechts.</p>
+                  <div className="aspect-video flex flex-col items-center justify-center gap-6 bg-slate-900/50 backdrop-blur-md text-white">
+                    <PlayCircle className="h-24 w-24 text-primary/20 animate-pulse" />
+                    <p className="text-slate-500 font-bold tracking-widest uppercase text-sm">Bereit für Ihren Erfolg</p>
+                  </div>
+                )}
+
+                {/* Overlay Controls (Visual only for now) */}
+                {activeVideo && (
+                  <div className="absolute top-8 right-8 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-black/60">
+                      <Maximize2 className="h-5 w-5" />
+                    </Button>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 md:p-8 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none px-3 py-1 font-bold">
-                      {activeVideo?.category || 'Lektion'}
-                    </Badge>
-                    <h2 className={cn(displayFont.className, "text-2xl font-bold text-slate-900 md:text-3xl")}>
-                      {activeVideo?.title || 'Lektion auswählen'}
+              {/* Lesson Details */}
+              <div className="glass-dark overflow-hidden rounded-[2.5rem] p-10 lg:p-12">
+                <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="space-y-6 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className="bg-primary/20 text-primary border-primary/20 backdrop-blur-md px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl">
+                        {activeVideo?.category || 'Lektion'}
+                      </Badge>
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                        <Clock className="h-3.5 w-3.5" />
+                        {formatDuration(activeVideo?.durationSeconds)}
+                      </div>
+                    </div>
+                    <h2 className={cn(displayFont.className, "text-4xl font-black text-white md:text-5xl leading-tight")}>
+                      {activeVideo?.title || 'Wählen Sie ein Kapitel'}
                     </h2>
+                    <p className="text-xl leading-relaxed text-slate-400 font-medium">
+                      {activeVideo?.description || 'Bereiten Sie sich systematisch auf Ihre MPU vor mit unseren Experten-Videos.'}
+                    </p>
+
+                    <div className="flex flex-wrap gap-4 pt-4">
+                      <Button className="h-14 rounded-2xl bg-primary px-8 font-black text-white glow-primary hover:bg-primary/90 hover:scale-[1.02] transition-all">
+                        <CheckCircle2 className="mr-2 h-5 w-5" />
+                        Als abgeschlossen markieren
+                      </Button>
+                      <Button variant="ghost" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                        <Bookmark className="h-5 w-5" />
+                      </Button>
+                      <Button variant="ghost" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                        <Share2 className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm font-bold text-slate-500">
-                    <span className="inline-flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-lg">
-                      <Clock className="h-4 w-4" />
-                      {formatDuration(activeVideo?.durationSeconds)}
-                    </span>
+
+                  <div className="hidden lg:block">
+                    <Button variant="ghost" className="h-12 w-12 rounded-xl bg-white/5 text-slate-500">
+                      <MoreVertical className="h-6 w-6" />
+                    </Button>
                   </div>
                 </div>
-                <div className="h-px w-full bg-slate-100" />
-                <p className="text-lg leading-relaxed text-slate-600">
-                  {activeVideo?.description || 'Wählen Sie eine Lektion, um mit dem Lernen zu beginnen.'}
-                </p>
               </div>
             </div>
 
-            {/* Sidebar (List) */}
-            <aside className="space-y-6">
-              <section className="rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <BookOpen className="h-5 w-5" />
+            {/* Premium Sidebar Playlist */}
+            <aside className="space-y-8 animate-in fade-in slide-in-from-right duration-1000">
+              <section className="glass-dark flex items-center justify-between rounded-3xl p-6">
+                <div className="flex items-center gap-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-blue-700/20 border border-primary/20">
+                    <BookOpen className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-900">Kursübersicht</h3>
-                    <p className="text-xs font-medium text-slate-500">{videos.length} Lektionen verfügbar</p>
+                    <h3 className={cn(displayFont.className, "text-lg font-black text-white tracking-tight")}>Programm-Inhalt</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{videos.length} Lektionen • {Math.round(videos.reduce((acc, v) => acc + (v.durationSeconds || 0), 0) / 60)} Min.</p>
                   </div>
                 </div>
               </section>
 
-              <div className="space-y-8 h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-10 h-[calc(100vh-320px)] overflow-y-auto pr-4 custom-scrollbar">
                 {Object.entries(grouped).map(([category, items]) => (
-                  <div key={category} className="space-y-3">
-                    <h4 className="flex items-center px-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                      <Layout className="mr-2 h-3.5 w-3.5" />
+                  <div key={category} className="space-y-5">
+                    <h4 className="flex items-center px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">
+                      <Layout className="mr-3 h-4 w-4 text-primary/50" />
                       {category}
                     </h4>
-                    <div className="space-y-2">
-                      {items.map((video) => (
+                    <div className="space-y-3">
+                      {items.map((video, idx) => (
                         <button
                           key={video.id}
                           type="button"
                           onClick={() => setActiveVideo(video)}
                           className={cn(
-                            "group flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-all",
+                            "group relative flex w-full flex-col gap-4 rounded-[2rem] p-6 text-left transition-all border",
                             activeVideo?.id === video.id
-                              ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]"
-                              : "bg-white border border-slate-200 text-slate-700 hover:border-primary/30 hover:bg-slate-50"
+                              ? "bg-primary border-primary shadow-2xl glow-primary scale-[1.02] -translate-x-2"
+                              : "glass-dark border-white/5 text-slate-400 hover:border-white/20 hover:bg-white/5 hover:-translate-x-1"
                           )}
                         >
-                          <div className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs",
-                            activeVideo?.id === video.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                          )}>
-                            {video.orderIndex + 1}
-                          </div>
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <h5 className="truncate text-sm font-bold leading-tight">{video.title}</h5>
+                          <div className="flex items-center gap-4">
                             <div className={cn(
-                              "flex items-center gap-3 text-[10px] font-bold",
-                              activeVideo?.id === video.id ? "text-white/70" : "text-slate-400"
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-black text-xs transition-all",
+                              activeVideo?.id === video.id ? "bg-white text-primary" : "bg-slate-900/50 border border-white/5 text-slate-500"
                             )}>
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(video.durationSeconds)}
-                              </span>
+                              {idx + 1 < 10 ? `0${idx + 1}` : idx + 1}
                             </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className={cn(
+                                "truncate text-sm font-black tracking-tight",
+                                activeVideo?.id === video.id ? "text-white" : "text-slate-300 group-hover:text-white"
+                              )}>{video.title}</h5>
+                              <div className={cn(
+                                "flex items-center gap-4 text-[10px] font-black uppercase tracking-widest mt-1",
+                                activeVideo?.id === video.id ? "text-white/60" : "text-slate-500"
+                              )}>
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDuration(video.durationSeconds)}
+                                </span>
+                                {activeVideo?.id === video.id && (
+                                  <span className="animate-pulse flex items-center gap-1.5 text-white bg-white/10 px-2 py-0.5 rounded">
+                                    <PlayCircle className="h-3 w-3" />
+                                    Läuft...
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronRight className={cn(
+                              "h-6 w-6 shrink-0 transition-transform group-hover:translate-x-1",
+                              activeVideo?.id === video.id ? "text-white" : "text-slate-700"
+                            )} />
                           </div>
-                          <ChevronRight className={cn(
-                            "h-5 w-5 shrink-0 self-center transition-transform group-hover:translate-x-1",
-                            activeVideo?.id === video.id ? "text-white/50" : "text-slate-300"
-                          )} />
                         </button>
                       ))}
                     </div>
@@ -234,9 +301,9 @@ export default function LearnPage() {
                 ))}
 
                 {!videos.length && (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <PlayCircle className="mb-3 h-10 w-10 text-slate-200" />
-                    <p className="text-sm font-medium text-slate-500 italic">Noch keine Inhalte verfügbar.</p>
+                  <div className="glass-dark border-dashed border-white/10 flex flex-col items-center justify-center py-20 rounded-[2rem]">
+                    <PlayCircle className="mb-4 h-12 w-12 text-slate-800" />
+                    <p className="text-sm font-black text-slate-600 uppercase tracking-widest">Inhalte bald verfügbar</p>
                   </div>
                 )}
               </div>
@@ -253,11 +320,14 @@ export default function LearnPage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
+          background: rgba(255, 255, 255, 0.1);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #cbd5e1;
+          background: rgba(255, 255, 255, 0.2);
+        }
+        .glow-emerald {
+          box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.3);
         }
       `}</style>
     </div>
