@@ -299,7 +299,7 @@ export default function AdminPage() {
   return (
     <div className={cn(bodyFont.className, "flex min-h-screen bg-premium-dark text-slate-200")}>
       {/* Premium Sidebar */}
-      <aside className="fixed left-0 top-0 z-50 h-screen w-80 border-r border-white/5 bg-slate-950/50 backdrop-blur-2xl">
+      <aside className="hidden md:flex flex-col fixed left-0 top-0 z-50 h-screen w-80 border-r border-white/5 bg-slate-950/50 backdrop-blur-2xl">
         <div className="flex h-full flex-col p-8">
           <div className="mb-12 flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-700 shadow-xl shadow-primary/20">
@@ -352,8 +352,8 @@ export default function AdminPage() {
       </aside>
 
       {/* Main Dashboard Area */}
-      <main className="ml-80 flex-1 overflow-y-auto px-12 py-10 custom-scrollbar">
-        <header className="mb-12 flex items-center justify-between">
+      <main className="ml-0 md:ml-80 flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-10 custom-scrollbar pb-32 md:pb-10">
+        <header className="mb-8 md:mb-12 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className={cn(displayFont.className, "text-4xl font-black text-white md:text-5xl")}>
               {activeTab === 'crm' ? 'Lead' : 'Video'} <span className="text-primary italic">Zentrale</span>
@@ -404,8 +404,8 @@ export default function AdminPage() {
         {activeTab === 'crm' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Filter Bar */}
-            <div className="glass-dark flex flex-wrap items-center justify-between gap-6 rounded-[2.5rem] p-6 pr-8">
-              <div className="relative flex-1 min-w-[300px]">
+            <div className="glass-dark flex flex-col items-stretch md:flex-row md:items-center md:justify-between gap-4 rounded-[2rem] p-4 md:p-6 md:pr-8">
+              <div className="relative flex-1 min-w-[200px] md:min-w-[300px]">
                 <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                 <Input
                   placeholder="Lead suchen..."
@@ -438,19 +438,19 @@ export default function AdminPage() {
             {/* Leads List */}
             <div className="grid gap-6">
               {leads.map((lead) => (
-                <div key={lead._id} className="glass-dark group relative overflow-hidden rounded-[2.5rem] p-8 transition-all hover:bg-slate-900/60 hover:border-white/20">
-                  <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+                <div key={lead._id} className="glass-dark group relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 transition-all hover:bg-slate-900/60 hover:border-white/20">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-6 flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-800 border border-white/10 group-hover:scale-110 transition-transform">
-                          <UserRound className="h-8 w-8 text-primary" />
+                      <div className="flex flex-row items-center gap-4">
+                        <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-2xl md:rounded-3xl bg-slate-800 border border-white/10 group-hover:scale-110 transition-transform shrink-0">
+                          <UserRound className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                         </div>
-                        <div>
-                          <h3 className={cn(displayFont.className, "text-3xl font-black text-white")}>
+                        <div className="min-w-0">
+                          <h3 className={cn(displayFont.className, "text-xl md:text-3xl font-black text-white truncate")}>
                             {lead.firstName} {lead.lastName}
                           </h3>
-                          <div className="mt-1 flex items-center gap-3">
-                            <Badge className={cn("px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all", leadStatusConfig[lead.status].class, leadStatusConfig[lead.status].glow)}>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 md:gap-3">
+                            <Badge className={cn("px-3 border py-1 md:px-4 md:py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all", leadStatusConfig[lead.status].class, leadStatusConfig[lead.status].glow)}>
                               {leadStatusConfig[lead.status].label}
                             </Badge>
                             <span className="text-xs font-bold text-slate-500">• Erstellt am {formatDate(lead.createdAt)}</span>
@@ -458,7 +458,7 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                         <div className="glass flex items-center gap-4 rounded-2xl bg-white/5 border border-white/5 p-4 transition-colors hover:bg-white/10">
                           <Mail className="h-5 w-5 text-primary" />
                           <div className="min-w-0 flex-1">
@@ -561,14 +561,45 @@ export default function AdminPage() {
         )}
       </main>
 
+      {/* Mobile Navbar */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 glass-dark border-t border-white/10 p-4 pb-safe flex items-center justify-around shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] bg-slate-950/90 backdrop-blur-2xl">
+        <button
+          onClick={() => setActiveTab('crm')}
+          className={cn(
+            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black transition-all",
+            activeTab === 'crm' ? "text-primary scale-110" : "text-slate-500 hover:text-white"
+          )}
+        >
+          <Users className="h-6 w-6 mb-1" />
+          Leads
+        </button>
+        <button
+          onClick={() => setActiveTab('videos')}
+          className={cn(
+            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black transition-all",
+            activeTab === 'videos' ? "text-primary scale-110" : "text-slate-500 hover:text-white"
+          )}
+        >
+          <Clapperboard className="h-6 w-6 mb-1" />
+          Videos
+        </button>
+        <button
+          onClick={logoutAdmin}
+          className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black text-slate-500 hover:text-red-400 transition-all"
+        >
+          <LogOut className="h-6 w-6 mb-1" />
+          Logout
+        </button>
+      </nav>
+
       {error && (
-        <div className="fixed bottom-10 right-10 z-[100] animate-in slide-in-from-right duration-500">
-          <div className="glass h-auto min-w-[350px] rounded-[2rem] bg-red-500/10 border-red-500/20 p-6 backdrop-blur-3xl shadow-2xl">
+        <div className="fixed bottom-24 md:bottom-10 right-4 md:right-10 z-[100] animate-in slide-in-from-bottom-5 md:slide-in-from-right duration-500">
+          <div className="glass h-auto min-w-[300px] md:min-w-[350px] rounded-[2rem] bg-red-500/10 border-red-500/20 p-6 backdrop-blur-3xl shadow-2xl">
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-red-500 text-white shrink-0">!</div>
               <div className="flex-1">
                 <p className="text-sm font-black text-red-400 uppercase tracking-widest">System Error</p>
-                <p className="mt-1 font-bold text-red-200">{error}</p>
+                <p className="mt-1 font-bold text-red-200 text-sm md:text-base">{error}</p>
                 <button onClick={() => setError(null)} className="mt-4 text-xs font-black uppercase text-red-400 hover:text-red-300">Schließen</button>
               </div>
             </div>
@@ -578,3 +609,4 @@ export default function AdminPage() {
     </div>
   )
 }
+

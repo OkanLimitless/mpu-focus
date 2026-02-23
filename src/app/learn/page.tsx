@@ -112,7 +112,7 @@ export default function LearnPage() {
 
       {/* Premium Navigation Header */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/40 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-5 md:px-12">
+        <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 md:px-12 md:py-5">
           <div className="flex items-center gap-6">
             <Link href="/">
               <Button variant="ghost" size="icon" className="group rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all">
@@ -139,7 +139,7 @@ export default function LearnPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] px-6 py-8 md:px-12 lg:py-12">
+      <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-12 lg:py-12">
         {error ? (
           <div className="glass-dark flex flex-col items-center justify-center py-32 text-center rounded-[3rem] border border-red-500/20">
             <div className="mb-6 h-20 w-20 rounded-full bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/20">
@@ -154,7 +154,7 @@ export default function LearnPage() {
             {/* Cinematic Content Area */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
               {/* Theater Mode Video Container */}
-              <div className="relative group overflow-hidden rounded-[3rem] bg-black shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/5 ring-1 ring-white/10 transition-all hover:ring-white/20">
+              <div className="relative group overflow-hidden rounded-[1.5rem] md:rounded-[3rem] bg-black shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/5 ring-1 ring-white/10 transition-all hover:ring-white/20">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10" />
 
                 {activeVideo ? (
@@ -185,7 +185,7 @@ export default function LearnPage() {
               </div>
 
               {/* Lesson Details */}
-              <div className="glass-dark overflow-hidden rounded-[2.5rem] p-10 lg:p-12">
+              <div className="glass-dark overflow-hidden rounded-[1.5rem] md:rounded-[2.5rem] p-6 md:p-10 lg:p-12">
                 <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-6 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
@@ -197,22 +197,22 @@ export default function LearnPage() {
                         {formatDuration(activeVideo?.durationSeconds)}
                       </div>
                     </div>
-                    <h2 className={cn(displayFont.className, "text-4xl font-black text-white md:text-5xl leading-tight")}>
+                    <h2 className={cn(displayFont.className, "text-2xl md:text-4xl font-black text-white lg:text-5xl leading-tight")}>
                       {activeVideo?.title || 'Wählen Sie ein Kapitel'}
                     </h2>
-                    <p className="text-xl leading-relaxed text-slate-400 font-medium">
+                    <p className="text-base md:text-xl leading-relaxed text-slate-400 font-medium">
                       {activeVideo?.description || 'Bereiten Sie sich systematisch auf Ihre MPU vor mit unseren Experten-Videos.'}
                     </p>
 
                     <div className="flex flex-wrap gap-4 pt-4">
-                      <Button className="h-14 rounded-2xl bg-primary px-8 font-black text-white glow-primary hover:bg-primary/90 hover:scale-[1.02] transition-all">
+                      <Button className="h-12 md:h-14 rounded-2xl bg-primary px-6 md:px-8 font-black text-white glow-primary hover:bg-primary/90 hover:scale-[1.02] transition-all text-xs md:text-sm">
                         <CheckCircle2 className="mr-2 h-5 w-5" />
                         Als abgeschlossen markieren
                       </Button>
-                      <Button variant="ghost" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                      <Button variant="ghost" className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
                         <Bookmark className="h-5 w-5" />
                       </Button>
-                      <Button variant="ghost" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
+                      <Button variant="ghost" className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
                         <Share2 className="h-5 w-5" />
                       </Button>
                     </div>
@@ -229,7 +229,7 @@ export default function LearnPage() {
 
             {/* Premium Sidebar Playlist */}
             <aside className="space-y-8 animate-in fade-in slide-in-from-right duration-1000">
-              <section className="glass-dark flex items-center justify-between rounded-3xl p-6">
+              <section className="glass-dark flex items-center justify-between rounded-3xl p-4 md:p-6">
                 <div className="flex items-center gap-5">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-blue-700/20 border border-primary/20">
                     <BookOpen className="h-6 w-6 text-primary" />
@@ -241,7 +241,7 @@ export default function LearnPage() {
                 </div>
               </section>
 
-              <div className="space-y-10 h-[calc(100vh-320px)] overflow-y-auto pr-4 custom-scrollbar">
+              <div className="space-y-10 h-[500px] lg:h-[calc(100vh-320px)] overflow-y-auto pr-2 md:pr-4 custom-scrollbar">
                 {Object.entries(grouped).map(([category, items]) => (
                   <div key={category} className="space-y-5">
                     <h4 className="flex items-center px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-500">
@@ -255,7 +255,7 @@ export default function LearnPage() {
                           type="button"
                           onClick={() => setActiveVideo(video)}
                           className={cn(
-                            "group relative flex w-full flex-col gap-4 rounded-[2rem] p-6 text-left transition-all border",
+                            "group relative flex w-full flex-col gap-4 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 text-left transition-all border",
                             activeVideo?.id === video.id
                               ? "bg-primary border-primary shadow-2xl glow-primary scale-[1.02] -translate-x-2"
                               : "glass-dark border-white/5 text-slate-400 hover:border-white/20 hover:bg-white/5 hover:-translate-x-1"
