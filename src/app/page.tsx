@@ -182,7 +182,7 @@ export default function HomePage() {
               </div>
 
               {/* Minimal Trust Indicator */}
-              <div className="mt-14 flex items-center justify-center gap-8 py-8 border-y border-slate-200">
+              <div className="mt-14 flex flex-wrap items-center justify-center gap-6 sm:gap-8 py-8 border-y border-slate-200">
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 text-yellow-400 fill-current" />
                   <span className="font-bold text-slate-900">4.9/5 Bewertung</span>
@@ -196,6 +196,33 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5 text-emerald-600" />
                   <span className="font-bold text-slate-900">Völlige Diskretion</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Premium Hero Validation Image */}
+            <div className="mt-16 sm:mt-24 mx-auto max-w-6xl relative animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+              <div className="absolute inset-x-20 top-0 bg-blue-500 blur-[120px] h-full opacity-20 pointer-events-none" />
+              <div className="relative aspect-video rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200/50 bg-slate-100 group">
+                <Image
+                  src="/mpu-success.png"
+                  alt="MPU Erfolg"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-1000"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
+
+                <div className="absolute bottom-8 left-8 right-8 flex justify-center">
+                  <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl flex items-center justify-between p-4 sm:px-8 max-w-2xl w-full text-white shadow-2xl">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-1">Status</p>
+                      <p className="text-lg font-bold">Gutachten positiv abgeschlossen.</p>
+                    </div>
+                    <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/50">
+                      <CheckCircle2 className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
