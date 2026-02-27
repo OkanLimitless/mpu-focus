@@ -149,80 +149,72 @@ export default function HomePage() {
       </nav>
 
       <main className="pt-24 md:pt-32">
-        {/* Solid Hero Section */}
-        <section className="bg-slate-50 py-16 lg:py-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="mx-auto max-w-4xl text-center">
-              <Badge variant="outline" className="mb-6 border-blue-200 bg-blue-50 py-1 px-4 text-blue-700 font-bold rounded-full uppercase tracking-wider text-xs shadow-sm">
-                Zertifizierte Vorbereitung 2026
-              </Badge>
-              <h2 className={`${displayFont.className} text-5xl font-bold tracking-tight text-slate-900 md:text-7xl lg:leading-[1.1] mb-8`}>
-                Ihr schnellster Weg <br className="hidden md:block" /> zurück zum <span className="text-blue-600">Führerschein.</span>
-              </h2>
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl font-medium">
-                Professionelle MPU-Vorbereitung mit nachweislich 92% Erfolgsquote. Diskret, fundiert und zielorientiert – wir bereiten Sie optimal auf den Gutachter vor.
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button
-                  size="lg"
-                  className="h-14 w-full sm:w-auto rounded-xl bg-blue-600 px-8 text-lg font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
-                  onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
-                >
-                  Erstgespräch vereinbaren
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-14 w-full sm:w-auto rounded-xl px-8 text-lg font-bold border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
-                  onClick={() => document.getElementById('ablauf')?.scrollIntoView({ behavior: 'smooth' })}
-                >
-                  Mehr erfahren
-                </Button>
+        {/* Split Hero Section */}
+        <section className="bg-slate-50 pt-16 lg:pt-20 pb-0 overflow-hidden border-b border-slate-200">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+
+              {/* Left Content */}
+              <div className="max-w-2xl pb-12 lg:pb-24 pt-4 lg:pt-12 text-center lg:text-left mx-auto lg:mx-0">
+                <Badge variant="outline" className="mb-6 border-slate-200 bg-white py-1.5 px-4 text-slate-700 font-bold rounded-full uppercase tracking-wider text-xs shadow-sm">
+                  Zertifizierte Vorbereitung 2026
+                </Badge>
+                <h2 className={`${displayFont.className} text-5xl font-bold tracking-tight text-slate-900 md:text-6xl lg:text-[4rem] lg:leading-[1.1] mb-6`}>
+                  Ihr schnellster Weg <br className="hidden lg:block" /> zurück zum <span className="text-blue-600">Führerschein.</span>
+                </h2>
+                <p className="mt-6 text-lg leading-relaxed text-slate-600 md:text-xl font-medium max-w-lg mx-auto lg:mx-0 text-balance">
+                  Professionelle MPU-Vorbereitung mit nachweislich 92% Erfolgsquote. Diskret, fundiert und zielorientiert – wir bereiten Sie optimal auf den Gutachter vor.
+                </p>
+                <div className="mt-10 flex flex-col items-center justify-center lg:flex-row lg:justify-start gap-4">
+                  <Button
+                    size="lg"
+                    className="h-14 w-full sm:w-auto rounded-xl bg-blue-600 px-8 text-lg font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+                    onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    Erstgespräch vereinbaren
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-14 w-full sm:w-auto rounded-xl px-8 text-lg font-bold border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                    onClick={() => document.getElementById('ablauf')?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    Mehr erfahren
+                  </Button>
+                </div>
               </div>
 
-              {/* Minimal Trust Indicator */}
-              <div className="mt-14 flex flex-wrap items-center justify-center gap-6 sm:gap-8 py-8 border-y border-slate-200">
-                <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                  <span className="font-bold text-slate-900">4.9/5 Bewertung</span>
-                </div>
-                <div className="hidden sm:block w-px h-8 bg-slate-200" />
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-600" />
-                  <span className="font-bold text-slate-900">Über 500 Erfolgsfälle</span>
-                </div>
-                <div className="hidden sm:block w-px h-8 bg-slate-200" />
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                  <span className="font-bold text-slate-900">Völlige Diskretion</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Premium Hero Validation Image */}
-            <div className="mt-16 sm:mt-24 mx-auto max-w-6xl relative animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
-              <div className="absolute inset-x-20 top-0 bg-blue-500 blur-[120px] h-full opacity-20 pointer-events-none" />
-              <div className="relative aspect-video rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200/50 bg-slate-100 group">
+              {/* Right Image Container */}
+              <div className="relative h-[400px] sm:h-[500px] lg:h-[680px] w-full lg:-mr-32 xl:-mr-48 rounded-t-3xl lg:rounded-l-3xl lg:rounded-tr-none overflow-hidden shadow-2xl animate-in fade-in slide-in-from-right-8 duration-1000">
                 <Image
-                  src="/mpu-success.png"
-                  alt="MPU Erfolg"
+                  src="/mpu-hero-split.png"
+                  alt="MPU Beratung Erfolg"
                   fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-1000"
+                  className="object-cover object-center lg:object-left"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/10 to-transparent" />
+              </div>
+            </div>
+          </div>
 
-                <div className="absolute bottom-8 left-8 right-8 flex justify-center">
-                  <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl flex items-center justify-between p-4 sm:px-8 max-w-2xl w-full text-white shadow-2xl">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-1">Status</p>
-                      <p className="text-lg font-bold">Gutachten positiv abgeschlossen.</p>
-                    </div>
-                    <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-900/50">
-                      <CheckCircle2 className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
+          {/* Trust Indicators Bar (Bottom Full Width) */}
+          <div className="bg-white border-t border-slate-200">
+            <div className="mx-auto max-w-7xl px-6">
+              <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 py-6">
+                <div className="flex items-center gap-3">
+                  <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                  <span className="font-bold text-slate-800">4.9/5 Bewertung</span>
+                </div>
+                <div className="hidden sm:block w-px h-6 bg-slate-200" />
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <span className="font-bold text-slate-800">Über 500 Erfolgsfälle</span>
+                </div>
+                <div className="hidden sm:block w-px h-6 bg-slate-200" />
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  <span className="font-bold text-slate-800">Völlige Diskretion</span>
                 </div>
               </div>
             </div>
