@@ -573,7 +573,7 @@ export default function AdminPage() {
         <button
           onClick={() => setActiveTab('crm')}
           className={cn(
-            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black transition-all",
+            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-bold transition-all",
             activeTab === 'crm' ? "text-primary scale-110" : "text-slate-500 hover:text-white"
           )}
         >
@@ -583,7 +583,7 @@ export default function AdminPage() {
         <button
           onClick={() => setActiveTab('videos')}
           className={cn(
-            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black transition-all",
+            "flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-bold transition-all",
             activeTab === 'videos' ? "text-primary scale-110" : "text-slate-500 hover:text-white"
           )}
         >
@@ -592,7 +592,7 @@ export default function AdminPage() {
         </button>
         <button
           onClick={logoutAdmin}
-          className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black text-slate-500 hover:text-red-400 transition-all"
+          className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-bold text-slate-500 hover:text-red-400 transition-all"
         >
           <LogOut className="h-6 w-6 mb-1" />
           Abmelden
