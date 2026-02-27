@@ -102,9 +102,6 @@ export default function HomePage() {
               </Link>
             ))}
             <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 font-semibold focus:ring-0">Admin Login</Button>
-              </Link>
               <Button
                 size="sm"
                 className="bg-blue-600 font-semibold text-white hover:bg-blue-700 rounded-lg px-5 shadow-sm"
@@ -136,9 +133,6 @@ export default function HomePage() {
                 </Link>
               ))}
               <div className="flex flex-col gap-3 pt-6 border-t border-slate-100 mt-2">
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full text-slate-700 font-semibold">Admin Login</Button>
-                </Link>
                 <Button
                   className="w-full bg-blue-600 text-white font-semibold"
                   onClick={() => {
@@ -267,23 +261,18 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="bg-slate-900 rounded-3xl p-10 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-32 bg-blue-500 rounded-full blur-[120px] opacity-20" />
-                <h4 className={`${displayFont.className} text-2xl font-bold mb-8 relative z-10`}>Der Ablauf im Überblick</h4>
-                <div className="space-y-8 relative z-10 border-l border-slate-700 ml-4 pb-4">
-                  {[
-                    { step: "1", title: "Kostenfreies Erstgespräch", active: true },
-                    { step: "2", title: "Akteneinsicht & Analyse", active: false },
-                    { step: "3", title: "Individuelle Aufarbeitung", active: false },
-                    { step: "4", title: "Abschlusssimulation", active: false }
-                  ].map((s, i) => (
-                    <div key={i} className="relative pl-8">
-                      <div className={`absolute -left-[17px] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-slate-900 ${s.active ? 'bg-blue-500' : 'bg-slate-700'}`}>
-                        <span className="text-xs font-bold text-white">{s.step}</span>
-                      </div>
-                      <h5 className={`font-bold ${s.active ? 'text-white' : 'text-slate-400'}`}>{s.title}</h5>
-                    </div>
-                  ))}
+              <div className="relative aspect-[4/5] lg:aspect-square rounded-[2rem] bg-slate-100 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-1000 delay-200">
+                <Image
+                  src="/mpu-analysis.png"
+                  alt="MPU Aktenanalyse und Vorbereitung"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/40 to-transparent h-1/2" />
+                <div className="absolute top-6 left-6 right-6 flex items-start justify-between">
+                  <Badge className="bg-white/90 text-slate-800 font-bold border-none shadow-sm backdrop-blur-md px-3 py-1">
+                    <CheckCircle2 className="h-4 w-4 mr-1.5 text-blue-600" /> DSGVO Konform
+                  </Badge>
                 </div>
               </div>
             </div>
