@@ -13,15 +13,15 @@ import {
   Check,
   HelpCircle,
   Menu,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-const displayFont = Space_Grotesk({ subsets: ['latin'], weight: ['500', '700'] })
+const displayFont = Space_Grotesk({ subsets: ['latin'], weight: ['500', '600', '700'] })
 const bodyFont = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] })
 
 export default function HomePage() {
@@ -60,7 +60,6 @@ export default function HomePage() {
       }
 
       setSubmitted(true)
-      // Reset form
       setFirstName('')
       setLastName('')
       setEmail('')
@@ -81,20 +80,14 @@ export default function HomePage() {
   ]
 
   return (
-    <div className={`${bodyFont.className} min-h-screen bg-slate-50 text-slate-900 selection:bg-orange-100 selection:text-orange-900`}>
+    <div className={`${bodyFont.className} min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-900`}>
       {/* Navigation */}
-      <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-slate-900/95 backdrop-blur-md">
+      <nav className="fixed top-0 z-50 w-full border-b border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative h-10 w-32 transition-transform group-hover:scale-105">
-              <Image
-                src="/logo.png"
-                alt="MPU Focus Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+          <Link href="/" className="flex items-center flex-shrink-0">
+            <h1 className={`${displayFont.className} text-xl font-bold tracking-tight text-slate-900`}>
+              MPU <span className="text-blue-600">Focus</span>
+            </h1>
           </Link>
 
           {/* Desktop Nav */}
@@ -103,57 +96,57 @@ export default function HomePage() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm font-medium text-slate-300 transition-colors hover:text-orange-400"
+                className="text-sm font-semibold text-slate-600 transition-colors hover:text-slate-900"
               >
                 {link.name}
               </Link>
             ))}
-            <div className="flex items-center gap-3 pl-4 border-l border-white/10">
+            <div className="flex items-center gap-4 pl-6 border-l border-slate-200">
               <Link href="/login">
-                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/5">Login</Button>
+                <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 font-semibold focus:ring-0">Admin Login</Button>
               </Link>
               <Button
                 size="sm"
-                className="bg-orange-500 font-bold text-white hover:bg-orange-600 shadow-lg shadow-orange-500/20"
+                className="bg-blue-600 font-semibold text-white hover:bg-blue-700 rounded-lg px-5 shadow-sm"
                 onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                Jetzt starten
+                Kostenlose Erstberatung
               </Button>
             </div>
           </div>
 
           {/* Mobile Menu Toggle */}
-          <button className="md:hidden text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="md:hidden text-slate-900" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
         {/* Mobile Nav */}
         {mobileMenuOpen && (
-          <div className="border-t border-white/5 bg-slate-900 p-6 md:hidden animate-in slide-in-from-top-4 duration-200">
+          <div className="border-t border-slate-100 bg-white p-6 md:hidden">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="text-lg font-medium text-slate-200"
+                  className="text-lg font-semibold text-slate-700"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
                 </Link>
               ))}
-              <div className="flex flex-col gap-3 pt-4 border-t border-white/5">
+              <div className="flex flex-col gap-3 pt-6 border-t border-slate-100 mt-2">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full border-white/10 text-white hover:bg-white/5">Login</Button>
+                  <Button variant="outline" className="w-full text-slate-700 font-semibold">Admin Login</Button>
                 </Link>
                 <Button
-                  className="w-full bg-orange-500 text-white font-bold"
+                  className="w-full bg-blue-600 text-white font-semibold"
                   onClick={() => {
                     setMobileMenuOpen(false)
                     document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })
                   }}
                 >
-                  Kostenlose Beratung
+                  Kostenlose Erstberatung
                 </Button>
               </div>
             </div>
@@ -161,383 +154,251 @@ export default function HomePage() {
         )}
       </nav>
 
-      <main className="pt-20">
-        {/* Hero Section */}
-        <section className="relative bg-white py-16 lg:py-24 overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none">
-            <div className="absolute top-0 left-0 h-full w-full bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
-          </div>
-
-          <div className="relative z-10 mx-auto max-w-7xl px-6">
-            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-              <div className="max-w-xl animate-in fade-in slide-in-from-left-6 duration-700">
-                <Badge variant="outline" className="mb-6 border-orange-200 bg-orange-50 py-1 text-orange-700 font-bold px-4 rounded-full uppercase tracking-wider text-[10px]">
-                  92% Erfolgsquote im ersten Anlauf
-                </Badge>
-                <h1 className={`${displayFont.className} text-5xl font-bold leading-[1.1] tracking-tight text-slate-900 md:text-7xl`}>
-                  Ihren Führerschein <br />
-                  <span className="text-blue-700">sicher zurück.</span>
-                </h1>
-                <p className="mt-6 text-lg leading-relaxed text-slate-600 md:text-xl">
-                  Bestehen Sie die MPU ohne Stress. Professionelle und diskrete Vorbereitung von Experten. Wir begleiten Sie individuell bis zum positiven Gutachten.
-                </p>
-                <div className="mt-10 flex flex-wrap items-center gap-4">
-                  <Button
-                    size="lg"
-                    className="h-14 rounded-2xl bg-orange-500 px-8 text-lg font-bold shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all hover:scale-105 text-white"
-                    onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
-                  >
-                    Kostenlose Erstberatung
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                  <div className="flex items-center gap-5">
-                    <div className="flex -space-x-3 items-center">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-10 w-10 rounded-full border-2 border-white bg-blue-50 overflow-hidden ring-2 ring-blue-50/30">
-                          <img
-                            src={`https://api.dicebear.com/9.x/personas/svg?seed=${i + 123}&backgroundColor=b6e3f4,c0aede,d1d4f9`}
-                            alt="Klient"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-col justify-center">
-                      <div className="flex gap-1 mb-1">
-                        {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />)}
-                      </div>
-                      <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest leading-none">4.9/5 | 500+ Beratungen</span>
-                    </div>
-                  </div>
-                </div>
+      <main className="pt-24 md:pt-32">
+        {/* Solid Hero Section */}
+        <section className="bg-slate-50 py-16 lg:py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="mx-auto max-w-4xl text-center">
+              <Badge variant="outline" className="mb-6 border-blue-200 bg-blue-50 py-1 px-4 text-blue-700 font-bold rounded-full uppercase tracking-wider text-xs shadow-sm">
+                Zertifizierte Vorbereitung 2026
+              </Badge>
+              <h2 className={`${displayFont.className} text-5xl font-bold tracking-tight text-slate-900 md:text-7xl lg:leading-[1.1] mb-8`}>
+                Ihr schnellster Weg <br className="hidden md:block" /> zurück zum <span className="text-blue-600">Führerschein.</span>
+              </h2>
+              <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 md:text-xl font-medium">
+                Professionelle MPU-Vorbereitung mit nachweislich 92% Erfolgsquote. Diskret, fundiert und zielorientiert – wir bereiten Sie optimal auf den Gutachter vor.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button
+                  size="lg"
+                  className="h-14 w-full sm:w-auto rounded-xl bg-blue-600 px-8 text-lg font-bold text-white shadow-md hover:bg-blue-700 transition-colors"
+                  onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  Erstgespräch vereinbaren
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 w-full sm:w-auto rounded-xl px-8 text-lg font-bold border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+                  onClick={() => document.getElementById('ablauf')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  Mehr erfahren
+                </Button>
               </div>
 
-              <div className="relative aspect-[4/3] rounded-[2.5rem] bg-slate-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-1000 delay-200">
-                <Image
-                  src="/mpu-hero.png"
-                  alt="Professionelle MPU Beratung"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent" />
-                <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-white/20 bg-white/10 p-6 backdrop-blur-md">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg">
-                      <ShieldCheck className="h-7 w-7" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white/80">TÜV/DEKRA Konform</p>
-                      <p className="text-xl font-bold text-white uppercase tracking-tight">MPU-Vorbereitung 2026</p>
-                    </div>
-                  </div>
+              {/* Minimal Trust Indicator */}
+              <div className="mt-14 flex items-center justify-center gap-8 py-8 border-y border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-400 fill-current" />
+                  <span className="font-bold text-slate-900">4.9/5 Bewertung</span>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-slate-200" />
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <span className="font-bold text-slate-900">Über 500 Erfolgsfälle</span>
+                </div>
+                <div className="hidden sm:block w-px h-8 bg-slate-200" />
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                  <span className="font-bold text-slate-900">Völlige Diskretion</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Features / Trust Section */}
-        <section id="vorteile" className="bg-slate-50 py-20">
+        {/* Minimal Features Section */}
+        <section id="vorteile" className="bg-white py-24 border-b border-slate-100">
           <div className="mx-auto max-w-7xl px-6">
-            <div className="text-center mb-16">
-              <h2 className={`${displayFont.className} text-3xl font-bold md:text-5xl`}>Warum MPU Focus?</h2>
-              <p className="mt-4 text-slate-600 max-w-2xl mx-auto">Wir wissen, worauf es ankommt. Unser Ziel ist nicht nur das Bestehen, sondern Ihre nachhaltige Mobilität.</p>
+            <div className="mb-16 md:flex justify-between items-end">
+              <div className="max-w-2xl">
+                <h3 className={`${displayFont.className} text-3xl font-bold md:text-5xl tracking-tight`}>Expertise, der Sie vertrauen können.</h3>
+                <p className="mt-4 text-slate-600 text-lg">Ein positives Gutachten ist kein Zufall, sondern das Ergebnis solider Aufarbeitung.</p>
+              </div>
             </div>
 
             <div className="grid gap-8 md:grid-cols-3">
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow rounded-3xl">
-                <CardContent className="p-8">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-                    <Star className="h-7 w-7" />
-                  </div>
-                  <h3 className="text-xl font-bold">Experten-Wissen</h3>
-                  <p className="mt-3 text-slate-600 leading-relaxed">
-                    Profitieren Sie von über 10 Jahren Erfahrung und Experten, die die Anforderungen der Gutachter genau kennen.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow rounded-3xl">
-                <CardContent className="p-8">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600">
-                    <ShieldCheck className="h-7 w-7" />
-                  </div>
-                  <h3 className="text-xl font-bold">100% Diskretion</h3>
-                  <p className="mt-3 text-slate-600 leading-relaxed">
-                    Wir behandeln Ihren Fall absolut vertraulich und begleiten Sie ohne Vorurteile durch den gesamten Prozess.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow rounded-3xl">
-                <CardContent className="p-8">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-                    <Users className="h-7 w-7" />
-                  </div>
-                  <h3 className="text-xl font-bold">Individuell & Flexibel</h3>
-                  <p className="mt-3 text-slate-600 leading-relaxed">
-                    Keine Massenabfertigung. Wir erstellen einen maßgeschneiderten Plan, der perfekt in Ihren Alltag passt.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </section>
-
-        {/* Services Section */}
-        <section id="leistungen" className="bg-white py-24">
-          <div className="mx-auto max-w-7xl px-6">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <div>
-                <h2 className={`${displayFont.className} text-3xl font-bold md:text-5xl leading-tight`}>
-                  Gezielte Hilfe für <br />
-                  <span className="text-orange-500">Ihren spezifischen Fall.</span>
-                </h2>
-                <div className="mt-10 space-y-8">
-                  <div className="flex gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700">
-                      <Check className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold">Alkohol-MPU</h4>
-                      <p className="mt-2 text-slate-600">Systematische Aufarbeitung und Strategien zur Verhaltensänderung bei Alkoholdelikten.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-orange-500">
-                      <Check className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold">Drogen-MPU</h4>
-                      <p className="mt-2 text-slate-600">Begleitung bei der Abstinenzbelegung und Vorbereitung auf das psychologische Gespräch.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700">
-                      <Check className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold">Punkte-MPU</h4>
-                      <p className="mt-2 text-slate-600">Analyse von Verhaltensmustern und Aufbau einer positiven Perspektive für den Straßenverkehr.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="absolute -inset-4 rounded-[3rem] bg-gradient-to-tr from-blue-100 to-orange-100 blur-2xl opacity-50" />
-                <div className="relative grid gap-4">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in slide-in-from-right-8 duration-700">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-orange-500 p-2.5 text-white">
-                          <CheckCircle2 className="h-5 w-5" />
-                        </div>
-                        <span className="font-bold">Zertifikat erhalten</span>
-                      </div>
-                      <span className="text-sm font-medium text-slate-400">Vor 2 Min.</span>
-                    </div>
-                  </div>
-                  <div className="ml-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in slide-in-from-right-8 duration-700 delay-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-blue-600 p-2.5 text-white">
-                          <CheckCircle2 className="h-5 w-5" />
-                        </div>
-                        <span className="font-bold">Beratung abgeschlossen</span>
-                      </div>
-                      <span className="text-sm font-medium text-slate-400">Vor 1 Std.</span>
-                    </div>
-                  </div>
-                  <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in slide-in-from-right-8 duration-700 delay-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-slate-800 p-2.5 text-white">
-                          <CheckCircle2 className="h-5 w-5" />
-                        </div>
-                        <span className="font-bold">Termin bestätigt</span>
-                      </div>
-                      <span className="text-sm font-medium text-slate-400">Gerade eben</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Process Section */}
-        <section id="ablauf" className="bg-slate-900 py-24 text-white rounded-[4rem] mx-4 mb-24 overflow-hidden relative shadow-2xl shadow-blue-900/10">
-          <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-orange-500/10 blur-[100px]" />
-          <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-blue-500/10 blur-[100px]" />
-
-          <div className="relative z-10 mx-auto max-w-7xl px-6 text-center">
-            <h2 className={`${displayFont.className} text-3xl font-bold md:text-5xl`}>In 3 Schritten zurück zum Schein</h2>
-            <div className="mt-20 grid gap-12 md:grid-cols-3 relative">
-              <div className="hidden md:block absolute top-[28px] left-[15%] right-[15%] h-px bg-white/20 z-0" />
-
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-900 text-xl font-bold shadow-xl shadow-white/10 ring-8 ring-white/5">1</div>
-                <h4 className="mt-8 text-xl font-bold">Kostenlose Beratung</h4>
-                <p className="mt-3 text-emerald-50/70 text-sm leading-relaxed max-w-[240px]">In einem ersten Telefonat analysieren wir Ihren Fall und klären alle Fragen.</p>
-              </div>
-
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 text-white text-xl font-bold shadow-xl shadow-orange-500/20 ring-8 ring-orange-500/5">2</div>
-                <h4 className="mt-8 text-xl font-bold">Gezielte Vorbereitung</h4>
-                <p className="mt-3 text-orange-50/70 text-sm leading-relaxed max-w-[240px]">Einzelberatungen, Aufarbeitung und strategische Gutachter-Simulation.</p>
-              </div>
-
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white text-xl font-bold shadow-xl shadow-blue-600/20 ring-8 ring-blue-600/5">3</div>
-                <h4 className="mt-8 text-xl font-bold">MPU bestehen</h4>
-                <p className="mt-3 text-blue-50/70 text-sm leading-relaxed max-w-[240px]">Mit Sicherheit und Selbstbewusstsein in das Gespräch gehen und den Führerschein zurückerhalten.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section id="faq" className="bg-white py-24">
-          <div className="mx-auto max-w-3xl px-6">
-            <h2 className={`${displayFont.className} text-3xl font-bold text-center mb-16`}>Häufig gestellte Fragen</h2>
-            <div className="space-y-6">
               {[
-                { q: "Wie lange dauert eine MPU-Vorbereitung?", a: "Das hängt stark von Ihrem individuellen Fall und den Delikten ab. Im Durchschnitt planen wir 3 bis 6 Monate ein, um eine fundierte Verhaltensänderung zu erarbeiten." },
-                { q: "Benötige ich zwingend einen Abstinenzbeleg?", a: "Nicht in jedem Fall. Dies klären wir detailliert in der Erstberatung unter Berücksichtigung der aktuellen Beurteilungskriterien." },
-                { q: "Was kostet die Vorbereitung?", a: "Wir bieten transparente Festpreise an, die sich nach dem Umfang der notwendigen Beratung richten. Ein Angebot erhalten Sie nach dem kostenlosen Erstgespräch." }
-              ].map((faq, i) => (
-                <div key={i} className="rounded-3xl border border-slate-100 bg-slate-50 p-6 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex gap-4">
-                    <HelpCircle className="h-6 w-6 text-blue-600 shrink-0" />
-                    <div>
-                      <h4 className="text-lg font-bold">{faq.q}</h4>
-                      <p className="mt-2 text-slate-600 leading-relaxed">{faq.a}</p>
-                    </div>
-                  </div>
+                { title: 'Tiefgehende Analyse', desc: 'Präzise Aufarbeitung Ihrer individuellen Situation. Wir decken die Kernthemen auf, die der Gutachter erwartet.', icon: Users },
+                { title: 'Gutachter-Simulation', desc: 'Realitätsnahe Gesprächstrainings bereiten Sie auf Stresssituationen vor und bauen Ängste effektiv ab.', icon: ShieldCheck },
+                { title: 'Rechtssichere Prozesse', desc: 'Unsere methodische Vorbereitung ist konform mit den aktuellen Beurteilungskriterien (Beurteilungskriterien 4. Auflage).', icon: CheckCircle2 }
+              ].map((feat, i) => (
+                <div key={i} className="border border-slate-200 rounded-2xl p-8 hover:border-blue-300 transition-colors bg-slate-50">
+                  <feat.icon className="h-8 w-8 text-blue-600 mb-6" />
+                  <h4 className="text-xl font-bold text-slate-900 mb-3">{feat.title}</h4>
+                  <p className="text-slate-600 leading-relaxed">{feat.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Lead Capture Section */}
-        <section id="kontakt" className="relative bg-white py-24">
+        {/* Solid Services Section */}
+        <section id="leistungen" className="bg-slate-50 py-24 border-b border-slate-200">
           <div className="mx-auto max-w-7xl px-6">
-            <div className="rounded-[3rem] bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-8 md:p-16 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:32px_32px]" />
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <Badge variant="outline" className="mb-4 border-blue-200 bg-blue-50 text-blue-700 font-bold uppercase tracking-wider text-xs">
+                  Spezialisierung
+                </Badge>
+                <h3 className={`${displayFont.className} text-3xl font-bold md:text-5xl leading-tight mb-6`}>
+                  Maßgeschneidert auf Ihren Fall.
+                </h3>
+                <p className="text-slate-600 text-lg mb-10 leading-relaxed">
+                  Jede Anordnung zur MPU hat unterschiedliche Hintergründe. Wir bieten spezialisierte Vorbereitungen, die genau auf Ihre behördlichen Auflagen zugeschnitten sind.
+                </p>
+                <div className="space-y-6">
+                  {[
+                    { title: "Alkohol-Fragestellung", desc: "Begleitung bei Abstinenznachweisen und Erarbeitung von Trinkmotiven sowie Vermeidungsstrategien." },
+                    { title: "Drogen-Fragestellung", desc: "Konsequente Aufarbeitung des Konsumverhaltens und Vorbereitung auf die medizinisch-toxikologischen Anforderungen." },
+                    { title: "Punkte-Fragestellung", desc: "Analyse Ihrer Verkehrszuwiderhandlungen und Entwicklung von Strategien zur konsequenten Regelakzeptanz." }
+                  ].map((service, i) => (
+                    <div key={i} className="flex gap-4">
+                      <div className="mt-1 shrink-0 p-1 bg-blue-100 rounded text-blue-700 h-6 w-6 flex items-center justify-center">
+                        <Check className="h-4 w-4 stroke-[3]" />
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-900 text-lg">{service.title}</h5>
+                        <p className="text-slate-600 mt-1">{service.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              <div className="grid gap-16 lg:grid-cols-2 relative z-10">
-                <div>
-                  <h2 className={`${displayFont.className} text-4xl font-bold md:text-5xl leading-tight`}>
-                    Der erste Schritt <br />
-                    <span className="text-orange-400 underline decoration-white/20 underline-offset-8">zurück zum Schein.</span>
-                  </h2>
-                  <p className="mt-8 text-xl text-orange-50/80 leading-relaxed">
-                    Hinterlassen Sie uns Ihre Daten. Wir rufen Sie innerhalb von 24 Stunden für eine kostenlose, unverbindliche Erstberatung zurück.
-                  </p>
-                  <div className="mt-12 space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-orange-400">
-                        <Check className="h-5 w-5" />
+              <div className="bg-slate-900 rounded-3xl p-10 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-32 bg-blue-500 rounded-full blur-[120px] opacity-20" />
+                <h4 className={`${displayFont.className} text-2xl font-bold mb-8 relative z-10`}>Der Ablauf im Überblick</h4>
+                <div className="space-y-8 relative z-10 border-l border-slate-700 ml-4 pb-4">
+                  {[
+                    { step: "1", title: "Kostenfreies Erstgespräch", active: true },
+                    { step: "2", title: "Akteneinsicht & Analyse", active: false },
+                    { step: "3", title: "Individuelle Aufarbeitung", active: false },
+                    { step: "4", title: "Abschlusssimulation", active: false }
+                  ].map((s, i) => (
+                    <div key={i} className="relative pl-8">
+                      <div className={`absolute -left-[17px] top-1 flex h-8 w-8 items-center justify-center rounded-full border-4 border-slate-900 ${s.active ? 'bg-blue-500' : 'bg-slate-700'}`}>
+                        <span className="text-xs font-bold text-white">{s.step}</span>
                       </div>
-                      <span className="text-lg font-medium">100% Kostenlos & Unverbindlich</span>
+                      <h5 className={`font-bold ${s.active ? 'text-white' : 'text-slate-400'}`}>{s.title}</h5>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-orange-400">
-                        <Check className="h-5 w-5" />
-                      </div>
-                      <span className="text-lg font-medium">Datenschutzkonform & Diskret</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-orange-400">
-                        <Check className="h-5 w-5" />
-                      </div>
-                      <span className="text-lg font-medium">Sofortiger Rückruf garantiert</span>
-                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Lead Capture Section - Highly Professional Form */}
+        <section id="kontakt" className="bg-white py-24">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="grid gap-16 lg:grid-cols-12 items-start">
+              <div className="lg:col-span-5">
+                <h3 className={`${displayFont.className} text-4xl font-bold md:text-5xl leading-tight text-slate-900 mb-6`}>
+                  Starten Sie jetzt.
+                </h3>
+                <p className="text-lg text-slate-600 leading-relaxed mb-8">
+                  Nutzen Sie unser kostenfreies Erstgespräch, um Ihre Situation zu bewerten. Keine Verpflichtungen, volle Transparenz.
+                </p>
+                <div className="space-y-5">
+                  <div className="flex items-center gap-4 text-slate-700 font-medium">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600" /> Kostenlose Ersteinschätzung
+                  </div>
+                  <div className="flex items-center gap-4 text-slate-700 font-medium">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600" /> Strikte Vertraulichkeit (DSGVO-konform)
+                  </div>
+                  <div className="flex items-center gap-4 text-slate-700 font-medium">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600" /> Rückmeldung innerhalb von 24h
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-[2.5rem] bg-white p-8 md:p-10 shadow-3xl text-slate-900">
-                  <form className="space-y-4" onSubmit={onSubmit}>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold ml-1">Vorname</label>
+              <div className="lg:col-span-7">
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 md:p-10 shadow-sm">
+                  <form className="space-y-5" onSubmit={onSubmit}>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Vorname</label>
                         <Input
                           placeholder="Max"
                           value={firstName}
                           onChange={(e) => setFirstName(e.target.value)}
                           required
-                          className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all shadow-none"
+                          className="h-12 bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500 shadow-none font-medium"
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-bold ml-1">Nachname</label>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Nachname</label>
                         <Input
                           placeholder="Mustermann"
                           value={lastName}
                           onChange={(e) => setLastName(e.target.value)}
                           required
-                          className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all shadow-none"
+                          className="h-12 bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500 shadow-none font-medium"
                         />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold ml-1">E-Mail Adresse</label>
-                      <Input
-                        type="email"
-                        placeholder="max@beispiel.de"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all shadow-none"
-                      />
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">E-Mail Adresse</label>
+                        <Input
+                          type="email"
+                          placeholder="mail@beispiel.de"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          className="h-12 bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500 shadow-none font-medium"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Telefonnummer</label>
+                        <Input
+                          type="tel"
+                          placeholder="+49 123 45678"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
+                          className="h-12 bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500 shadow-none font-medium"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold ml-1">Telefonnummer</label>
-                      <Input
-                        type="tel"
-                        placeholder="+49 123 456789"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        required
-                        className="h-12 rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all shadow-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold ml-1">Ihre Nachricht (optional)</label>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700">Kurzbeschreibung Ihres Falls (Optional)</label>
                       <Textarea
-                        placeholder="Kurze Schilderung Ihres Falls..."
+                        placeholder="Was wurde Ihnen vorgeworfen?"
                         value={goals}
                         onChange={(e) => setGoals(e.target.value)}
-                        rows={3}
-                        className="rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-all shadow-none resize-none"
+                        rows={4}
+                        className="bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500 shadow-none font-medium resize-none"
                       />
                     </div>
 
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="h-14 w-full rounded-2xl bg-orange-500 text-lg font-bold text-white shadow-lg shadow-orange-500/20 hover:bg-orange-600 hover:scale-[1.02] transition-all"
+                      className="h-14 w-full rounded-xl bg-blue-600 text-lg font-bold text-white hover:bg-blue-700 transition-colors mt-2"
                     >
-                      {submitting ? 'Wird gesendet...' : 'Jetzt Beratung anfordern'}
+                      {submitting ? 'Wird übermittelt...' : 'Beratung anfordern'}
                     </Button>
 
-                    <p className="text-center text-xs text-slate-400 pt-2">
-                      Mit der Anforderung erklären Sie sich mit unserer <Link href="/datenschutz" className="underline">Datenschutzerklärung</Link> einverstanden.
+                    <p className="text-center text-sm text-slate-500 mt-4">
+                      Durch Absenden akzeptieren Sie unsere <Link href="/datenschutz" className="underline hover:text-slate-800">Datenschutzerklärung</Link>.
                     </p>
 
                     {submitted && (
-                      <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-center animate-in fade-in zoom-in-95 duration-500">
-                        <CheckCircle2 className="mx-auto h-8 w-8 text-orange-600 mb-2" />
-                        <p className="font-bold text-orange-800">Vielen Dank!</p>
-                        <p className="text-sm text-orange-700">Wir haben Ihre Anfrage erhalten und melden uns in Kürze.</p>
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 mt-6">
+                        <div className="flex items-center gap-3 text-emerald-800">
+                          <CheckCircle2 className="h-6 w-6" />
+                          <p className="font-bold">Anfrage erfolgreich übermittelt. Wir melden uns in Kürze!</p>
+                        </div>
                       </div>
                     )}
                     {error && (
-                      <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 text-center animate-in fade-in slide-in-from-top-2">
-                        {error}
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4 mt-6">
+                        <div className="font-bold text-red-700">{error}</div>
                       </div>
                     )}
                   </form>
@@ -548,52 +409,43 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="bg-white border-t border-slate-100 py-16">
+      <footer className="bg-slate-900 border-t border-slate-800 py-16 text-slate-300">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-12 md:grid-cols-4 items-start">
+          <div className="grid gap-12 md:grid-cols-4 items-start pb-12 border-b border-slate-800">
             <div className="col-span-1 md:col-span-2">
-              <Link href="/" className="flex items-center gap-2 mb-6">
-                <div className="relative h-8 w-32">
-                  <Image
-                    src="/logo.png"
-                    alt="MPU Focus Logo"
-                    fill
-                    className="object-contain object-left filter invert brightness-0"
-                  />
-                </div>
-              </Link>
-              <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
-                Professionelle MPU-Vorbereitung für Ihren Erfolg. Wir begleiten Sie sicher und diskret durch den gesamten Prozess zurück zur Mobilität.
+              <h1 className={`${displayFont.className} text-xl font-bold tracking-tight text-white mb-6`}>
+                MPU <span className="text-blue-500">Focus</span>
+              </h1>
+              <p className="text-slate-400 text-sm max-w-sm leading-relaxed">
+                Professionelle und systematische MPU-Vorbereitung für Ihren Erfolg. Diskret, fundiert und zielorientiert – wir begleiten Sie auf dem Weg zurück zum Führerschein.
               </p>
             </div>
 
             <div>
-              <h5 className="font-bold text-slate-900 mb-6">Links</h5>
-              <ul className="space-y-4 text-sm text-slate-600">
-                <li><Link href="#vorteile" className="hover:text-orange-500 transition-colors">Vorteile</Link></li>
-                <li><Link href="#leistungen" className="hover:text-orange-500 transition-colors">Leistungen</Link></li>
-                <li><Link href="#ablauf" className="hover:text-orange-500 transition-colors">Ablauf</Link></li>
-                <li><Link href="/login" className="hover:text-orange-500 transition-colors">Partner-Login</Link></li>
+              <h5 className="font-bold text-white mb-6 tracking-wide uppercase text-xs">Informationen</h5>
+              <ul className="space-y-4 text-sm font-medium">
+                <li><Link href="#vorteile" className="hover:text-blue-400 transition-colors">Vorteile</Link></li>
+                <li><Link href="#leistungen" className="hover:text-blue-400 transition-colors">Leistungen</Link></li>
               </ul>
             </div>
 
             <div>
-              <h5 className="font-bold text-slate-900 mb-6">Rechtliches</h5>
-              <ul className="space-y-4 text-sm text-slate-600">
-                <li><Link href="/impressum" className="hover:text-orange-500 transition-colors">Impressum</Link></li>
-                <li><Link href="/datenschutz" className="hover:text-orange-500 transition-colors">Datenschutz</Link></li>
-                <li><Link href="/agb" className="hover:text-orange-500 transition-colors">AGB</Link></li>
+              <h5 className="font-bold text-white mb-6 tracking-wide uppercase text-xs">Rechtliches</h5>
+              <ul className="space-y-4 text-sm font-medium">
+                <li><Link href="/impressum" className="hover:text-blue-400 transition-colors">Impressum</Link></li>
+                <li><Link href="/datenschutz" className="hover:text-blue-400 transition-colors">Datenschutz</Link></li>
+                <li><Link href="/agb" className="hover:text-blue-400 transition-colors">AGB</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="mt-16 pt-8 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-slate-400">© {new Date().getFullYear()} MPU Focus. Alle Rechte vorbehalten.</p>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                Server Status: Online
+          <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm font-medium text-slate-500">© {new Date().getFullYear()} MPU Focus. Alle Rechte vorbehalten.</p>
+            <div className="flex items-center gap-3 text-sm font-bold text-slate-500 tracking-wider">
+              <div className="flex items-center justify-center p-1 rounded-full bg-emerald-500/20">
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
               </div>
+              SYSTEM ONLINE
             </div>
           </div>
         </div>
