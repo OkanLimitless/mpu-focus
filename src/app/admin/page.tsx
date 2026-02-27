@@ -307,7 +307,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h2 className={cn(displayFont.className, "text-xl font-bold text-white tracking-tight")}>MPU-Focus</h2>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">System Administration</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">Systemverwaltung</p>
             </div>
           </div>
 
@@ -320,7 +320,7 @@ export default function AdminPage() {
               )}
             >
               <Users className={cn("h-5 w-5", activeTab === 'crm' ? "text-primary" : "text-slate-500 group-hover:text-primary")} />
-              Lead Management
+              Lead Verwaltung
             </button>
             <button
               onClick={() => setActiveTab('videos')}
@@ -341,7 +341,7 @@ export default function AdminPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">Okan</p>
-                <p className="truncate text-[10px] text-slate-500 uppercase tracking-wider font-bold">System Admin</p>
+                <p className="truncate text-[10px] text-slate-500 uppercase tracking-wider font-bold">Admin-Verwaltung</p>
               </div>
               <button onClick={logoutAdmin} className="text-slate-500 hover:text-red-400 transition-colors">
                 <LogOut className="h-5 w-5" />
@@ -356,9 +356,9 @@ export default function AdminPage() {
         <header className="mb-8 md:mb-12 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className={cn(displayFont.className, "text-4xl font-bold text-white md:text-5xl tracking-tight")}>
-              {activeTab === 'crm' ? 'Leads' : 'Video'} Dashboard
+              {activeTab === 'crm' ? 'Lead' : 'Video'} Dashboard
             </h1>
-            <p className="mt-2 text-lg font-medium text-slate-500">Overview and management of system {activeTab}.</p>
+            <p className="mt-2 text-lg font-medium text-slate-500">Übersicht und Verwaltung der {activeTab === 'crm' ? 'Leads' : 'Videos'}.</p>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all shadow-sm">
@@ -370,7 +370,7 @@ export default function AdminPage() {
               className="h-12 gap-3 rounded-2xl bg-white text-slate-950 hover:bg-white/90 px-6 font-bold shadow-xl transition-all active:scale-95"
             >
               <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-              Refresh
+              Aktualisieren
             </Button>
           </div>
         </header>
@@ -384,7 +384,7 @@ export default function AdminPage() {
         {/* Stats Grid */}
         <section className="mb-12 grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-7">
           {[
-            { label: 'Total Leads', val: stats.totalLeads, icon: Users, color: 'text-primary' },
+            { label: 'Gesamtanzahl Leads', val: stats.totalLeads, icon: Users, color: 'text-primary' },
             { label: 'Neu', val: stats.newLeads, icon: Circle, color: 'text-blue-400' },
             { label: 'Kontaktiert', val: stats.contactedLeads, icon: UserRound, color: 'text-amber-400' },
             { label: 'Eingeschrieben', val: stats.enrolledLeads, icon: CheckCircle2, color: 'text-emerald-400' },
@@ -408,7 +408,7 @@ export default function AdminPage() {
               <div className="relative flex-1 min-w-[200px] md:min-w-[400px]">
                 <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
-                  placeholder="Lead suchen..."
+                  placeholder="Leads suchen..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && setAppliedSearch(searchInput.trim())}
@@ -578,7 +578,7 @@ export default function AdminPage() {
           )}
         >
           <Users className="h-6 w-6 mb-1" />
-          Leads
+          Verwaltung
         </button>
         <button
           onClick={() => setActiveTab('videos')}
@@ -588,14 +588,14 @@ export default function AdminPage() {
           )}
         >
           <Clapperboard className="h-6 w-6 mb-1" />
-          Videos
+          Akademie
         </button>
         <button
           onClick={logoutAdmin}
           className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] uppercase tracking-wider font-black text-slate-500 hover:text-red-400 transition-all"
         >
           <LogOut className="h-6 w-6 mb-1" />
-          Logout
+          Abmelden
         </button>
       </nav>
 
@@ -607,7 +607,7 @@ export default function AdminPage() {
                 <Lock className="h-6 w-6" />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-bold text-red-400 uppercase tracking-[0.2em]">System Alert</p>
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-[0.2em]">System-Hinweis</p>
                 <p className="mt-1 font-semibold text-red-100 text-sm md:text-base leading-relaxed">{error}</p>
                 <button onClick={() => setError(null)} className="mt-4 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors">Schließen</button>
               </div>

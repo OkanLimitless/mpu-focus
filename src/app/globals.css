@@ -38,24 +38,24 @@
   }
 
   .dark {
-    --background: 230 40% 4%;
-    --foreground: 210 40% 98%;
+    --background: 222 47% 11%;
+    --foreground: 214 32% 91%;
 
-    --card: 230 25% 7%;
-    --card-foreground: 210 40% 98%;
+    --card: 222 47% 15%;
+    --card-foreground: 214 32% 91%;
 
-    --popover: 230 25% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 222 47% 16%;
+    --popover-foreground: 214 32% 91%;
 
     /* Professional Indigo Primary */
     --primary: 226 100% 64%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 230 20% 12%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 222 47% 20%;
+    --secondary-foreground: 214 32% 91%;
 
-    --muted: 230 20% 12%;
-    --muted-foreground: 215 15% 65%;
+    --muted: 222 47% 20%;
+    --muted-foreground: 215 20% 65%;
 
     --accent: 25 95% 53%;
     --accent-foreground: 210 40% 98%;
@@ -63,8 +63,8 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 230 15% 15%;
-    --input: 230 15% 15%;
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
     --ring: 226 100% 64%;
   }
 }
@@ -130,8 +130,8 @@
 .bg-premium-dark {
   background-color: hsl(var(--background));
   background-image:
-    radial-gradient(at 0% 0%, hsla(221, 83%, 53%, 0.07) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(25, 95%, 53%, 0.07) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, hsla(226, 100%, 64%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(25, 95%, 53%, 0.05) 0px, transparent 50%);
 }
 
 /* Premium Shadows & Glows */
