@@ -297,7 +297,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className={cn(bodyFont.className, "flex min-h-screen bg-premium-dark text-slate-200")}>
+    <div className={cn(bodyFont.className, "dark flex min-h-screen bg-premium-dark text-slate-200")}>
       {/* Premium Sidebar */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 z-50 h-screen w-80 border-r border-white/[0.04] bg-card/30 backdrop-blur-3xl shadow-2xl">
         <div className="flex h-full flex-col p-8">
@@ -307,7 +307,7 @@ export default function AdminPage() {
             </div>
             <div>
               <h2 className={cn(displayFont.className, "text-xl font-bold text-white tracking-tight")}>MPU-Focus</h2>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Admin Center</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">System Administration</p>
             </div>
           </div>
 
@@ -355,10 +355,10 @@ export default function AdminPage() {
       <main className="ml-0 md:ml-80 flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-10 custom-scrollbar pb-32 md:pb-10">
         <header className="mb-8 md:mb-12 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className={cn(displayFont.className, "text-4xl font-bold text-white md:text-5xl tracking-tight text-gradient-premium")}>
-              {activeTab === 'crm' ? 'Lead' : 'Video'} <span className="text-primary italic">Zentrale</span>
+            <h1 className={cn(displayFont.className, "text-4xl font-bold text-white md:text-5xl tracking-tight")}>
+              {activeTab === 'crm' ? 'Leads' : 'Video'} Dashboard
             </h1>
-            <p className="mt-2 text-lg font-medium text-slate-500">Willkommen zurück in Ihrem Command Center.</p>
+            <p className="mt-2 text-lg font-medium text-slate-500">Overview and management of system {activeTab}.</p>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all shadow-sm">

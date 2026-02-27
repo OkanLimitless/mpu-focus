@@ -47,14 +47,15 @@
     --popover: 230 25% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    /* Professional Indigo Primary */
+    --primary: 226 100% 64%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 230 20% 12%;
     --secondary-foreground: 210 40% 98%;
 
     --muted: 230 20% 12%;
-    --muted-foreground: 215 15% 60%;
+    --muted-foreground: 215 15% 65%;
 
     --accent: 25 95% 53%;
     --accent-foreground: 210 40% 98%;
@@ -64,7 +65,7 @@
 
     --border: 230 15% 15%;
     --input: 230 15% 15%;
-    --ring: 221 83% 53%;
+    --ring: 226 100% 64%;
   }
 }
 
