@@ -87,11 +87,11 @@ const defaultStats: Stats = {
   publishedVideos: 0,
 }
 
-const leadStatusConfig: Record<LeadStatus, { label: string; class: string; glow: string }> = {
-  new: { label: 'Neu', class: 'bg-blue-500/10 text-blue-400 border-blue-500/20', glow: 'shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]' },
-  contacted: { label: 'Kontaktiert', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20', glow: 'shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]' },
-  enrolled: { label: 'Eingeschrieben', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', glow: 'shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' },
-  closed: { label: 'Abgeschlossen', class: 'bg-slate-500/10 text-slate-400 border-slate-500/20', glow: 'shadow-none' },
+const leadStatusConfig: Record<LeadStatus, { label: string; class: string }> = {
+  new: { label: 'Neu', class: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  contacted: { label: 'Kontaktiert', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  enrolled: { label: 'Eingeschrieben', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  closed: { label: 'Abgeschlossen', class: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
 }
 
 function formatDate(value?: string) {
@@ -273,20 +273,20 @@ export default function AdminPage() {
   if (status === 'unauthenticated' || !isAdmin) {
     return (
       <div className={cn(bodyFont.className, "flex min-h-screen items-center justify-center bg-premium-dark px-4 py-10")}>
-        <div className="glass-dark w-full max-w-md rounded-[2.5rem] p-10 text-center shadow-premium">
-          <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-blue-700 shadow-lg shadow-primary/20">
+        <div className="card-layer w-full max-w-md p-10 text-center shadow-premium bg-card/40">
+          <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-primary shadow-lg shadow-primary/20">
             <Lock className="h-10 w-10 text-white" />
           </div>
-          <h1 className={cn(displayFont.className, "mb-4 text-3xl font-black text-white")}>Zugriff verweigert</h1>
-          <p className="mb-8 text-slate-400">Dieser Bereich ist ausschließlich für Administratoren reserviert.</p>
+          <h1 className={cn(displayFont.className, "mb-4 text-3xl font-bold text-white tracking-tight")}>Zugriff verweigert</h1>
+          <p className="mb-8 text-slate-500 font-medium italic">Dieser Bereich ist ausschließlich für Administratoren reserviert.</p>
           <div className="space-y-4">
             <Link href="/login" className="block">
-              <Button className="h-14 w-full rounded-2xl bg-primary text-lg font-black text-white hover:bg-primary/90 glow-primary transition-all">
+              <Button className="h-14 w-full rounded-2xl bg-white text-slate-950 text-lg font-bold hover:bg-white/90 shadow-xl transition-all active:scale-[0.98]">
                 Zum Login
               </Button>
             </Link>
             <Link href="/" className="block">
-              <Button variant="ghost" className="h-14 w-full rounded-2xl text-slate-400 hover:bg-white/5 hover:text-white">
+              <Button variant="ghost" className="h-14 w-full rounded-2xl text-slate-500 hover:bg-white/5 hover:text-white transition-all">
                 Abbrechen
               </Button>
             </Link>
@@ -299,15 +299,15 @@ export default function AdminPage() {
   return (
     <div className={cn(bodyFont.className, "flex min-h-screen bg-premium-dark text-slate-200")}>
       {/* Premium Sidebar */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 z-50 h-screen w-80 border-r border-white/5 bg-slate-950/50 backdrop-blur-2xl">
+      <aside className="hidden md:flex flex-col fixed left-0 top-0 z-50 h-screen w-80 border-r border-white/[0.04] bg-card/30 backdrop-blur-3xl shadow-2xl">
         <div className="flex h-full flex-col p-8">
           <div className="mb-12 flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-blue-700 shadow-xl shadow-primary/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/10">
               <LayoutDashboard className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className={cn(displayFont.className, "text-xl font-black text-white tracking-tight")}>MPU-Focus</h2>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Admin Center</p>
+              <h2 className={cn(displayFont.className, "text-xl font-bold text-white tracking-tight")}>MPU-Focus</h2>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Admin Center</p>
             </div>
           </div>
 
@@ -315,33 +315,33 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('crm')}
               className={cn(
-                "group flex w-full items-center gap-4 rounded-2xl px-6 py-4 font-bold transition-all",
-                activeTab === 'crm' ? "bg-primary text-white glow-primary" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                "group flex w-full items-center gap-4 rounded-2xl px-6 py-4 font-semibold transition-all",
+                activeTab === 'crm' ? "bg-white/10 text-white shadow-sm" : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
-              <Users className={cn("h-5 w-5", activeTab === 'crm' ? "text-white" : "text-slate-500 group-hover:text-primary")} />
+              <Users className={cn("h-5 w-5", activeTab === 'crm' ? "text-primary" : "text-slate-500 group-hover:text-primary")} />
               Lead Management
             </button>
             <button
               onClick={() => setActiveTab('videos')}
               className={cn(
-                "group flex w-full items-center gap-4 rounded-2xl px-6 py-4 font-bold transition-all",
-                activeTab === 'videos' ? "bg-primary text-white glow-primary" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                "group flex w-full items-center gap-4 rounded-2xl px-6 py-4 font-semibold transition-all",
+                activeTab === 'videos' ? "bg-white/10 text-white shadow-sm" : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
-              <Clapperboard className={cn("h-5 w-5", activeTab === 'videos' ? "text-white" : "text-slate-500 group-hover:text-primary")} />
+              <Clapperboard className={cn("h-5 w-5", activeTab === 'videos' ? "text-primary" : "text-slate-500 group-hover:text-primary")} />
               Video Akademie
             </button>
           </nav>
 
-          <div className="mt-auto space-y-4 pt-10 border-t border-white/5">
+          <div className="mt-auto space-y-4 pt-10 border-t border-white/[0.04]">
             <div className="flex items-center gap-4 px-2">
-              <div className="h-10 w-10 rounded-xl bg-slate-800 border border-white/10 overflow-hidden">
+              <div className="h-10 w-10 rounded-xl bg-card border border-white/10 overflow-hidden">
                 <img src="https://ui-avatars.com/api/?name=Okan&background=2563eb&color=fff" alt="Avatar" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">Okan</p>
-                <p className="truncate text-[10px] text-slate-500 uppercase tracking-wider font-black">System Admin</p>
+                <p className="truncate text-[10px] text-slate-500 uppercase tracking-wider font-bold">System Admin</p>
               </div>
               <button onClick={logoutAdmin} className="text-slate-500 hover:text-red-400 transition-colors">
                 <LogOut className="h-5 w-5" />
@@ -355,21 +355,21 @@ export default function AdminPage() {
       <main className="ml-0 md:ml-80 flex-1 overflow-y-auto px-4 py-8 md:px-12 md:py-10 custom-scrollbar pb-32 md:pb-10">
         <header className="mb-8 md:mb-12 flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className={cn(displayFont.className, "text-4xl font-black text-white md:text-5xl")}>
+            <h1 className={cn(displayFont.className, "text-4xl font-bold text-white md:text-5xl tracking-tight text-gradient-premium")}>
               {activeTab === 'crm' ? 'Lead' : 'Video'} <span className="text-primary italic">Zentrale</span>
             </h1>
-            <p className="mt-2 text-lg font-medium text-slate-400">Willkommen zurück in Ihrem Command Center.</p>
+            <p className="mt-2 text-lg font-medium text-slate-500">Willkommen zurück in Ihrem Command Center.</p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-white">
-              <Bell className="h-5 w-5 text-slate-400" />
+            <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all shadow-sm">
+              <Bell className="h-5 w-5 text-slate-500" />
             </Button>
             <Button
               onClick={loadAll}
               disabled={loading}
-              className="h-12 gap-3 rounded-2xl bg-white/5 border border-white/10 px-6 font-bold text-white hover:bg-white/10 transition-all"
+              className="h-12 gap-3 rounded-2xl bg-white text-slate-950 hover:bg-white/90 px-6 font-bold shadow-xl transition-all active:scale-95"
             >
-              <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               Refresh
             </Button>
           </div>
@@ -388,14 +388,14 @@ export default function AdminPage() {
             { label: 'Neu', val: stats.newLeads, icon: Circle, color: 'text-blue-400' },
             { label: 'Kontaktiert', val: stats.contactedLeads, icon: UserRound, color: 'text-amber-400' },
             { label: 'Eingeschrieben', val: stats.enrolledLeads, icon: CheckCircle2, color: 'text-emerald-400' },
-            { label: 'Fällige Videos', val: stats.totalVideos, icon: Clapperboard, color: 'text-cyan-400' },
+            { label: 'Videos', val: stats.publishedVideos, icon: Clapperboard, color: 'text-cyan-400' },
           ].map((s, idx) => (
-            <div key={idx} className="glass-dark group relative rounded-3xl p-6 transition-all hover:-translate-y-1 hover:border-white/20">
-              <div className={cn("mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 border border-white/5", s.color)}>
-                <s.icon className="h-5 w-5" />
+            <div key={idx} className="card-layer group relative p-6 transition-all hover:border-white/20 hover:bg-card/60">
+              <div className={cn("mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.08]", s.color)}>
+                <s.icon className="h-4 w-4" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{s.label}</p>
-              <p className={cn(displayFont.className, "mt-1 text-3xl font-black text-white")}>{s.val}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{s.label}</p>
+              <p className={cn(displayFont.className, "mt-1 text-3xl font-bold text-white")}>{s.val}</p>
             </div>
           ))}
         </section>
@@ -404,22 +404,22 @@ export default function AdminPage() {
         {activeTab === 'crm' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Filter Bar */}
-            <div className="glass-dark flex flex-col items-stretch md:flex-row md:items-center md:justify-between gap-4 rounded-[2rem] p-4 md:p-6 md:pr-8">
-              <div className="relative flex-1 min-w-[200px] md:min-w-[300px]">
-                <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+            <div className="card-layer flex flex-col items-stretch md:flex-row md:items-center md:justify-between gap-6 p-6">
+              <div className="relative flex-1 min-w-[200px] md:min-w-[400px]">
+                <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input
                   placeholder="Lead suchen..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && setAppliedSearch(searchInput.trim())}
-                  className="h-14 rounded-2xl border-white/5 bg-slate-900/50 pl-16 text-white placeholder:text-slate-600 focus:ring-primary focus:border-primary"
+                  className="h-14 rounded-2xl border-white/[0.04] bg-white/[0.03] pl-16 text-white placeholder:text-slate-600 focus:ring-primary/20 focus:border-primary/20 transition-all font-medium"
                 />
               </div>
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <Filter className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Filter className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <select
-                    className="h-14 rounded-2xl border border-white/5 bg-slate-900/50 pl-12 pr-10 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="h-14 rounded-2xl border border-white/[0.04] bg-white/[0.03] pl-12 pr-10 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as 'all' | LeadStatus)}
                   >
@@ -429,7 +429,7 @@ export default function AdminPage() {
                     ))}
                   </select>
                 </div>
-                <Badge className="bg-primary/20 text-primary border-primary/20 px-4 py-2 text-sm font-black rounded-xl">
+                <Badge className="bg-primary/10 text-primary border-primary/10 px-5 py-2.5 text-xs font-bold rounded-xl shadow-sm">
                   {leads.length} Leads
                 </Badge>
               </div>
@@ -438,47 +438,53 @@ export default function AdminPage() {
             {/* Leads List */}
             <div className="grid gap-6">
               {leads.map((lead) => (
-                <div key={lead._id} className="glass-dark group relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-8 transition-all hover:bg-slate-900/60 hover:border-white/20">
+                <div key={lead._id} className="card-layer group p-5 md:p-8 transition-all hover:bg-card/60">
                   <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-6 flex-1 min-w-0">
-                      <div className="flex flex-row items-center gap-4">
-                        <div className="flex h-12 w-12 md:h-16 md:w-16 items-center justify-center rounded-2xl md:rounded-3xl bg-slate-800 border border-white/10 group-hover:scale-110 transition-transform shrink-0">
-                          <UserRound className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+                      <div className="flex flex-row items-center gap-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.08] group-hover:scale-105 transition-all shadow-inner">
+                          <UserRound className="h-6 w-6 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className={cn(displayFont.className, "text-xl md:text-3xl font-black text-white truncate")}>
+                          <h3 className={cn(displayFont.className, "text-xl md:text-2xl font-bold text-white truncate text-gradient-premium")}>
                             {lead.firstName} {lead.lastName}
                           </h3>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 md:gap-3">
-                            <Badge className={cn("px-3 border py-1 md:px-4 md:py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all", leadStatusConfig[lead.status].class, leadStatusConfig[lead.status].glow)}>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                            <Badge className={cn("px-4 py-1 rounded-full font-bold text-[10px] uppercase tracking-[0.15em] border transition-all", leadStatusConfig[lead.status].class)}>
                               {leadStatusConfig[lead.status].label}
                             </Badge>
-                            <span className="text-xs font-bold text-slate-500">• Erstellt am {formatDate(lead.createdAt)}</span>
+                            <span className="text-[11px] font-medium text-slate-500 flex items-center gap-2">
+                              <span className="h-1 w-1 rounded-full bg-slate-600" />
+                              Erstellt am {formatDate(lead.createdAt)}
+                            </span>
                           </div>
                         </div>
                       </div>
 
                       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                        <div className="glass flex items-center gap-4 rounded-2xl bg-white/5 border border-white/5 p-4 transition-colors hover:bg-white/10">
-                          <Mail className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] p-4 transition-all hover:bg-white/[0.05] shadow-sm">
+                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/10 border border-primary/10">
+                            <Mail className="h-4 w-4 text-primary" />
+                          </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Email Adresse</p>
-                            <p className="truncate font-bold text-white">{lead.email}</p>
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Email</p>
+                            <p className="truncate font-semibold text-white/90 text-sm">{lead.email}</p>
                           </div>
                         </div>
-                        <div className="glass flex items-center gap-4 rounded-2xl bg-white/5 border border-white/5 p-4 transition-colors hover:bg-white/10">
-                          <Phone className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] p-4 transition-all hover:bg-white/[0.05] shadow-sm">
+                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/10 border border-primary/10">
+                            <Phone className="h-4 w-4 text-primary" />
+                          </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">Telefonnummer</p>
-                            <p className="font-bold text-white">{lead.phone}</p>
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Telefon</p>
+                            <p className="font-semibold text-white/90 text-sm">{lead.phone}</p>
                           </div>
                         </div>
                       </div>
 
                       {lead.goals && (
-                        <div className="relative rounded-3xl bg-slate-950/40 p-6 italic text-slate-400 border border-white/5 shadow-inner">
-                          <span className="absolute -left-2 -top-2 text-6xl text-primary/10 font-serif leading-none">“</span>
-                          <p className="relative z-10">{lead.goals}</p>
+                        <div className="relative rounded-2xl bg-white/[0.01] p-5 italic text-slate-400 border border-white/[0.04] shadow-inner text-sm leading-relaxed">
+                          <p className="relative z-10">"{lead.goals}"</p>
                         </div>
                       )}
                     </div>
@@ -486,26 +492,26 @@ export default function AdminPage() {
                     {/* Action Panel */}
                     <div className="flex flex-col gap-6 lg:w-80">
                       <div className="space-y-2">
-                        <p className="ml-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Fortschritt ändern</p>
+                        <p className="ml-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Status aktualisieren</p>
                         <div className="relative">
                           <select
-                            className="h-14 w-full rounded-2xl border border-white/10 bg-slate-900 px-6 text-sm font-black text-white focus:ring-2 focus:ring-primary transition-all appearance-none cursor-pointer"
+                            className="h-12 w-full rounded-xl border border-white/[0.08] bg-card/[0.5] px-5 text-sm font-bold text-white/90 focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                             value={lead.status}
                             onChange={(e) => updateLead(lead._id, { status: e.target.value as LeadStatus })}
                           >
-                            <option value="new">Phase: Neu</option>
-                            <option value="contacted">Phase: Kontaktiert</option>
-                            <option value="enrolled">Phase: Eingeschrieben</option>
-                            <option value="closed">Phase: Beendet</option>
+                            <option value="new">Neu</option>
+                            <option value="contacted">Kontaktiert</option>
+                            <option value="enrolled">Eingeschrieben</option>
+                            <option value="closed">Abgeschlossen</option>
                           </select>
-                          <ChevronRight className="absolute right-6 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-slate-500 pointer-events-none" />
+                          <ChevronRight className="absolute right-5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rotate-90 text-slate-500 pointer-events-none" />
                         </div>
                       </div>
 
                       <div className="space-y-3">
                         <Textarea
-                          rows={4}
-                          placeholder="Admin-Notiz hinzufügen..."
+                          rows={3}
+                          placeholder="Interne Notiz hinterlegen..."
                           value={notesDrafts[lead._id] || ''}
                           onChange={(e) =>
                             setNotesDrafts((prev) => ({
@@ -513,17 +519,17 @@ export default function AdminPage() {
                               [lead._id]: e.target.value,
                             }))
                           }
-                          className="rounded-3xl border-white/10 bg-slate-950/50 p-5 text-white placeholder:text-slate-600 focus:ring-primary shadow-inner resize-none custom-scrollbar"
+                          className="rounded-2xl border-white/[0.08] bg-white/[0.01] p-4 text-sm text-white placeholder:text-slate-600 focus:ring-primary/20 shadow-inner resize-none custom-scrollbar"
                         />
                         <Button
                           onClick={() => updateLead(lead._id, { notes: notesDrafts[lead._id] || '' })}
                           disabled={savingLeadId === lead._id}
-                          className="h-14 w-full rounded-2xl bg-slate-100 font-black text-slate-950 hover:bg-white transition-all active:scale-95 disabled:opacity-50"
+                          className="h-12 w-full rounded-xl bg-white text-slate-950 font-bold text-sm hover:bg-white/90 shadow-lg transition-all active:scale-95 disabled:opacity-50"
                         >
                           {savingLeadId === lead._id ? (
-                            <RefreshCw className="h-5 w-5 animate-spin" />
+                            <RefreshCw className="h-4 w-4 animate-spin" />
                           ) : (
-                            'Notiz speichern'
+                            'Speichern'
                           )}
                         </Button>
                       </div>
@@ -533,27 +539,28 @@ export default function AdminPage() {
               ))}
 
               {!leads.length && (
-                <div className="glass-dark border-dashed border-white/10 flex flex-col items-center justify-center py-32 rounded-[3rem]">
-                  <div className="mb-6 h-24 w-24 rounded-full bg-slate-900 border border-white/5 flex items-center justify-center">
-                    <Search className="h-10 w-10 text-slate-600" />
+                <div className="card-layer border-dashed border-white/[0.08] flex flex-col items-center justify-center py-40 bg-white/[0.01]">
+                  <div className="mb-8 h-20 w-20 rounded-3xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-inner">
+                    <Search className="h-8 w-8 text-slate-700" />
                   </div>
-                  <h3 className={cn(displayFont.className, "text-2xl font-black text-white")}>Keine Leads gefunden</h3>
-                  <p className="mt-2 text-slate-500">Versuchen Sie es mit einem anderen Suchbegriff oder Filter.</p>
+                  <h3 className={cn(displayFont.className, "text-2xl font-bold text-white tracking-tight")}>Keine Ergebnisse</h3>
+                  <p className="mt-2 text-slate-500 font-medium">Verfeinern Sie Ihre Suche oder ändern Sie den Filter.</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Video Akademie Redesign would go here */}
         {activeTab === 'videos' && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Similar high-fidelity treatment for Video section */}
-            <div className="glass-dark p-12 rounded-[3rem] text-center border-dashed border-white/10">
-              <Clapperboard className="mx-auto h-16 w-16 text-slate-700 mb-6" />
-              <h2 className={cn(displayFont.className, "text-2xl font-black text-white")}>Video Management</h2>
-              <p className="text-slate-500 mt-2">Bereich wird gerade für die Premium-Ansicht optimiert...</p>
-              <Button variant="outline" className="mt-8 rounded-2xl border-white/10 text-slate-400" onClick={() => setActiveTab('crm')}>
+            <div className="card-layer p-16 text-center border-dashed border-white/[0.08] bg-white/[0.01]">
+              <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/[0.03] border border-white/[0.08] shadow-inner">
+                <Clapperboard className="h-8 w-8 text-slate-700" />
+              </div>
+              <h2 className={cn(displayFont.className, "text-2xl font-bold text-white tracking-tight")}>Video Akademie</h2>
+              <p className="text-slate-500 mt-2 font-medium">Dieser Bereich wird gerade für das neue Design-System optimiert.</p>
+              <Button variant="outline" className="mt-10 rounded-2xl border-white/[0.08] bg-white/[0.03] text-slate-400 hover:bg-white/[0.08] transition-all px-8 h-12" onClick={() => setActiveTab('crm')}>
                 Zurück zum CRM
               </Button>
             </div>
@@ -594,13 +601,15 @@ export default function AdminPage() {
 
       {error && (
         <div className="fixed bottom-24 md:bottom-10 right-4 md:right-10 z-[100] animate-in slide-in-from-bottom-5 md:slide-in-from-right duration-500">
-          <div className="glass h-auto min-w-[300px] md:min-w-[350px] rounded-[2rem] bg-red-500/10 border-red-500/20 p-6 backdrop-blur-3xl shadow-2xl">
-            <div className="flex items-start gap-4">
-              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-red-500 text-white shrink-0">!</div>
+          <div className="card-layer h-auto min-w-[300px] md:min-w-[400px] border-red-500/20 p-6 bg-red-950/20 backdrop-blur-3xl shadow-2xl">
+            <div className="flex items-start gap-5">
+              <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-red-500 text-white shrink-0 shadow-lg shadow-red-500/20">
+                <Lock className="h-6 w-6" />
+              </div>
               <div className="flex-1">
-                <p className="text-sm font-black text-red-400 uppercase tracking-widest">System Error</p>
-                <p className="mt-1 font-bold text-red-200 text-sm md:text-base">{error}</p>
-                <button onClick={() => setError(null)} className="mt-4 text-xs font-black uppercase text-red-400 hover:text-red-300">Schließen</button>
+                <p className="text-[10px] font-bold text-red-400 uppercase tracking-[0.2em]">System Alert</p>
+                <p className="mt-1 font-semibold text-red-100 text-sm md:text-base leading-relaxed">{error}</p>
+                <button onClick={() => setError(null)} className="mt-4 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors">Schließen</button>
               </div>
             </div>
           </div>
