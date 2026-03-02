@@ -20,10 +20,12 @@ export default function ImpressumPage() {
 
                     <div className="space-y-8 text-slate-600 leading-relaxed">
                         <section>
-                            <h2 className="text-xl font-semibold text-slate-900 mb-4">Angaben gemäß § 5 TMG</h2>
+                            <h2 className="text-xl font-semibold text-slate-900 mb-4">Angaben gemaess § 5 DDG</h2>
                             <p>
                                 MPU Focus<br />
                                 (Musterdaten, bitte anpassen)<br />
+                                Rechtsform: [bitte eintragen]<br />
+                                Vertreten durch: [Vor- und Nachname vertretungsberechtigte Person]<br />
                                 Musterstraße 1<br />
                                 12345 Musterstadt
                             </p>
@@ -34,6 +36,15 @@ export default function ImpressumPage() {
                             <p>
                                 Telefon: +49 (0) 123 456789<br />
                                 E-Mail: info@mpu-focus.de
+                            </p>
+                        </section>
+
+                        <section>
+                            <h2 className="text-xl font-semibold text-slate-900 mb-4">Registereintrag (falls vorhanden)</h2>
+                            <p>
+                                Eintragung im Handelsregister.<br />
+                                Registergericht: [bitte eintragen]<br />
+                                Registernummer: [bitte eintragen]
                             </p>
                         </section>
 
@@ -49,6 +60,13 @@ export default function ImpressumPage() {
                             <h2 className="text-xl font-semibold text-slate-900 mb-4">Verbraucherstreitbeilegung/Universalschlichtungsstelle</h2>
                             <p>
                                 Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
+                            </p>
+                        </section>
+
+                        <section>
+                            <h2 className="text-xl font-semibold text-slate-900 mb-4">Wichtiger Hinweis</h2>
+                            <p>
+                                Bitte ersetzen Sie alle Platzhalter- und Musterdaten vor dem Live-Betrieb durch Ihre vollstaendigen Unternehmensangaben.
                             </p>
                         </section>
                     </div>

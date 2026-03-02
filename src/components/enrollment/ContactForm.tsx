@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -9,8 +10,9 @@ interface ContactFormProps {
     lastName: string
     email: string
     phone: string
+    privacyConsent: boolean
   }
-  onChange: (field: string, value: string) => void
+  onChange: (field: string, value: string | boolean) => void
 }
 
 export default function ContactForm({ data, onChange }: ContactFormProps) {
@@ -37,6 +39,7 @@ export default function ContactForm({ data, onChange }: ContactFormProps) {
             value={data.firstName}
             onChange={(e) => onChange('firstName', e.target.value)}
             className="w-full"
+            required
           />
         </div>
 
@@ -51,6 +54,7 @@ export default function ContactForm({ data, onChange }: ContactFormProps) {
             value={data.lastName}
             onChange={(e) => onChange('lastName', e.target.value)}
             className="w-full"
+            required
           />
         </div>
       </div>
@@ -96,6 +100,24 @@ export default function ContactForm({ data, onChange }: ContactFormProps) {
           und nicht an Dritte weitergegeben. Sie können der Verarbeitung jederzeit widersprechen.
         </p>
       </div>
+
+      <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <input
+          id="privacyConsent"
+          type="checkbox"
+          checked={data.privacyConsent}
+          onChange={(e) => onChange('privacyConsent', e.target.checked)}
+          required
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span>
+          Ich habe die <Link href="/datenschutz" className="underline hover:text-slate-900">Datenschutzerklaerung</Link> gelesen und stimme der Verarbeitung meiner Daten zur Kontaktaufnahme zu.
+        </span>
+      </label>
+
+      <p className="text-xs text-gray-500">
+        Rechtliche Hinweise: <Link href="/impressum" className="underline hover:text-gray-700">Impressum</Link> und <Link href="/datenschutz" className="underline hover:text-gray-700">Datenschutz</Link>.
+      </p>
     </div>
   )
 }

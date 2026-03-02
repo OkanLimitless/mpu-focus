@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { assertAdminRequest } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
+function getHttpStatus(error: unknown) {
+    const message = error instanceof Error ? error.message.toLowerCase() : ''
+    if (message.includes('unauthorized')) return 401
+    if (message.includes('forbidden')) return 403
+    return 500
+}
+
 export async function GET() {
     try {
+        await assertAdminRequest()
+
         const supabaseUrl = process.env.SUPABASE_URL
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -46,6 +56,6 @@ export async function GET() {
         })
     } catch (error: any) {
         console.error('Error fetching dashboard stats:', error)
-        return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to fetch dashboard stats' }, { status: getHttpStatus(error) })
     }
 }

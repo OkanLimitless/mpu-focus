@@ -8,8 +8,8 @@ import { CookieBanner } from '@/components/ui/cookie-banner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'MPU Beratung | 92% Erfolgsquote | Kostenloses Beratungsgespräch - MPU Focus',
-  description: 'Professionelle MPU-Vorbereitung mit über 90% Erfolgsquote. Individuelle Beratung von Experten für Alkohol-, Drogen- und Punkte-MPU. Kostenloses Beratungsgespräch vereinbaren.',
+  title: 'MPU Beratung | Kostenlose Erstberatung - MPU Focus',
+  description: 'Professionelle MPU-Vorbereitung mit individueller Beratung fuer Alkohol-, Drogen- und Punkte-MPU. Kostenloses Beratungsgespraech vereinbaren.',
   keywords: 'MPU Beratung, MPU Vorbereitung, Führerschein zurück, Alkohol MPU, Drogen MPU, Punkte MPU, MPU bestehen, MPU Hilfe',
   authors: [{ name: 'MPU Focus' }],
   creator: 'MPU Focus',
@@ -19,14 +19,14 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'de_DE',
     url: 'https://mpu-focus.de',
-    title: 'MPU Focus | Professionelle MPU-Beratung mit 92% Erfolgsquote',
-    description: 'Bestehen Sie Ihre MPU im ersten Anlauf. Individuelle Beratung von Experten. Kostenloses Beratungsgespräch vereinbaren.',
+    title: 'MPU Focus | Professionelle MPU-Beratung',
+    description: 'Individuelle MPU-Vorbereitung mit strukturiertem Vorgehen. Kostenloses Beratungsgespraech vereinbaren.',
     siteName: 'MPU Focus',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'MPU Focus | Professionelle MPU-Beratung',
-    description: 'Bestehen Sie Ihre MPU im ersten Anlauf. 92% Erfolgsquote.',
+    description: 'Individuelle MPU-Vorbereitung mit strukturiertem Vorgehen.',
   },
   icons: {
     icon: '/favicon.svg',

@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { assertAdminRequest } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
+
+const ALLOWED_STATUSES = new Set(['new', 'contacted', 'enrolled', 'closed'])
+
+function getHttpStatus(error: unknown) {
+    const message = error instanceof Error ? error.message.toLowerCase() : ''
+    if (message.includes('unauthorized')) return 401
+    if (message.includes('forbidden')) return 403
+    return 500
+}
 
 export async function PATCH(
     request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
+        await assertAdminRequest()
+
         const { id } = params
         const body = await request.json()
 
@@ -23,8 +35,22 @@ export async function PATCH(
         })
 
         const updateData: any = {}
-        if (body.status !== undefined) updateData.status = body.status
-        if (body.notes !== undefined) updateData.notes = body.notes
+        if (body.status !== undefined) {
+            if (typeof body.status !== 'string' || !ALLOWED_STATUSES.has(body.status)) {
+                return NextResponse.json({ error: 'Ungueltiger Status.' }, { status: 400 })
+            }
+            updateData.status = body.status
+        }
+        if (body.notes !== undefined) {
+            if (body.notes !== null && typeof body.notes !== 'string') {
+                return NextResponse.json({ error: 'Ungueltige Notiz.' }, { status: 400 })
+            }
+            updateData.notes = typeof body.notes === 'string' ? body.notes.trim().slice(0, 4000) : null
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'Keine gueltigen Felder fuer das Update uebergeben.' }, { status: 400 })
+        }
 
         const { data: lead, error } = await supabaseAdmin
             .from('leads')
@@ -56,6 +82,6 @@ export async function PATCH(
 
     } catch (error: any) {
         console.error('Error updating lead:', error)
-        return NextResponse.json({ error: 'Failed to update lead' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to update lead' }, { status: getHttpStatus(error) })
     }
 }

@@ -24,6 +24,7 @@ interface ContactData {
   lastName: string
   email: string
   phone: string
+  privacyConsent: boolean
 }
 
 export default function BeratungPage() {
@@ -42,7 +43,8 @@ export default function BeratungPage() {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    privacyConsent: false,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -134,7 +136,7 @@ export default function BeratungPage() {
     }))
   }
 
-  const handleContactChange = (field: string, value: string) => {
+  const handleContactChange = (field: string, value: string | boolean) => {
     setContactData(prev => ({
       ...prev,
       [field]: value
@@ -172,7 +174,8 @@ export default function BeratungPage() {
       // Contact form validation
       return !!(contactData.firstName && contactData.lastName && 
              contactData.email && emailValid(contactData.email) && 
-             contactData.phone && phoneValid(contactData.phone))
+             contactData.phone && phoneValid(contactData.phone) &&
+             contactData.privacyConsent)
     }
   }
 
@@ -187,7 +190,10 @@ export default function BeratungPage() {
         },
         body: JSON.stringify({
           ...contactData,
-          ...quizData
+          ...quizData,
+          source: 'beratung-quiz-de',
+          consentAccepted: contactData.privacyConsent,
+          consentVersion: 'beratung_v1',
         }),
       })
 
@@ -337,8 +343,8 @@ export default function BeratungPage() {
                 <div className="bg-blue-100 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto mb-2">
                   <Star className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                 </div>
-                <div className="text-lg sm:text-xl font-bold text-gray-900">92%</div>
-                <div className="text-xs sm:text-sm text-gray-600">Erfolgsquote</div>
+                <div className="text-lg sm:text-xl font-bold text-gray-900">Individuell</div>
+                <div className="text-xs sm:text-sm text-gray-600">Strukturierte Vorbereitung</div>
               </div>
               
               <div className="text-center">
@@ -472,7 +478,7 @@ export default function BeratungPage() {
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div className="flex items-start space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span>Über 90% Erfolgsquote bei der MPU</span>
+                  <span>Strukturierter Fahrplan fuer Ihre MPU-Vorbereitung</span>
                 </div>
                 <div className="flex items-start space-x-2">
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />

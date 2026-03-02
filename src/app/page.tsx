@@ -30,6 +30,7 @@ export default function HomePage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [goals, setGoals] = useState('')
+  const [privacyConsent, setPrivacyConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +38,11 @@ export default function HomePage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!privacyConsent) {
+      setError('Bitte stimmen Sie der Datenschutzerklaerung zu.')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -51,6 +57,8 @@ export default function HomePage() {
           phone,
           goals,
           source: 'landing-page-de',
+          consentAccepted: privacyConsent,
+          consentVersion: 'landing_v1',
         }),
       })
 
@@ -65,6 +73,7 @@ export default function HomePage() {
       setEmail('')
       setPhone('')
       setGoals('')
+      setPrivacyConsent(false)
     } catch (err: any) {
       setError(err?.message || 'Ein technischer Fehler ist aufgetreten.')
     } finally {
@@ -163,7 +172,7 @@ export default function HomePage() {
                   Ihr schnellster Weg <br className="hidden lg:block" /> zurück zum <span className="text-blue-600">Führerschein.</span>
                 </h2>
                 <p className="mt-6 text-lg leading-relaxed text-slate-600 md:text-xl font-medium max-w-lg mx-auto lg:mx-0 text-balance">
-                  Professionelle MPU-Vorbereitung mit nachweislich 92% Erfolgsquote. Diskret, fundiert und zielorientiert – wir bereiten Sie optimal auf den Gutachter vor.
+                  Professionelle MPU-Vorbereitung mit strukturierter, individueller Begleitung. Diskret, fundiert und zielorientiert.
                 </p>
                 <div className="mt-10 flex flex-col items-center justify-center lg:flex-row lg:justify-start gap-4">
                   <Button
@@ -384,16 +393,29 @@ export default function HomePage() {
                       />
                     </div>
 
+                    <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={privacyConsent}
+                        onChange={(e) => setPrivacyConsent(e.target.checked)}
+                        required
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>
+                        Ich habe die <Link href="/datenschutz" className="underline hover:text-slate-900">Datenschutzerklaerung</Link> gelesen und stimme der Verarbeitung meiner Daten zur Kontaktaufnahme zu.
+                      </span>
+                    </label>
+
                     <Button
                       type="submit"
-                      disabled={submitting}
+                      disabled={submitting || !privacyConsent}
                       className="h-14 w-full rounded-xl bg-blue-600 text-lg font-bold text-white hover:bg-blue-700 transition-colors mt-2"
                     >
                       {submitting ? 'Wird übermittelt...' : 'Beratung anfordern'}
                     </Button>
 
                     <p className="text-center text-sm text-slate-500 mt-4">
-                      Durch Absenden akzeptieren Sie unsere <Link href="/datenschutz" className="underline hover:text-slate-800">Datenschutzerklärung</Link>.
+                      Rechtliche Hinweise: <Link href="/impressum" className="underline hover:text-slate-800">Impressum</Link> und <Link href="/datenschutz" className="underline hover:text-slate-800">Datenschutz</Link>.
                     </p>
 
                     {submitted && (
