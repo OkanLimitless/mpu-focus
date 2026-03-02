@@ -10,7 +10,15 @@ function getHttpStatus(error: unknown) {
     const message = error instanceof Error ? error.message.toLowerCase() : ''
     if (message.includes('unauthorized')) return 401
     if (message.includes('forbidden')) return 403
+    if (message.includes('not configured')) return 503
     return 500
+}
+
+function isMissingRelation(error: any, relation: string) {
+    if (!error) return false
+    const message = String(error?.message || '').toLowerCase()
+    const details = String(error?.details || '').toLowerCase()
+    return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
 }
 
 export async function PATCH(
@@ -52,15 +60,33 @@ export async function PATCH(
             return NextResponse.json({ error: 'Keine gueltigen Felder fuer das Update uebergeben.' }, { status: 400 })
         }
 
-        const { data: lead, error } = await supabaseAdmin
-            .from('leads')
+        let lead: any = null
+        let error: any = null
+
+        const mpuUpdate = await supabaseAdmin
+            .from('mpu_signups')
             .update(updateData)
             .eq('id', id)
             .select()
             .single()
 
+        if (!mpuUpdate.error) {
+            lead = mpuUpdate.data
+        } else if (isMissingRelation(mpuUpdate.error, 'mpu_signups')) {
+            const legacyUpdate = await supabaseAdmin
+                .from('leads')
+                .update(updateData)
+                .eq('id', id)
+                .select()
+                .single()
+            lead = legacyUpdate.data
+            error = legacyUpdate.error
+        } else {
+            error = mpuUpdate.error
+        }
+
         if (error) {
-            console.error("Supabase Update Error:", error)
+            console.error('Supabase Update Error:', error)
             throw error
         }
 

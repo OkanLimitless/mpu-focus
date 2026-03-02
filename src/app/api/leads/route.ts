@@ -42,7 +42,156 @@ function getHttpStatus(error: unknown) {
     const message = error instanceof Error ? error.message.toLowerCase() : ''
     if (message.includes('unauthorized')) return 401
     if (message.includes('forbidden')) return 403
+    if (message.includes('not configured')) return 503
     return 500
+}
+
+function isMissingRelation(error: any, relation: string) {
+    if (!error) return false
+    const message = String(error?.message || '').toLowerCase()
+    const details = String(error?.details || '').toLowerCase()
+    return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
+}
+
+async function listMpuSignups(params: {
+    supabaseAdmin: any
+    page: number
+    limit: number
+    status: string | null
+    search: string | null
+}) {
+    const { supabaseAdmin, page, limit, status, search } = params
+    const offset = (page - 1) * limit
+
+    let query = supabaseAdmin
+        .from('mpu_signups')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+
+    if (status && status !== 'all') {
+        query = query.eq('status', status)
+    }
+
+    if (search) {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
+    }
+
+    const { data, count, error } = await query.range(offset, offset + limit - 1)
+    if (error) {
+        if (isMissingRelation(error, 'mpu_signups')) return null
+        throw error
+    }
+
+    return {
+        rows: data || [],
+        count: count || 0,
+        map: (row: any) => ({
+            _id: row.id,
+            firstName: row.first_name,
+            lastName: row.last_name,
+            email: row.email,
+            phone: row.phone,
+            status: row.status || 'new',
+            goals: row.goals || '',
+            notes: row.notes || '',
+            createdAt: row.created_at,
+            convertedToUserId: null,
+        }),
+    }
+}
+
+async function listLegacyLeads(params: {
+    supabaseAdmin: any
+    page: number
+    limit: number
+    status: string | null
+    search: string | null
+}) {
+    const { supabaseAdmin, page, limit, status, search } = params
+    const offset = (page - 1) * limit
+
+    let query = supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+
+    if (status && status !== 'all') {
+        query = query.eq('status', status)
+    }
+
+    if (search) {
+        query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
+    }
+
+    const { data, count, error } = await query.range(offset, offset + limit - 1)
+    if (error) throw error
+
+    return {
+        rows: data || [],
+        count: count || 0,
+        map: (lead: any) => ({
+            _id: lead.id,
+            firstName: lead.first_name,
+            lastName: lead.last_name,
+            email: lead.email,
+            phone: lead.phone,
+            status: lead.status || 'new',
+            goals: lead.goals || '',
+            notes: lead.notes || '',
+            createdAt: lead.created_at,
+            convertedToUserId: lead.converted_to_user_id || null,
+        }),
+    }
+}
+
+async function insertLeadRecord(params: {
+    supabaseAdmin: any
+    payload: {
+        firstName: string
+        lastName: string
+        email: string
+        phone: string
+        goals: string | null
+        notes: string | null
+        source: string | null
+    }
+}) {
+    const { supabaseAdmin, payload } = params
+
+    const primaryInsert = await supabaseAdmin
+        .from('mpu_signups')
+        .insert({
+            first_name: payload.firstName,
+            last_name: payload.lastName,
+            email: payload.email,
+            phone: payload.phone,
+            goals: payload.goals,
+            notes: payload.notes,
+            source: payload.source || 'website',
+        })
+        .select('id')
+        .single()
+
+    if (!primaryInsert.error) return primaryInsert
+    if (!isMissingRelation(primaryInsert.error, 'mpu_signups')) {
+        throw primaryInsert.error
+    }
+
+    const legacyInsert = await supabaseAdmin
+        .from('leads')
+        .insert({
+            first_name: payload.firstName,
+            last_name: payload.lastName,
+            email: payload.email,
+            phone: payload.phone,
+            goals: payload.goals,
+            notes: payload.notes,
+        })
+        .select('id')
+        .single()
+
+    if (legacyInsert.error) throw legacyInsert.error
+    return legacyInsert
 }
 
 export async function GET(request: NextRequest) {
@@ -55,51 +204,19 @@ export async function GET(request: NextRequest) {
         const status = searchParams.get('status')
         const search = searchParams.get('search')
 
-        const offset = (page - 1) * limit
-
         const supabaseAdmin = createSupabaseAdmin()
 
-        let query = supabaseAdmin
-            .from('leads')
-            .select('*', { count: 'exact' })
-            .order('created_at', { ascending: false })
-
-        if (status && status !== 'all') {
-            query = query.eq('status', status)
-        }
-
-        if (search) {
-            query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
-        }
-
-        const { data: leads, count, error } = await query.range(offset, offset + limit - 1)
-
-        if (error) {
-            console.error("Supabase Error:", error)
-            throw error
-        }
-
-        // Map database fields to application fields
-        const formattedLeads = leads?.map(lead => ({
-            _id: lead.id,
-            firstName: lead.first_name,
-            lastName: lead.last_name,
-            email: lead.email,
-            phone: lead.phone,
-            status: lead.status || 'new',
-            goals: lead.goals || '',
-            notes: lead.notes || '',
-            createdAt: lead.created_at,
-            convertedToUserId: lead.converted_to_user_id
-        })) || []
+        const mpuSignupsResult = await listMpuSignups({ supabaseAdmin, page, limit, status, search })
+        const leadSource = mpuSignupsResult || (await listLegacyLeads({ supabaseAdmin, page, limit, status, search }))
+        const formattedLeads = leadSource.rows.map(leadSource.map)
 
         return NextResponse.json({
             leads: formattedLeads,
             pagination: {
-                total: count || 0,
+                total: leadSource.count || 0,
                 page,
                 limit,
-                pages: Math.ceil((count || 0) / limit)
+                pages: Math.ceil((leadSource.count || 0) / limit)
             }
         })
     } catch (error: any) {
@@ -176,18 +293,18 @@ export async function POST(request: NextRequest) {
 
         const supabaseAdmin = createSupabaseAdmin()
 
-        const { data, error } = await supabaseAdmin
-            .from('leads')
-            .insert({
-                first_name: firstName,
-                last_name: lastName,
+        const { data, error } = await insertLeadRecord({
+            supabaseAdmin,
+            payload: {
+                firstName,
+                lastName,
                 email,
                 phone,
                 goals,
                 notes,
-            })
-            .select('id')
-            .single()
+                source,
+            },
+        })
 
         if (error) {
             console.error('Supabase Insert Error:', error)
@@ -197,6 +314,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, leadId: data.id }, { status: 201 })
     } catch (error: any) {
         console.error('Error creating lead:', error)
-        return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })
+        return NextResponse.json({ error: error?.message || 'Failed to create lead' }, { status: getHttpStatus(error) })
     }
 }
