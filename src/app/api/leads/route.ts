@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         const phone = toOptionalString(body.phone, 40)
         const goals = toOptionalString(body.goals, 2000)
         const source = toOptionalString(body.source, 120)
+        const hasConsentField = Object.prototype.hasOwnProperty.call(body ?? {}, 'consentAccepted')
         const consentAccepted = body?.consentAccepted === true
 
         if (!firstName || !lastName || !emailRaw || !phone) {
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Bitte geben Sie eine gültige Telefonnummer ein.' }, { status: 400 })
         }
 
-        if (!consentAccepted) {
+        if (hasConsentField && !consentAccepted) {
             return NextResponse.json({ error: 'Bitte stimmen Sie der Datenschutzerklärung zu.' }, { status: 400 })
         }
 
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
         const consentVersion = toOptionalString(body.consentVersion, 60)
 
         const contextLines: string[] = [
-            `Einwilligung: erteilt (${new Date().toISOString()})`,
+            `Einwilligung: ${consentAccepted ? 'explizit erteilt' : 'implizit (Legacy-Formular)'} (${new Date().toISOString()})`,
             consentVersion ? `Einwilligungs-Version: ${consentVersion}` : '',
             source ? `Quelle: ${source}` : '',
             timeframe ? `Zeithorizont: ${timeframe}` : '',
