@@ -94,8 +94,8 @@ export default function HomePage() {
       <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-slate-950/80 backdrop-blur-xl transition-all duration-300">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:py-5">
           <Link href="/" className="flex items-center flex-shrink-0 group">
-            <h1 className={`${displayFont.className} text-2xl font-bold tracking-tight text-white transition-transform group-hover:scale-[1.02]`}>
-              MPU <span className="text-blue-500">Focus</span>
+            <h1 className={`${displayFont.className} text-2xl font-bold tracking-tight text-white`}>
+              MPU Focus<span className="text-blue-500">.</span>
             </h1>
           </Link>
 
@@ -113,7 +113,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4 pl-6 border-l border-white/10">
               <Button
                 size="sm"
-                className="bg-blue-600 font-semibold text-white hover:bg-blue-500 rounded-full px-6 shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+                className="bg-white font-bold text-slate-950 hover:bg-slate-100 rounded px-6 transition-colors"
                 onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Kostenlose Erstberatung
@@ -144,7 +144,7 @@ export default function HomePage() {
               <div className="flex flex-col gap-3 pt-6 border-t border-white/10 mt-2">
                 <Button
                   size="lg"
-                  className="w-full bg-blue-600 text-white font-semibold rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+                  className="w-full bg-white text-slate-950 font-bold rounded transition-colors"
                   onClick={() => {
                     setMobileMenuOpen(false)
                     document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })
@@ -158,41 +158,37 @@ export default function HomePage() {
         </div>
       </nav>
 
-      <main className="pt-24 md:pt-32">
+      <main>
         {/* Premium Dark Hero Section */}
-        <section className="bg-slate-950 pt-20 lg:pt-32 pb-0 overflow-hidden border-b border-white/10 relative">
-          {/* Subtle Background Glow */}
-          <div className="absolute top-0 right-0 -mr-40 -mt-40 w-[600px] h-[600px] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-40 -mb-40 w-[600px] h-[600px] rounded-full bg-blue-600/5 blur-[100px] pointer-events-none" />
+        <section className="bg-slate-950 pt-32 lg:pt-48 pb-0 overflow-hidden border-b border-white/10 relative">
 
           <div className="mx-auto max-w-7xl px-6 lg:px-8 relative z-10">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
 
               {/* Left Content */}
               <div className="max-w-2xl pb-16 lg:pb-32 pt-12 lg:pt-16 text-center lg:text-left mx-auto lg:mx-0">
-                <Badge variant="outline" className="mb-8 border-blue-500/30 bg-blue-500/10 py-1.5 px-5 text-blue-400 font-bold rounded-full uppercase tracking-wider text-xs shadow-[0_0_15px_rgba(59,130,246,0.15)] flex inline-flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                  <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                   Zertifizierte Vorbereitung 2026
-                </Badge>
-                <h2 className={`${displayFont.className} text-5xl font-bold tracking-tight text-white md:text-6xl lg:text-[4.5rem] lg:leading-[1.05] mb-8`}>
-                  Ihr sicherster Weg <br className="hidden lg:block" /> zurück zum <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">Führerschein.</span>
+                </div>
+                <h2 className={`${displayFont.className} text-5xl font-bold tracking-tight text-white md:text-6xl lg:text-7xl mb-6`}>
+                  Ihr sicherster Weg zurück zum Führerschein.
                 </h2>
-                <p className="mt-6 text-lg leading-relaxed text-slate-300 md:text-xl font-medium max-w-lg mx-auto lg:mx-0 text-balance">
+                <p className="mt-6 text-lg leading-relaxed text-slate-400 md:text-xl font-medium max-w-lg mx-auto lg:mx-0">
                   Professionelle, psychologische MPU-Vorbereitung auf höchstem Niveau. Strukturiert, diskret und exakt auf Ihren Fall abgestimmt.
                 </p>
-                <div className="mt-12 flex flex-col items-center justify-center lg:flex-row lg:justify-start gap-5">
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
                   <Button
                     size="lg"
-                    className="h-14 w-full sm:w-auto rounded-xl bg-blue-600 px-8 text-lg font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:bg-blue-500 hover:shadow-[0_0_25px_rgba(37,99,235,0.6)] transition-all duration-300 group"
+                    className="h-14 w-full sm:w-auto rounded bg-white px-8 text-lg font-bold text-slate-950 hover:bg-slate-100 transition-colors"
                     onClick={() => document.getElementById('kontakt')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     Erstgespräch vereinbaren
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-14 w-full sm:w-auto rounded-xl px-8 text-lg font-bold border-white/20 text-white bg-white/5 hover:bg-white/10 backdrop-blur-md transition-colors"
+                    className="h-14 w-full sm:w-auto rounded px-8 text-lg font-bold border-slate-700 text-white hover:bg-slate-800 transition-colors"
                     onClick={() => document.getElementById('ablauf')?.scrollIntoView({ behavior: 'smooth' })}
                   >
                     Mehr erfahren
@@ -201,7 +197,7 @@ export default function HomePage() {
               </div>
 
               {/* Right Image Container - Premium Treatment */}
-              <div className="relative h-[450px] sm:h-[550px] lg:h-[720px] w-full lg:-mr-32 xl:-mr-48 rounded-t-3xl lg:rounded-l-3xl lg:rounded-tr-none overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.5)] border-t border-l border-white/10 animate-in fade-in slide-in-from-right-8 duration-1000">
+              <div className="relative h-[450px] sm:h-[550px] lg:h-[720px] w-full lg:-mr-32 xl:-mr-48 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none overflow-hidden border-t border-l border-white/5">
                 <Image
                   src="/mpu-hero-split.png"
                   alt="Premium MPU Beratung"
@@ -209,7 +205,7 @@ export default function HomePage() {
                   className="object-cover object-center lg:object-left"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none lg:w-1/3" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/10 to-transparent pointer-events-none lg:w-1/3" />
                 <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
               </div>
             </div>
@@ -240,8 +236,6 @@ export default function HomePage() {
 
         {/* Premium Features Section */}
         <section id="vorteile" className="bg-white py-24 lg:py-32 border-b border-slate-200 relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[400px] h-[400px] rounded-full bg-blue-50 blur-[80px] pointer-events-none" />
-
           <div className="mx-auto max-w-7xl px-6 relative z-10">
             <div className="mb-16 md:flex justify-between items-end">
               <div className="max-w-2xl">
@@ -260,7 +254,6 @@ export default function HomePage() {
                 { title: 'Rechtssichere Prozesse', desc: 'Unsere methodische Vorbereitung ist konform mit den aktuellen Beurteilungskriterien (Beurteilungskriterien 4. Auflage).', icon: CheckCircle2 }
               ].map((feat, i) => (
                 <div key={i} className="group relative border border-slate-200 rounded-3xl p-8 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(37,99,235,0.08)] hover:border-blue-200 transition-all duration-300 overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-[40px] -mr-16 -mt-16 transition-opacity opacity-0 group-hover:opacity-100" />
                   <div className="relative z-10">
                     <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
                       <feat.icon className="h-7 w-7 text-blue-600" />
@@ -329,7 +322,7 @@ export default function HomePage() {
 
         {/* Premium Lead Capture Section */}
         <section id="kontakt" className="bg-white py-24 lg:py-32 relative overflow-hidden">
-          <div className="absolute top-0 left-0 -ml-40 -mt-40 w-[600px] h-[600px] rounded-full bg-slate-50 blur-[100px] pointer-events-none" />
+          {/* REMOVED GLOW */}
 
           <div className="mx-auto max-w-7xl px-6 relative z-10">
             <div className="grid gap-16 lg:gap-24 lg:grid-cols-12 items-start">
@@ -367,7 +360,6 @@ export default function HomePage() {
 
               <div className="lg:col-span-7">
                 <div className="rounded-[2.5rem] border border-slate-200/60 bg-white p-8 md:p-12 shadow-[0_10px_40px_rgba(0,0,0,0.04)] relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full blur-[40px] -mr-16 -mt-16 pointer-events-none" />
                   <form className="space-y-6 relative z-10" onSubmit={onSubmit}>
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div className="space-y-2.5">
@@ -479,7 +471,7 @@ export default function HomePage() {
 
       <footer className="bg-slate-950 border-t border-white/10 py-16 text-slate-400 relative overflow-hidden">
         {/* Subtle Background Glow */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-blue-600/5 blur-[80px] pointer-events-none" />
+        {/* REMOVED GLOW */}
 
         <div className="mx-auto max-w-7xl px-6 relative z-10">
           <div className="grid gap-12 md:grid-cols-4 items-start pb-12 border-b border-white/10">
