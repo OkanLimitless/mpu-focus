@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { CookieBanner } from '@/components/ui/cookie-banner'
 
-const inter = Inter({ subsets: ['latin'] })
+const manrope = Manrope({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'MPU Beratung | Kostenlose Erstberatung - MPU Focus',
@@ -46,7 +46,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de">
-      <body className={inter.className}>
+      <body className={manrope.className}>
         <AuthProvider>
 
           {children}
