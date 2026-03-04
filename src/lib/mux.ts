@@ -22,14 +22,20 @@ function getMuxClient(): Mux {
 // Helper functions for common Mux operations
 export const createMuxAsset = async (input: string, options?: {
   playbackPolicy?: 'public' | 'signed'
-  mp4Support?: 'standard' | 'none' | 'capped-1080p'
+  mp4Support?: 'none' | 'capped-1080p'
 }) => {
   try {
     const mux = getMuxClient()
-    const asset = await mux.video.assets.create({
+    const createPayload: any = {
       input: [{ url: input }],
       playback_policy: [options?.playbackPolicy || 'public'],
-      mp4_support: options?.mp4Support || 'standard',
+    }
+    if (options?.mp4Support) {
+      createPayload.mp4_support = options.mp4Support
+    }
+
+    const asset = await mux.video.assets.create({
+      ...createPayload,
     })
     
     return {
@@ -65,18 +71,22 @@ export const getMuxAsset = async (assetId: string) => {
 
 export const createMuxDirectUpload = async (options?: {
   playbackPolicy?: 'public' | 'signed'
-  mp4Support?: 'standard' | 'none' | 'capped-1080p'
+  mp4Support?: 'none' | 'capped-1080p'
   passthrough?: string
 }) => {
   try {
     const mux = getMuxClient()
     const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const newAssetSettings: any = {
+      playback_policy: [options?.playbackPolicy || 'public'],
+      passthrough: options?.passthrough,
+    }
+    if (options?.mp4Support) {
+      newAssetSettings.mp4_support = options.mp4Support
+    }
+
     const upload = await mux.video.uploads.create({
-      new_asset_settings: {
-        playback_policy: [options?.playbackPolicy || 'public'],
-        mp4_support: options?.mp4Support || 'standard',
-        passthrough: options?.passthrough,
-      },
+      new_asset_settings: newAssetSettings,
       cors_origin: corsOrigin,
     })
     

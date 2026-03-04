@@ -20,7 +20,6 @@ export async function POST(request: Request) {
 
     const upload = await createMuxDirectUpload({
       playbackPolicy: 'public',
-      mp4Support: 'standard',
       passthrough,
     })
 
