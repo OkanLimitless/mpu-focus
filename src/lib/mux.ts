@@ -63,14 +63,19 @@ export const getMuxAsset = async (assetId: string) => {
   }
 }
 
-export const createMuxDirectUpload = async () => {
+export const createMuxDirectUpload = async (options?: {
+  playbackPolicy?: 'public' | 'signed'
+  mp4Support?: 'standard' | 'none' | 'capped-1080p'
+  passthrough?: string
+}) => {
   try {
     const mux = getMuxClient()
     const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const upload = await mux.video.uploads.create({
       new_asset_settings: {
-        playback_policy: ['public'],
-        mp4_support: 'standard',
+        playback_policy: [options?.playbackPolicy || 'public'],
+        mp4_support: options?.mp4Support || 'standard',
+        passthrough: options?.passthrough,
       },
       cors_origin: corsOrigin,
     })
@@ -81,6 +86,23 @@ export const createMuxDirectUpload = async () => {
     }
   } catch (error) {
     console.error('Error creating Mux direct upload:', error)
+    throw error
+  }
+}
+
+export const getMuxUpload = async (uploadId: string) => {
+  try {
+    const mux = getMuxClient()
+    const upload = await mux.video.uploads.retrieve(uploadId)
+    return {
+      uploadId: upload.id,
+      assetId: upload.asset_id || null,
+      status: upload.status || null,
+      timeout: upload.timeout || null,
+      newAssetSettings: upload.new_asset_settings || null,
+    }
+  } catch (error) {
+    console.error('Error retrieving Mux upload:', error)
     throw error
   }
 }
