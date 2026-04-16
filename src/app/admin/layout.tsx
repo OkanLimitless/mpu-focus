@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
-import { LayoutDashboard, Users, Video, Settings, LogOut, Menu, X, Bell, Search, Lock, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Users, Video, LogOut, Menu, X, Bell, Search, Lock, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,7 +66,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
         { name: 'Leads & CRM', href: '/admin/leads', icon: Users },
         { name: 'Videokurse', href: '/admin/videos', icon: Video },
-        { name: 'Einstellungen', href: '/admin/settings', icon: Settings },
     ]
 
     return (

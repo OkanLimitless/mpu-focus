@@ -201,7 +201,7 @@ export default function LeadsPage() {
 
                             {lead.goals && (
                                 <div className="p-5 rounded-2xl bg-orange-50/50 border border-orange-100/50">
-                                    <p className="text-sm font-semibold text-orange-800 leading-relaxed italic">"{lead.goals}"</p>
+                                    <p className="text-sm font-semibold text-orange-800 leading-relaxed italic">{lead.goals}</p>
                                 </div>
                             )}
                         </div>

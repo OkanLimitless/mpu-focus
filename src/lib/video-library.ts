@@ -18,6 +18,14 @@ export type VideoRecord = {
   createdAt: string | null
 }
 
+export type VideoProgressRecord = {
+  videoId: string
+  currentTime: number
+  watchedDuration: number
+  completionPercentage: number
+  isCompleted: boolean
+}
+
 type VideoContext = {
   table: VideoTable
   columns: Set<string>
@@ -135,6 +143,8 @@ async function detectVideoContext(supabaseAdmin: ReturnType<typeof createSupabas
         'duration_seconds',
         'is_active',
         'chapter_id',
+        'video_url',
+        'thumbnail_url',
         'mux_asset_id',
         'mux_playback_id',
         'mux_status',
@@ -232,6 +242,21 @@ export async function listVideosPublic() {
   const { data, error } = await query
   if (error) throw error
   return (data || []).map((row: any) => toVideoRecord(row, ctx.table))
+}
+
+export async function getVideoById(id: string) {
+  const supabaseAdmin = createSupabaseAdminClient()
+  const ctx = await detectVideoContext(supabaseAdmin)
+
+  const { data, error } = await supabaseAdmin
+    .from(ctx.table)
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+  return toVideoRecord(data, ctx.table)
 }
 
 export async function createVideoFromMux(input: UpsertVideoInput) {
@@ -335,4 +360,62 @@ export async function updateVideoByMuxAssetId(assetId: string, patch: UpsertVide
   if (error) throw error
   if (!data) return null
   return toVideoRecord(data, ctx.table)
+}
+
+export async function listVideoProgressForProfile(profileId: string) {
+  const supabaseAdmin = createSupabaseAdminClient()
+  const { data, error } = await supabaseAdmin
+    .from('mpu_video_progress')
+    .select('video_id,last_position_seconds,completion_percentage,is_completed')
+    .eq('profile_id', profileId)
+
+  if (error) throw error
+
+  return new Map<string, VideoProgressRecord>(
+    (data || []).map((row: any) => [
+      row.video_id,
+      {
+        videoId: row.video_id,
+        currentTime: row.last_position_seconds ?? 0,
+        watchedDuration: row.last_position_seconds ?? 0,
+        completionPercentage: Number(row.completion_percentage ?? 0),
+        isCompleted: row.is_completed ?? false,
+      },
+    ]),
+  )
+}
+
+export async function upsertVideoProgress(params: {
+  profileId: string
+  videoId: string
+  currentTime: number
+  watchedDuration: number
+  completionPercentage: number
+  isCompleted: boolean
+}) {
+  const supabaseAdmin = createSupabaseAdminClient()
+
+  const payload = {
+    profile_id: params.profileId,
+    video_id: params.videoId,
+    last_position_seconds: params.currentTime,
+    completion_percentage: params.completionPercentage,
+    is_completed: params.isCompleted,
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('mpu_video_progress')
+    .upsert(payload, { onConflict: 'profile_id,video_id' })
+    .select('video_id,last_position_seconds,completion_percentage,is_completed')
+    .single()
+
+  if (error) throw error
+
+  return {
+    videoId: data.video_id,
+    currentTime: data.last_position_seconds ?? 0,
+    watchedDuration: data.last_position_seconds ?? 0,
+    completionPercentage: Number(data.completion_percentage ?? 0),
+    isCompleted: data.is_completed ?? false,
+  } satisfies VideoProgressRecord
 }

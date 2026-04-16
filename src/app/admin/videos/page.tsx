@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import MuxVideoPlayer from '@/components/video/MuxVideoPlayer'
 
 type VideoItem = {
   id: string
@@ -84,6 +85,7 @@ export default function VideosPage() {
   const [busyVideoId, setBusyVideoId] = useState<string | null>(null)
 
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [previewVideo, setPreviewVideo] = useState<VideoItem | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState('')
@@ -93,7 +95,7 @@ export default function VideosPage() {
   const [formDescription, setFormDescription] = useState('')
   const [formCategory, setFormCategory] = useState('general')
   const [formOrderIndex, setFormOrderIndex] = useState(1)
-  const [formIsPublished, setFormIsPublished] = useState(true)
+  const [formIsPublished, setFormIsPublished] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const canSubmitUpload = useMemo(() => {
@@ -125,7 +127,7 @@ export default function VideosPage() {
     setFormDescription('')
     setFormCategory('general')
     setFormOrderIndex(Math.max(1, videos.length + 1))
-    setFormIsPublished(true)
+    setFormIsPublished(false)
     setSelectedFile(null)
     setUploadProgress(0)
     setUploadStatus('')
@@ -286,7 +288,7 @@ export default function VideosPage() {
           <DialogHeader>
             <DialogTitle>Video zu Mux hochladen</DialogTitle>
             <DialogDescription>
-              Datei wird direkt zu Mux hochgeladen. Nach der Verarbeitung wird der Kurs automatisch gespeichert.
+              Datei wird direkt zu Mux hochgeladen. Nach der Verarbeitung wird das Video als Entwurf gespeichert und kann anschließend veröffentlicht werden.
             </DialogDescription>
           </DialogHeader>
 
@@ -417,6 +419,36 @@ export default function VideosPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!previewVideo} onOpenChange={(open) => !open && setPreviewVideo(null)}>
+        <DialogContent className="max-w-4xl border-slate-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>{previewVideo?.title || 'Vorschau'}</DialogTitle>
+            <DialogDescription>
+              Admin-Vorschau für Entwürfe und veröffentlichte Videos.
+            </DialogDescription>
+          </DialogHeader>
+          {previewVideo && (
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-2xl bg-slate-950">
+                <MuxVideoPlayer
+                  key={previewVideo.id}
+                  video={{
+                    id: previewVideo.id,
+                    title: previewVideo.title,
+                    muxPlaybackId: previewVideo.muxPlaybackId,
+                    durationSeconds: previewVideo.durationSeconds,
+                  }}
+                  persistProgress={false}
+                />
+              </div>
+              {previewVideo.description && (
+                <p className="text-sm font-medium text-slate-600">{previewVideo.description}</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {videos.map((video) => (
           <div key={video.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-md transition-all flex flex-col">
@@ -462,6 +494,14 @@ export default function VideosPage() {
               </div>
 
               <div className="flex items-center gap-3 pt-4 border-t border-slate-100 mt-auto">
+                <Button
+                  variant="outline"
+                  className="h-10 w-10 shrink-0 rounded-xl border-slate-200 bg-slate-50 p-0 text-slate-600 hover:bg-slate-100"
+                  onClick={() => setPreviewVideo(video)}
+                  disabled={!video.muxPlaybackId}
+                >
+                  <PlayCircle className="h-4 w-4" />
+                </Button>
                 <Button
                   variant={video.isPublished ? 'outline' : 'default'}
                   className={cn(

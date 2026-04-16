@@ -28,7 +28,7 @@ export const createMuxAsset = async (input: string, options?: {
     const mux = getMuxClient()
     const createPayload: any = {
       input: [{ url: input }],
-      playback_policy: [options?.playbackPolicy || 'public'],
+      playback_policy: [options?.playbackPolicy || 'signed'],
     }
     if (options?.mp4Support) {
       createPayload.mp4_support = options.mp4Support
@@ -78,7 +78,7 @@ export const createMuxDirectUpload = async (options?: {
     const mux = getMuxClient()
     const corsOrigin = process.env.MUX_UPLOAD_CORS_ORIGIN || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const newAssetSettings: any = {
-      playback_policy: [options?.playbackPolicy || 'public'],
+      playback_policy: [options?.playbackPolicy || 'signed'],
       passthrough: options?.passthrough,
     }
     if (options?.mp4Support) {
@@ -181,8 +181,7 @@ export const verifyMuxWebhook = (rawBody: string, signatureHeader: string): bool
   }
 }
 
-// Generate short-lived signed playback token for a playbackId (kept for backward compatibility)
-export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 120): string {
+function generateSignedMuxToken(playbackId: string, aud: 'v' | 't' | 's', ttlSeconds: number = 300): string {
   const signingKeyId = process.env.MUX_SIGNING_KEY_ID
   const signingKeySecret = process.env.MUX_SIGNING_KEY_SECRET
   if (!signingKeyId || !signingKeySecret) {
@@ -192,7 +191,7 @@ export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: numb
   const header = { alg: 'HS256', typ: 'JWT', kid: signingKeyId }
   const now = Math.floor(Date.now() / 1000)
   const payload: Record<string, any> = {
-    aud: 'v',
+    aud,
     sub: playbackId,
     exp: now + ttlSeconds,
     iat: now,
@@ -229,8 +228,34 @@ export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: numb
   throw new Error('Failed to sign playback token')
 }
 
-export const createPublicPlaybackId = async (assetId: string): Promise<string> => {
+export function generateSignedPlaybackTokens(playbackId: string, ttlSeconds: number = 300) {
+  return {
+    playback: generateSignedMuxToken(playbackId, 'v', ttlSeconds),
+    thumbnail: generateSignedMuxToken(playbackId, 't', ttlSeconds),
+    storyboard: generateSignedMuxToken(playbackId, 's', ttlSeconds),
+  }
+}
+
+export function buildSignedThumbnailUrl(playbackId: string, thumbnailToken: string) {
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&token=${encodeURIComponent(thumbnailToken)}`
+}
+
+export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 300): string {
+  return generateSignedMuxToken(playbackId, 'v', ttlSeconds)
+}
+
+export const createPlaybackId = async (assetId: string, policy: 'public' | 'signed' = 'signed'): Promise<string> => {
   const mux = getMuxClient()
-  const playback = await mux.video.assets.createPlaybackId(assetId, { policy: 'public' })
+  const playback = await mux.video.assets.createPlaybackId(assetId, { policy })
   return playback.id
+}
+
+export async function ensureSignedPlaybackId(assetId: string, existingPlaybackId?: string | null): Promise<string> {
+  const asset = await getMuxAsset(assetId)
+  const signedPlaybackId = asset.playbackIds?.find((playback: any) => playback?.policy === 'signed')?.id
+  if (signedPlaybackId) return signedPlaybackId
+  if (existingPlaybackId) {
+    return createPlaybackId(assetId, 'signed')
+  }
+  return createPlaybackId(assetId, 'signed')
 }

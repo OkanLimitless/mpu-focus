@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     })
 
     const upload = await createMuxDirectUpload({
-      playbackPolicy: 'public',
+      playbackPolicy: 'signed',
       passthrough,
     })
 

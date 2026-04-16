@@ -42,7 +42,7 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
             <p>1. Go to your <a href="https://dashboard.mux.com/settings/access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
               Mux Dashboard → Settings → Access Tokens <ExternalLink className="h-3 w-3" />
             </a></p>
-            <p>2. Click "Generate new token"</p>
+            <p>2. Click Generate new token</p>
             <p>3. Select these permissions:</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li><code className="bg-gray-100 px-1 rounded">Mux Video</code> - Full Access</li>
@@ -91,7 +91,7 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
             <div className="flex items-start gap-2 p-2 bg-blue-50 rounded">
               <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <p className="text-blue-800 text-xs">
-                Make sure your video status shows as "Ready" in the Mux dashboard before using it.
+                Make sure your video status shows as Ready in the Mux dashboard before using it.
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
             <p>1. Go to your <a href="https://dashboard.mux.com/settings/webhooks" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
               Mux Dashboard → Settings → Webhooks <ExternalLink className="h-3 w-3" />
             </a></p>
-            <p>2. Click "Create new webhook"</p>
+            <p>2. Click Create new webhook</p>
             <p>3. Use this URL for your webhook endpoint:</p>
             <div className="relative">
               <code className="bg-gray-50 p-2 rounded text-xs block overflow-x-auto">
@@ -135,7 +135,7 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
           </div>
           <div className="space-y-2 text-sm">
             <p>1. Restart your development server after adding environment variables</p>
-            <p>2. Use the "Add Video" button above to create a new video</p>
+            <p>2. Use the Add Video button above to create a new video</p>
             <p>3. Enter your video details and paste the Mux Asset ID</p>
             <p>4. The system will automatically fetch video duration and playback ID from Mux</p>
           </div>

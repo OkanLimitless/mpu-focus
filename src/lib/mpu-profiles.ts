@@ -10,6 +10,7 @@ export type MpuProfileRow = {
   last_name: string
   role: MpuProfileRole
   is_active: boolean
+  academy_access_enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -73,6 +74,7 @@ export async function upsertProfile(params: {
   lastName: string
   role?: MpuProfileRole
   isActive?: boolean
+  academyAccessEnabled?: boolean
 }): Promise<MpuProfileRow> {
   const { data } = await supabaseRest<MpuProfileRow[]>({
     path: 'mpu_profiles',
@@ -87,6 +89,9 @@ export async function upsertProfile(params: {
       last_name: params.lastName.trim() || 'Account',
       role: params.role || 'student',
       is_active: params.isActive ?? true,
+      ...(params.academyAccessEnabled !== undefined
+        ? { academy_access_enabled: params.academyAccessEnabled }
+        : {}),
     },
     useServiceRole: true,
     prefer: 'resolution=merge-duplicates,return=representation',

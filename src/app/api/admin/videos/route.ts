@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { assertAdminRequest } from '@/lib/admin-auth'
-import { createPublicPlaybackId, getMuxAsset } from '@/lib/mux'
+import { buildSignedThumbnailUrl, ensureSignedPlaybackId, generateSignedPlaybackTokens, getMuxAsset } from '@/lib/mux'
 import { createVideoFromMux, listVideosAdmin } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
@@ -10,13 +10,17 @@ export async function GET() {
         await assertAdminRequest()
 
         const videos = await listVideosAdmin()
-        const formattedVideos = videos.map(v => ({
+        const formattedVideos = videos.map(v => {
+            const tokens = v.muxPlaybackId ? generateSignedPlaybackTokens(v.muxPlaybackId) : null
+            return {
             // New shape for /admin/videos page
             id: v.id,
             title: v.title,
             description: v.description,
             videoUrl: v.videoUrl,
-            thumbnailUrl: v.thumbnailUrl,
+            thumbnailUrl: v.muxPlaybackId && tokens
+                ? buildSignedThumbnailUrl(v.muxPlaybackId, tokens.thumbnail)
+                : v.thumbnailUrl,
             durationSeconds: v.durationSeconds,
             category: v.category,
             orderIndex: v.orderIndex,
@@ -34,7 +38,8 @@ export async function GET() {
             duration: v.durationSeconds || 0,
             isActive: v.isPublished,
             status: v.muxStatus || 'unknown',
-        }))
+            }
+        })
 
         return NextResponse.json({ videos: formattedVideos })
     } catch (error: any) {
@@ -72,10 +77,7 @@ export async function POST(request: Request) {
             const asset = await getMuxAsset(muxAssetId)
             durationSeconds = typeof asset.duration === 'number' ? Math.round(asset.duration) : null
             muxStatus = asset.status || 'ready'
-            muxPlaybackId = asset.playbackId || ''
-            if (!muxPlaybackId) {
-                muxPlaybackId = await createPublicPlaybackId(muxAssetId)
-            }
+            muxPlaybackId = await ensureSignedPlaybackId(muxAssetId, asset.playbackId || '')
         }
 
         const video = await createVideoFromMux({

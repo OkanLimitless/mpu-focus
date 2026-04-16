@@ -8,6 +8,7 @@ import { CookieBanner } from '@/components/ui/cookie-banner'
 const manrope = Manrope({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://mpu-focus.de'),
   title: 'MPU Beratung | Kostenlose Erstberatung - MPU Focus',
   description: 'Professionelle MPU-Vorbereitung mit individueller Beratung fuer Alkohol-, Drogen- und Punkte-MPU. Kostenloses Beratungsgespraech vereinbaren.',
   keywords: 'MPU Beratung, MPU Vorbereitung, Führerschein zurück, Alkohol MPU, Drogen MPU, Punkte MPU, MPU bestehen, MPU Hilfe',

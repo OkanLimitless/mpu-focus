@@ -1,188 +1,118 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import MuxPlayer from '@mux/mux-player-react'
-import { useSession } from 'next-auth/react'
-import { useToast } from '@/hooks/use-toast'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Clock, CheckCircle, Play } from 'lucide-react'
+import { Loader2, Play } from 'lucide-react'
 import { useI18n } from '@/components/providers/i18n-provider'
+
+type PlayerProgress = {
+  currentTime: number
+  watchedDuration: number
+  completionPercentage: number
+  isCompleted: boolean
+}
+
+type PlaybackPayload = {
+  playbackId: string
+  tokens: {
+    playback: string
+    thumbnail: string
+    storyboard: string
+  }
+}
 
 interface MuxVideoPlayerProps {
   video: {
-    _id: string
+    id: string
     title: string
-    description: string
-    muxPlaybackId?: string
-    duration: number
-    chapterId: string
-    courseId?: string
+    muxPlaybackId?: string | null
+    durationSeconds?: number | null
   }
-  userProgress?: {
-    currentTime: number
-    watchedDuration: number
-    isCompleted: boolean
-    completionPercentage: number
-  }
-  onProgressUpdate?: (progress: {
-    currentTime: number
-    watchedDuration: number
-    totalDuration: number
-  }) => void
+  userProgress?: PlayerProgress | null
+  persistProgress?: boolean
+  onProgressUpdate?: (progress: PlayerProgress) => void
   onVideoComplete?: () => void
 }
 
-export default function MuxVideoPlayer({ 
-  video, 
-  userProgress, 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+export default function MuxVideoPlayer({
+  video,
+  userProgress,
+  persistProgress = true,
   onProgressUpdate,
-  onVideoComplete
+  onVideoComplete,
 }: MuxVideoPlayerProps) {
-  const { data: session } = useSession()
-  const { toast } = useToast()
   const { t } = useI18n()
   const playerRef = useRef<any>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(userProgress?.currentTime || 0)
-  const [duration, setDuration] = useState(video.duration || 0)
-  const [watchedDuration, setWatchedDuration] = useState(userProgress?.watchedDuration || 0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const progressStateRef = useRef<PlayerProgress>({
+    currentTime: userProgress?.currentTime || 0,
+    watchedDuration: userProgress?.watchedDuration || 0,
+    completionPercentage: userProgress?.completionPercentage || 0,
+    isCompleted: userProgress?.isCompleted || false,
+  })
+  const [playback, setPlayback] = useState<PlaybackPayload | null>(null)
+  const [loadingPlayback, setLoadingPlayback] = useState(false)
+  const [playbackError, setPlaybackError] = useState<string | null>(null)
+  const [duration, setDuration] = useState(video.durationSeconds || 0)
+  const [progressState, setProgressState] = useState<PlayerProgress>({
+    currentTime: userProgress?.currentTime || 0,
+    watchedDuration: userProgress?.watchedDuration || 0,
+    completionPercentage: userProgress?.completionPercentage || 0,
+    isCompleted: userProgress?.isCompleted || false,
+  })
 
   useEffect(() => {
-    if (userProgress?.currentTime && playerRef.current) {
-      // Resume from last watched position
-      if (playerRef.current.currentTime !== userProgress.currentTime) {
-        playerRef.current.currentTime = userProgress.currentTime
-      }
+    const nextProgress = {
+      currentTime: userProgress?.currentTime || 0,
+      watchedDuration: userProgress?.watchedDuration || 0,
+      completionPercentage: userProgress?.completionPercentage || 0,
+      isCompleted: userProgress?.isCompleted || false,
     }
-  }, [userProgress?.currentTime])
+    setDuration(video.durationSeconds || 0)
+    progressStateRef.current = nextProgress
+    setProgressState(nextProgress)
+  }, [video.id, video.durationSeconds, userProgress])
 
-  const saveProgress = async (progressData: {
-    currentTime: number
-    watchedDuration: number
-    totalDuration: number
-  }) => {
-    if (!session?.user) return
+  useEffect(() => {
+    if (!video.muxPlaybackId) {
+      setPlayback(null)
+      return
+    }
 
-    try {
-      const response = await fetch('/api/video-progress', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          videoId: video._id,
-          chapterId: video.chapterId,
-          courseId: video.courseId,
-          ...progressData,
-        }),
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Check if video was just completed (reached 90% threshold)
-        const completionThreshold = progressData.totalDuration * 0.9
-        const wasCompleted = userProgress?.isCompleted
-        const isNowCompleted = progressData.watchedDuration >= completionThreshold
-        
-        if (!wasCompleted && isNowCompleted) {
-          onVideoComplete?.()
+    let ignore = false
+    setLoadingPlayback(true)
+    setPlaybackError(null)
+
+    ;(async () => {
+      try {
+        const response = await fetch(`/api/videos/${video.id}/playback`, { cache: 'no-store' })
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Playback konnte nicht geladen werden.')
+        }
+        if (!ignore) {
+          setPlayback(payload)
+        }
+      } catch (error: any) {
+        if (!ignore) {
+          setPlayback(null)
+          setPlaybackError(error?.message || 'Playback konnte nicht geladen werden.')
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingPlayback(false)
         }
       }
-      
-      onProgressUpdate?.(progressData)
-    } catch (error) {
-      console.error('Failed to save video progress:', error)
-    }
-  }
+    })()
 
-  const handlePlay = () => {
-    setIsPlaying(true)
-    
-    // Start tracking watch time
-    progressIntervalRef.current = setInterval(() => {
-      if (playerRef.current) {
-        const current = playerRef.current.currentTime || 0
-        const total = playerRef.current.duration || duration
-        
-        setCurrentTime(current)
-        setDuration(total)
-        
-        // Increment watched duration if actively playing
-        setWatchedDuration(prev => {
-          const newWatchedDuration = Math.min(prev + 1, total)
-          
-          // Save progress every 5 seconds
-          if (newWatchedDuration % 5 === 0) {
-            saveProgress({
-              currentTime: current,
-              watchedDuration: newWatchedDuration,
-              totalDuration: total,
-            })
-          }
-          
-          return newWatchedDuration
-        })
-      }
-    }, 1000)
-  }
-
-  const handlePause = () => {
-    setIsPlaying(false)
-    
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
-      progressIntervalRef.current = null
+    return () => {
+      ignore = true
     }
-    
-    // Save progress on pause
-    if (playerRef.current) {
-      saveProgress({
-        currentTime: playerRef.current.currentTime || 0,
-        watchedDuration,
-        totalDuration: playerRef.current.duration || duration,
-      })
-    }
-  }
-
-  const handleTimeUpdate = () => {
-    if (playerRef.current) {
-      setCurrentTime(playerRef.current.currentTime || 0)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    if (playerRef.current) {
-      setDuration(playerRef.current.duration || 0)
-    }
-  }
-
-  const handleEnded = () => {
-    setIsPlaying(false)
-    
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
-      progressIntervalRef.current = null
-    }
-    
-    // Mark as completed
-    if (playerRef.current) {
-      const totalDuration = playerRef.current.duration || duration
-      
-      saveProgress({
-        currentTime: totalDuration,
-        watchedDuration: totalDuration,
-        totalDuration,
-      })
-      
-      toast({
-        title: 'Video Completed!',
-        description: 'Great job! You have completed this video.',
-      })
-      onVideoComplete?.()
-    }
-  }
+  }, [video.id, video.muxPlaybackId])
 
   useEffect(() => {
     return () => {
@@ -192,79 +122,165 @@ export default function MuxVideoPlayer({
     }
   }, [])
 
+  const saveProgress = async (currentTime: number, totalDuration: number) => {
+    if (!persistProgress) return
+
+    const safeDuration = Math.max(totalDuration || duration || 0, 1)
+    const previous = progressStateRef.current
+    const watchedDuration = Math.max(previous.watchedDuration, currentTime)
+    const completionPercentage = clamp(Math.round((watchedDuration / safeDuration) * 100), 0, 100)
+    const isCompleted = completionPercentage >= 90
+
+    const nextProgress: PlayerProgress = {
+      currentTime: Math.round(currentTime),
+      watchedDuration: Math.round(watchedDuration),
+      completionPercentage,
+      isCompleted,
+    }
+
+    progressStateRef.current = nextProgress
+    setProgressState(nextProgress)
+    onProgressUpdate?.(nextProgress)
+
+    try {
+      const response = await fetch('/api/video-progress', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoId: video.id,
+          currentTime: nextProgress.currentTime,
+          watchedDuration: nextProgress.watchedDuration,
+          totalDuration: Math.round(safeDuration),
+          isCompleted: nextProgress.isCompleted,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Progress konnte nicht gespeichert werden.')
+      }
+
+      if (!previous.isCompleted && nextProgress.isCompleted) {
+        onVideoComplete?.()
+      }
+    } catch (error) {
+      console.error('Failed to save video progress:', error)
+    }
+  }
+
+  const handlePlay = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+    }
+
+    progressIntervalRef.current = setInterval(() => {
+      const player = playerRef.current
+      if (!player) return
+
+      const currentTime = Number(player.currentTime || 0)
+      const totalDuration = Number(player.duration || duration || 0)
+
+      setProgressState((prev) => {
+        const watchedDuration = Math.max(prev.watchedDuration, currentTime)
+        const completionPercentage = totalDuration > 0
+          ? clamp(Math.round((watchedDuration / totalDuration) * 100), 0, 100)
+          : prev.completionPercentage
+
+        const nextProgress = {
+          currentTime,
+          watchedDuration,
+          completionPercentage,
+          isCompleted: completionPercentage >= 90 || prev.isCompleted,
+        }
+        progressStateRef.current = nextProgress
+        return nextProgress
+      })
+    }, 1000)
+  }
+
+  const handlePause = async () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+      progressIntervalRef.current = null
+    }
+
+    const player = playerRef.current
+    if (!player) return
+    await saveProgress(Number(player.currentTime || 0), Number(player.duration || duration || 0))
+  }
+
+  const handleLoadedMetadata = () => {
+    const player = playerRef.current
+    if (!player) return
+
+    const totalDuration = Number(player.duration || 0)
+    setDuration(totalDuration)
+
+    const resumeTime = userProgress?.currentTime || 0
+    if (resumeTime > 0 && Math.abs(Number(player.currentTime || 0) - resumeTime) > 1) {
+      player.currentTime = resumeTime
+    }
+  }
+
+  const handleEnded = async () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+      progressIntervalRef.current = null
+    }
+
+    const totalDuration = Number(playerRef.current?.duration || duration || 0)
+    await saveProgress(totalDuration, totalDuration)
+  }
+
+  const playerTokens = useMemo(() => playback?.tokens, [playback])
+
   if (!video.muxPlaybackId) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
-            {video.title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-            <p className="text-gray-500">{t('videoNotAvailable')}</p>
-          </div>
-          {video.description && (
-            <p className="text-sm text-gray-600 mt-4">{video.description}</p>
-          )}
-        </CardContent>
-      </Card>
+      <div className="flex aspect-video items-center justify-center rounded-[1.5rem] bg-slate-900/50 text-slate-400">
+        <div className="flex flex-col items-center gap-3">
+          <Play className="h-10 w-10" />
+          <p className="text-sm font-medium">{t('videoNotAvailable')}</p>
+        </div>
+      </div>
     )
   }
 
-  const progressPercentage = duration > 0 ? Math.round((watchedDuration / duration) * 100) : 0
-  const isCompleted = userProgress?.isCompleted || progressPercentage >= 90
+  if (loadingPlayback) {
+    return (
+      <div className="flex aspect-video items-center justify-center rounded-[1.5rem] bg-slate-900/50 text-white">
+        <div className="flex items-center gap-3 text-sm font-semibold">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Playback wird vorbereitet...
+        </div>
+      </div>
+    )
+  }
+
+  if (!playback || !playerTokens) {
+    return (
+      <div className="flex aspect-video items-center justify-center rounded-[1.5rem] bg-slate-900/50 px-6 text-center text-slate-300">
+        <p className="text-sm font-medium">{playbackError || t('videoNotAvailable')}</p>
+      </div>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
-            {video.title}
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            {isCompleted && (
-              <div className="flex items-center gap-1 text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                {t('completed')}
-              </div>
-            )}
-            <div className="flex items-center gap-1 text-gray-500">
-              <Clock className="h-4 w-4" />
-              {Math.floor(duration / 60)}:{String(Math.floor(duration % 60)).padStart(2, '0')}
-            </div>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="relative">
-          <MuxPlayer
-            ref={playerRef}
-            playbackId={video.muxPlaybackId}
-            metadata={{
-              video_title: video.title,
-              video_id: video._id,
-            }}
-            className="w-full"
-            style={{ aspectRatio: '16 / 9', width: '100%', ['--media-object-fit' as any]: 'cover' }}
-            onPlay={handlePlay}
-            onPause={handlePause}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onEnded={handleEnded}
-            startTime={userProgress?.currentTime || 0}
-          />
-        </div>
-        
-        {video.description && (
-          <div className="mt-4">
-            <h4 className="font-medium mb-2">{t('descriptionLabel')}</h4>
-            <p className="text-sm text-gray-600">{video.description}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <MuxPlayer
+      ref={playerRef}
+      playbackId={playback.playbackId}
+      tokens={playerTokens}
+      metadata={{
+        video_title: video.title,
+        video_id: video.id,
+      }}
+      className="h-full w-full"
+      style={{ aspectRatio: '16 / 9', width: '100%', ['--media-object-fit' as any]: 'cover' }}
+      onPlay={handlePlay}
+      onPause={handlePause}
+      onLoadedMetadata={handleLoadedMetadata}
+      onEnded={handleEnded}
+      startTime={userProgress?.currentTime || 0}
+    />
   )
 }

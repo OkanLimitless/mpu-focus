@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { assertAdminRequest } from '@/lib/admin-auth'
-import { createPublicPlaybackId, getMuxAsset, getMuxUpload } from '@/lib/mux'
+import { ensureSignedPlaybackId, getMuxAsset, getMuxUpload } from '@/lib/mux'
 import { createVideoFromMux, findVideoByMuxAssetId, findVideoByPlaybackId, updateVideoById } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
@@ -33,10 +33,7 @@ export async function POST(request: Request) {
     }
 
     const asset = await getMuxAsset(upload.assetId)
-    let playbackId = asset.playbackId || null
-    if (!playbackId) {
-      playbackId = await createPublicPlaybackId(upload.assetId)
-    }
+    const playbackId = await ensureSignedPlaybackId(upload.assetId, asset.playbackId || null)
 
     const existing = (await findVideoByMuxAssetId(upload.assetId))
       || (playbackId ? await findVideoByPlaybackId(playbackId) : null)

@@ -275,12 +275,7 @@ export async function POST(request: NextRequest) {
         const mpuChallenges = toStringArray(body.mpuChallenges)
         const concerns = toStringArray(body.concerns)
         const availability = toStringArray(body.availability)
-        const consentVersion = toOptionalString(body.consentVersion, 60)
-
         const contextLines: string[] = [
-            `Einwilligung: ${consentAccepted ? 'explizit erteilt' : 'implizit (Legacy-Formular)'} (${new Date().toISOString()})`,
-            consentVersion ? `Einwilligungs-Version: ${consentVersion}` : '',
-            source ? `Quelle: ${source}` : '',
             timeframe ? `Zeithorizont: ${timeframe}` : '',
             reason ? `MPU-Grund: ${reason}` : '',
             jobLoss === null ? '' : `Jobverlust durch Entzug: ${jobLoss ? 'Ja' : 'Nein'}`,

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { assertAdminRequest } from '@/lib/admin-auth'
-import { createPublicPlaybackId, getMuxAsset } from '@/lib/mux'
+import { ensureSignedPlaybackId, getMuxAsset } from '@/lib/mux'
 import { deleteVideoById, updateVideoById } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
@@ -31,10 +31,7 @@ export async function PUT(
                 const asset = await getMuxAsset(muxAssetId)
                 patch.durationSeconds = typeof asset.duration === 'number' ? Math.round(asset.duration) : null
                 patch.muxStatus = asset.status || 'ready'
-                patch.muxPlaybackId = asset.playbackId || null
-                if (!patch.muxPlaybackId) {
-                    patch.muxPlaybackId = await createPublicPlaybackId(muxAssetId)
-                }
+                patch.muxPlaybackId = await ensureSignedPlaybackId(muxAssetId, asset.playbackId || null)
             } else {
                 patch.muxPlaybackId = null
                 patch.muxStatus = null
