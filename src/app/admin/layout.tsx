@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
-import { LayoutDashboard, Users, Video, LogOut, Menu, X, Lock, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Users, Video, LogOut, Menu, X, Lock, RefreshCw, UserRound } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -63,7 +63,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const navItems = [
         { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-        { name: 'Leads & CRM', href: '/admin/leads', icon: Users },
+        { name: 'Interessenten', href: '/admin/leads', icon: Users },
+        { name: 'Teilnehmer', href: '/admin/participants', icon: UserRound },
         { name: 'Videokurse', href: '/admin/videos', icon: Video },
     ]
 
@@ -137,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     <div className="hidden lg:block">
-                        <p className="text-sm font-semibold text-slate-500">Admin CRM & Videoverwaltung</p>
+                        <p className="text-sm font-semibold text-slate-500">Interessenten, Teilnehmer und Videoverwaltung</p>
                     </div>
                 </header>
 

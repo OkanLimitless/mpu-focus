@@ -23,11 +23,15 @@ async function countRows(params: {
     supabaseAdmin: any
     table: string
     eq?: { column: string; value: string | boolean }
+    eqs?: Array<{ column: string; value: string | boolean }>
     inValues?: { column: string; values: string[] }
 }) {
-    const { supabaseAdmin, table, eq, inValues } = params
+    const { supabaseAdmin, table, eq, eqs, inValues } = params
     let query = supabaseAdmin.from(table).select('*', { count: 'exact', head: true })
     if (eq) query = query.eq(eq.column, eq.value)
+    if (eqs) {
+        for (const item of eqs) query = query.eq(item.column, item.value)
+    }
     if (inValues) query = query.in(inValues.column, inValues.values)
     const { count, error } = await query
     if (error) throw error
@@ -81,6 +85,8 @@ export async function GET() {
             contactedLeads,
             enrolledLeads,
             closedLeads,
+            totalParticipants,
+            academyEnabledParticipants,
             totalVideos,
             publishedVideos,
         ] = await Promise.all([
@@ -89,6 +95,15 @@ export async function GET() {
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.contacted } }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.enrolled } }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.closed } }),
+            countRows({ supabaseAdmin, table: 'mpu_profiles', eq: { column: 'role', value: 'student' } }),
+            countRows({
+                supabaseAdmin,
+                table: 'mpu_profiles',
+                eqs: [
+                    { column: 'role', value: 'student' },
+                    { column: 'academy_access_enabled', value: true },
+                ],
+            }),
             countRows({ supabaseAdmin, table: 'mpu_video_library' }),
             countRows({ supabaseAdmin, table: 'mpu_video_library', eq: { column: 'is_published', value: true } }),
         ])
@@ -100,6 +115,8 @@ export async function GET() {
                 contactedLeads,
                 enrolledLeads,
                 closedLeads,
+                totalParticipants,
+                academyEnabledParticipants,
                 totalVideos,
                 publishedVideos,
             }

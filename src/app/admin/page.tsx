@@ -12,6 +12,7 @@ import {
   ArrowRight,
   RefreshCw,
   Mail,
+  ShieldCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +26,8 @@ type Stats = {
   contactedLeads: number
   enrolledLeads: number
   closedLeads: number
+  totalParticipants: number
+  academyEnabledParticipants: number
   totalVideos: number
   publishedVideos: number
 }
@@ -90,7 +93,7 @@ export default function AdminDashboardPage() {
           <h1 className={cn(displayFont.className, "text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight")}>
             Willkommen zurück.
           </h1>
-          <p className="mt-2 text-slate-500 font-medium">Hier ist Ihre MPU Focus Performance im Überblick.</p>
+          <p className="mt-2 text-slate-500 font-medium">Hier sehen Sie Interessenten, Teilnehmer und Videofreigaben im Überblick.</p>
         </div>
         <Button
           onClick={loadDashboard}
@@ -106,10 +109,10 @@ export default function AdminDashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-10">
         {[
-          { label: 'Gesamt Leads', val: stats?.totalLeads ?? '-', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-          { label: 'Neue Leads', val: stats?.newLeads ?? '-', icon: Circle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
-          { label: 'Eingeschrieben', val: stats?.enrolledLeads ?? '-', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: 'Video Kurse', val: stats?.totalVideos ?? '-', icon: Clapperboard, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+          { label: 'Interessenten gesamt', val: stats?.totalLeads ?? '-', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+          { label: 'Neue Interessenten', val: stats?.newLeads ?? '-', icon: Circle, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
+          { label: 'Teilnehmer', val: stats?.totalParticipants ?? '-', icon: UserRound, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { label: 'Zugang aktiv', val: stats?.academyEnabledParticipants ?? '-', icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
         ].map((s, idx) => (
           <div key={idx} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 rounded-bl-3xl bg-slate-50/50" />
@@ -128,7 +131,7 @@ export default function AdminDashboardPage() {
         {/* Recent Leads */}
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm">
           <div className="flex items-center justify-between mb-8">
-            <h3 className={cn(displayFont.className, "text-xl font-bold text-slate-900")}>Neueste Leads</h3>
+            <h3 className={cn(displayFont.className, "text-xl font-bold text-slate-900")}>Neueste Interessenten</h3>
             <Link href="/admin/leads">
               <Button variant="ghost" className="text-blue-600 font-semibold hover:bg-blue-50 rounded-lg pr-2">
                 Alle ansehen <ArrowRight className="h-4 w-4 ml-1" />
@@ -179,7 +182,16 @@ export default function AdminDashboardPage() {
                 <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
                   <Users className="h-5 w-5" />
                 </div>
-                CRM Öffnen
+                Interessenten
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-white transition-colors" />
+            </Link>
+            <Link href="/admin/participants" className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group">
+              <div className="flex items-center gap-3 font-semibold">
+                <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <UserRound className="h-5 w-5" />
+                </div>
+                Teilnehmer
               </div>
               <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-white transition-colors" />
             </Link>
@@ -196,7 +208,7 @@ export default function AdminDashboardPage() {
 
           <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
             <p className="text-sm font-semibold text-slate-300">
-              Fokus auf Lead-Bearbeitung und Kursverwaltung.
+              Trennen Sie Interessenten klar von freigeschalteten Teilnehmern.
             </p>
           </div>
         </div>
