@@ -10,10 +10,8 @@ import {
   CheckCircle2,
   Clapperboard,
   ArrowRight,
-  TrendingUp,
   RefreshCw,
   Mail,
-  Phone
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -197,10 +195,9 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
-            <div className="flex items-center gap-3 text-sm font-semibold text-emerald-400">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              System läuft fehlerfrei
-            </div>
+            <p className="text-sm font-semibold text-slate-300">
+              Fokus auf Lead-Bearbeitung und Kursverwaltung.
+            </p>
           </div>
         </div>
 

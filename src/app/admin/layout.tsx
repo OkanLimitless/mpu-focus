@@ -5,10 +5,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
-import { LayoutDashboard, Users, Video, LogOut, Menu, X, Bell, Search, Lock, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Users, Video, LogOut, Menu, X, Lock, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 const bodyFont = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] })
 const displayFont = Space_Grotesk({ subsets: ['latin'], weight: ['500', '700'] })
@@ -137,19 +136,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </h1>
                     </div>
 
-                    <div className="hidden lg:flex items-center max-w-md w-full relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <Input
-                            placeholder="Global suchen (Cmd+K)"
-                            className="w-full bg-slate-100/50 border-slate-200 pl-10 h-11 rounded-xl focus-visible:ring-blue-500 shadow-none font-medium text-slate-700"
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border border-white" />
-                        </button>
+                    <div className="hidden lg:block">
+                        <p className="text-sm font-semibold text-slate-500">Admin CRM & Videoverwaltung</p>
                     </div>
                 </header>
 

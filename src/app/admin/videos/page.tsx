@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
 import {
   Clapperboard,
@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import MuxVideoPlayer from '@/components/video/MuxVideoPlayer'
 
@@ -53,6 +54,20 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function formatMuxStatus(status?: string | null, hasPlaybackId?: string | null) {
+  const normalizedStatus = status || (hasPlaybackId ? 'ready' : 'processing')
+  switch (normalizedStatus) {
+    case 'ready':
+      return 'Bereit'
+    case 'processing':
+      return 'Wird verarbeitet'
+    case 'errored':
+      return 'Fehler bei der Verarbeitung'
+    default:
+      return normalizedStatus
+  }
+}
+
 function uploadFileToMux(uploadUrl: string, file: File, onProgress: (percent: number) => void) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -80,6 +95,7 @@ function uploadFileToMux(uploadUrl: string, file: File, onProgress: (percent: nu
 }
 
 export default function VideosPage() {
+  const { toast } = useToast()
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [busyVideoId, setBusyVideoId] = useState<string | null>(null)
@@ -102,7 +118,7 @@ export default function VideosPage() {
     return !!(formTitle.trim() && selectedFile && !uploading)
   }, [formTitle, selectedFile, uploading])
 
-  const loadVideos = async () => {
+  const loadVideos = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/videos', { cache: 'no-store' })
@@ -113,14 +129,19 @@ export default function VideosPage() {
       setVideos((payload.videos || []) as VideoItem[])
     } catch (error) {
       console.error(error)
+      toast({
+        title: 'Fehler',
+        description: error instanceof Error ? error.message : 'Videos konnten nicht geladen werden.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadVideos()
-  }, [])
+  }, [loadVideos])
 
   const resetDialog = () => {
     setFormTitle('')
@@ -205,11 +226,21 @@ export default function VideosPage() {
 
       setUploadStatus('Fertig. Video wurde gespeichert.')
       await loadVideos()
+      toast({
+        title: 'Upload abgeschlossen',
+        description: `"${formTitle.trim()}" wurde gespeichert.`,
+      })
       setDialogOpen(false)
       resetDialog()
     } catch (error: any) {
       console.error(error)
-      setUploadError(error?.message || 'Upload fehlgeschlagen.')
+      const message = error?.message || 'Upload fehlgeschlagen.'
+      setUploadError(message)
+      toast({
+        title: 'Upload fehlgeschlagen',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setUploading(false)
     }
@@ -228,8 +259,17 @@ export default function VideosPage() {
         throw new Error(payload?.error || 'Status konnte nicht geändert werden.')
       }
       await loadVideos()
+      toast({
+        title: video.isPublished ? 'Video ausgeblendet' : 'Video veröffentlicht',
+        description: `"${video.title}" ist jetzt ${video.isPublished ? 'nicht mehr sichtbar' : 'sichtbar'}.`,
+      })
     } catch (error) {
       console.error(error)
+      toast({
+        title: 'Fehler',
+        description: error instanceof Error ? error.message : 'Der Sichtbarkeitsstatus konnte nicht geändert werden.',
+        variant: 'destructive',
+      })
     } finally {
       setBusyVideoId(null)
     }
@@ -245,8 +285,17 @@ export default function VideosPage() {
         throw new Error(payload?.error || 'Löschen fehlgeschlagen.')
       }
       await loadVideos()
+      toast({
+        title: 'Video gelöscht',
+        description: 'Das Video wurde entfernt.',
+      })
     } catch (error) {
       console.error(error)
+      toast({
+        title: 'Fehler',
+        description: error instanceof Error ? error.message : 'Das Video konnte nicht gelöscht werden.',
+        variant: 'destructive',
+      })
     } finally {
       setBusyVideoId(null)
     }
@@ -261,7 +310,7 @@ export default function VideosPage() {
           </div>
           <div>
             <h1 className={cn(displayFont.className, 'text-3xl font-bold text-slate-900 tracking-tight')}>Video Akademie</h1>
-            <p className="font-medium text-slate-500">Kurse und Lehrmaterialien verwalten</p>
+            <p className="font-medium text-slate-500">Videos hochladen, prüfen und sichtbar schalten</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -272,6 +321,7 @@ export default function VideosPage() {
             className="h-11 bg-white border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold gap-2 shadow-sm rounded-xl"
           >
             <RefreshCw className={cn('h-4 w-4 text-slate-500', loading && 'animate-spin')} />
+            Aktualisieren
           </Button>
           <Button
             className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 shadow-sm rounded-xl"
@@ -286,9 +336,9 @@ export default function VideosPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!uploading) setDialogOpen(open) }}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Video zu Mux hochladen</DialogTitle>
+            <DialogTitle>Neues Video hochladen</DialogTitle>
             <DialogDescription>
-              Datei wird direkt zu Mux hochgeladen. Nach der Verarbeitung wird das Video als Entwurf gespeichert und kann anschließend veröffentlicht werden.
+              Die Datei wird direkt hochgeladen. Nach der Verarbeitung erscheint das Video hier und kann bei Bedarf sofort sichtbar sein.
             </DialogDescription>
           </DialogHeader>
 
@@ -411,7 +461,7 @@ export default function VideosPage() {
               ) : (
                 <>
                   <UploadCloud className="mr-2 h-4 w-4" />
-                  Zu Mux hochladen
+                  Video hochladen
                 </>
               )}
             </Button>
@@ -490,17 +540,19 @@ export default function VideosPage() {
               </p>
 
               <div className="mb-4 text-xs font-semibold text-slate-500">
-                Status: {video.muxStatus || (video.muxPlaybackId ? 'ready' : 'processing')}
+                Status: {formatMuxStatus(video.muxStatus, video.muxPlaybackId)}
               </div>
 
               <div className="flex items-center gap-3 pt-4 border-t border-slate-100 mt-auto">
                 <Button
                   variant="outline"
-                  className="h-10 w-10 shrink-0 rounded-xl border-slate-200 bg-slate-50 p-0 text-slate-600 hover:bg-slate-100"
+                  className="h-10 shrink-0 rounded-xl border-slate-200 bg-slate-50 px-3 text-slate-600 hover:bg-slate-100"
                   onClick={() => setPreviewVideo(video)}
                   disabled={!video.muxPlaybackId}
+                  title="Vorschau öffnen"
                 >
-                  <PlayCircle className="h-4 w-4" />
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Vorschau
                 </Button>
                 <Button
                   variant={video.isPublished ? 'outline' : 'default'}
@@ -514,9 +566,9 @@ export default function VideosPage() {
                   {busyVideoId === video.id ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : video.isPublished ? (
-                    'Verbergen'
+                    'Ausblenden'
                   ) : (
-                    'Veröffentlichen'
+                    'Sichtbar machen'
                   )}
                 </Button>
                 <Button
@@ -524,6 +576,7 @@ export default function VideosPage() {
                   className="h-10 w-10 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors shrink-0"
                   onClick={() => deleteVideo(video.id)}
                   disabled={busyVideoId === video.id}
+                  title="Video löschen"
                 >
                   <Trash2 className="h-5 w-5" />
                 </Button>
@@ -539,7 +592,7 @@ export default function VideosPage() {
             <Clapperboard className="h-8 w-8 text-slate-400" />
           </div>
           <h3 className={cn(displayFont.className, 'text-2xl font-bold text-slate-800')}>Noch keine Videos vorhanden</h3>
-          <p className="text-slate-500 font-medium max-w-sm mx-auto mt-2 mb-8">Laden Sie Ihr erstes Video direkt zu Mux hoch und veröffentlichen Sie es in der Akademie.</p>
+          <p className="text-slate-500 font-medium max-w-sm mx-auto mt-2 mb-8">Laden Sie Ihr erstes Video hoch, damit es anschließend in der Akademie sichtbar gemacht werden kann.</p>
           <Button onClick={openDialog} className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md">
             Video hochladen
           </Button>

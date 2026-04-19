@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { formatDate } from '@/lib/utils'
-import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar, Download, Plus, StickyNote, ExternalLink } from 'lucide-react'
+import { Users, Search, Eye, Edit, Trash2, BarChart3, Clock, Play, BookOpen, Mail, Shield, CheckCircle2, XCircle, AlertTriangle, FileText, Calendar, Download, Plus, StickyNote } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { useI18n } from '@/components/providers/i18n-provider'
@@ -258,12 +258,6 @@ export default function UserManagement() {
   const viewDocumentData = (user: User) => {
     setSelectedUser(user)
     setDocumentDialogOpen(true)
-  }
-
-  // Function to open document processor for user
-  const openDocumentProcessor = (user: User) => {
-    const processorUrl = `/document-processor?userId=${user._id}&userName=${encodeURIComponent(user.firstName + ' ' + user.lastName)}`
-    window.open(processorUrl, '_blank')
   }
 
   // Function to generate PDF from stored data
@@ -819,20 +813,6 @@ export default function UserManagement() {
                                 </CardContent>
                               </Card>
 
-                              {/* Process Documents */}
-                              <Card className="hover:shadow-md transition-shadow">
-                                <CardContent className="p-4">
-                                  <button onClick={() => openDocumentProcessor(selectedUser)} className="w-full flex items-center justify-between text-left">
-                                    <div className="flex items-center gap-2">
-                                      <ExternalLink className="w-4 h-4" />
-                                      <span className="font-medium">{t('processBtn')}</span>
-                                    </div>
-                                  </button>
-                                </CardContent>
-                              </Card>
-
-                              {/* Generate PDF (moved to Document Processing dialog only) */}
-
                               {/* Notes */}
                               <Card className="hover:shadow-md transition-shadow">
                                 <CardContent className="p-4">
@@ -966,10 +946,6 @@ export default function UserManagement() {
                                         <Eye className="w-4 h-4 mr-2" />
                                         {t('documentsBtn')}
                                       </Button>
-                                      <Button size="sm" variant="outline" onClick={() => openDocumentProcessor(selectedUser)}>
-                                        <ExternalLink className="w-4 h-4 mr-2" />
-                                        {t('processBtn')}
-                                      </Button>
                                       <Button size="sm" onClick={() => generatePDFFromData(selectedUser)} disabled={isGeneratingPDF}>
                                         <FileText className="w-4 h-4 mr-2" />
                                         {isGeneratingPDF ? t('processing') : t('pdfBtn')}
@@ -987,10 +963,6 @@ export default function UserManagement() {
                                       <Button size="sm" variant="outline" onClick={() => setProgressDialogOpen(true)}>
                                         <BarChart3 className="w-4 h-4 mr-2" />
                                         {t('progressBtn')}
-                                      </Button>
-                                      <Button size="sm" variant="outline" onClick={() => router.push(`/admin?section=verification&search=${encodeURIComponent(selectedUser.email)}`)}>
-                                        <Shield className="w-4 h-4 mr-2" />
-                                        {t('nav_verification')}
                                       </Button>
                                       <Button size="sm" variant="destructive" onClick={() => { setUserToDelete(selectedUser); setDeleteDialogOpen(true) }}>
                                         <Trash2 className="w-4 h-4 mr-2" />
@@ -1263,15 +1235,6 @@ export default function UserManagement() {
                               <Download className="w-4 h-4 mr-2" />
                               {isGeneratingPDF ? t('processing') : t('generatePdf')}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openDocumentProcessor(selectedUser)}
-                              className="w-full"
-                            >
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              {t('processBtn')}
-                            </Button>
                           </div>
                         </div>
                       </CardContent>
@@ -1297,13 +1260,6 @@ export default function UserManagement() {
                   <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                   <h4 className="text-lg font-medium mb-2">{t('noData')}</h4>
                   <p className="text-gray-600 mb-4">{t('manageUsersDesc')}</p>
-                  <Button
-                    onClick={() => openDocumentProcessor(selectedUser)}
-                    className="mx-auto"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    {t('processBtn')}
-                  </Button>
                 </div>
               )}
             </div>

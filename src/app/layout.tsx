@@ -23,11 +23,20 @@ export const metadata: Metadata = {
     title: 'MPU Focus | Professionelle MPU-Beratung',
     description: 'Individuelle MPU-Vorbereitung mit strukturiertem Vorgehen. Kostenloses Beratungsgespraech vereinbaren.',
     siteName: 'MPU Focus',
+    images: [
+      {
+        url: '/mpu-hero-premium.png',
+        width: 1536,
+        height: 1024,
+        alt: 'MPU Focus Beratungsgespräch in moderner, professioneller Umgebung',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'MPU Focus | Professionelle MPU-Beratung',
     description: 'Individuelle MPU-Vorbereitung mit strukturiertem Vorgehen.',
+    images: ['/mpu-hero-premium.png'],
   },
   icons: {
     icon: '/favicon.svg',

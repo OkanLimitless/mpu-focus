@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
 import {
     Users,
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
 type LeadStatus = 'new' | 'contacted' | 'enrolled' | 'closed'
@@ -48,6 +49,7 @@ function formatDate(value?: string) {
 }
 
 export default function LeadsPage() {
+    const { toast } = useToast()
     const [leads, setLeads] = useState<LeadItem[]>([])
     const [loading, setLoading] = useState(true)
     const [searchInput, setSearchInput] = useState('')
@@ -55,8 +57,9 @@ export default function LeadsPage() {
     const [statusFilter, setStatusFilter] = useState<'all' | LeadStatus>('all')
     const [notesDrafts, setNotesDrafts] = useState<Record<string, string>>({})
     const [savingLeadId, setSavingLeadId] = useState<string | null>(null)
+    const [savingAction, setSavingAction] = useState<'status' | 'notes' | null>(null)
 
-    const loadLeads = async () => {
+    const loadLeads = useCallback(async () => {
         setLoading(true)
         try {
             const params = new URLSearchParams({
@@ -78,41 +81,74 @@ export default function LeadsPage() {
             })
         } catch (error) {
             console.error(error)
+            toast({
+                title: 'Fehler',
+                description: 'Interessenten konnten nicht geladen werden.',
+                variant: 'destructive',
+            })
         } finally {
             setLoading(false)
         }
-    }
+    }, [appliedSearch, statusFilter, toast])
 
     useEffect(() => {
         loadLeads()
-    }, [statusFilter, appliedSearch])
+    }, [loadLeads])
 
-    const updateLead = async (leadId: string, patch: { status?: LeadStatus; notes?: string }) => {
+    const updateLead = async (
+        leadId: string,
+        patch: { status?: LeadStatus; notes?: string },
+        action: 'status' | 'notes'
+    ) => {
         try {
             setSavingLeadId(leadId)
-            await fetch(`/api/leads/${leadId}`, {
+            setSavingAction(action)
+            const res = await fetch(`/api/leads/${leadId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(patch),
             })
+            const payload = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                throw new Error(
+                    payload?.error ||
+                    (action === 'status'
+                        ? 'Der Bearbeitungsstand konnte nicht gespeichert werden.'
+                        : 'Die interne Notiz konnte nicht gespeichert werden.')
+                )
+            }
             await loadLeads()
+            toast({
+                title: 'Gespeichert',
+                description: action === 'status'
+                    ? 'Der Bearbeitungsstand wurde aktualisiert.'
+                    : 'Die interne Notiz wurde gespeichert.',
+            })
         } catch (error) {
             console.error(error)
+            toast({
+                title: 'Fehler',
+                description: error instanceof Error
+                    ? error.message
+                    : 'Die Änderung konnte nicht gespeichert werden.',
+                variant: 'destructive',
+            })
         } finally {
             setSavingLeadId(null)
+            setSavingAction(null)
         }
     }
 
     return (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className={cn(bodyFont.className, "animate-in fade-in slide-in-from-bottom-4 duration-500")}>
             <header className="mb-8 flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
                         <Users className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                        <h1 className={cn(displayFont.className, "text-3xl font-bold text-slate-900 tracking-tight")}>Lead CRM</h1>
-                        <p className="font-medium text-slate-500">Interessenten verwalten und bearbeiten</p>
+                        <h1 className={cn(displayFont.className, "text-3xl font-bold text-slate-900 tracking-tight")}>Interessenten</h1>
+                        <p className="font-medium text-slate-500">Anfragen ansehen und bearbeiten</p>
                     </div>
                 </div>
                 <Button
@@ -131,7 +167,7 @@ export default function LeadsPage() {
                 <div className="relative w-full md:w-[400px]">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input
-                        placeholder="Name oder Email suchen..."
+                        placeholder="Nach Name oder E-Mail suchen"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && setAppliedSearch(searchInput.trim())}
@@ -146,7 +182,7 @@ export default function LeadsPage() {
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as 'all' | LeadStatus)}
                         >
-                            <option value="all">Alle Kategorien</option>
+                            <option value="all">Alle Bearbeitungsstände</option>
                             {Object.keys(leadStatusConfig).map((s) => (
                                 <option key={s} value={s}>{leadStatusConfig[s as LeadStatus].label}</option>
                             ))}
@@ -184,7 +220,7 @@ export default function LeadsPage() {
                                         <Mail className="h-4 w-4 text-blue-600" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">E-Mail</p>
                                         <p className="text-sm font-semibold text-slate-700 truncate">{lead.email}</p>
                                     </div>
                                 </div>
@@ -209,37 +245,46 @@ export default function LeadsPage() {
                         {/* Right Column: Actons */}
                         <div className="w-full lg:w-80 flex flex-col gap-5 pt-6 lg:pt-0 lg:pl-8 lg:border-l border-slate-100">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Status Ändern</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">
+                                    Bearbeitungsstand
+                                </label>
                                 <div className="relative">
                                     <select
                                         className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer shadow-sm hover:border-blue-300 transition-colors"
                                         value={lead.status}
-                                        onChange={(e) => updateLead(lead._id, { status: e.target.value as LeadStatus })}
+                                        onChange={(e) => updateLead(lead._id, { status: e.target.value as LeadStatus }, 'status')}
+                                        disabled={savingLeadId === lead._id}
                                     >
-                                        <option value="new">Neu eingetroffen</option>
-                                        <option value="contacted">Wurde Kontaktiert</option>
-                                        <option value="enrolled">Erfolgreich Eingeschrieben</option>
-                                        <option value="closed">Vorgang Abgeschlossen</option>
+                                        <option value="new">Neu</option>
+                                        <option value="contacted">Kontakt aufgenommen</option>
+                                        <option value="enrolled">Angemeldet</option>
+                                        <option value="closed">Abgeschlossen</option>
                                     </select>
                                     <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 rotate-90 text-slate-400 pointer-events-none" />
                                 </div>
+                                {savingLeadId === lead._id && savingAction === 'status' && (
+                                    <p className="mt-2 text-xs font-medium text-slate-500">Bearbeitungsstand wird gespeichert...</p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Interne Notiz</label>
                                 <Textarea
-                                    placeholder="Notiz eintippen..."
+                                    placeholder="Interne Notiz eingeben"
                                     value={notesDrafts[lead._id] || ''}
                                     onChange={(e) => setNotesDrafts(prev => ({ ...prev, [lead._id]: e.target.value }))}
                                     rows={3}
+                                    disabled={savingLeadId === lead._id}
                                     className="w-full rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-700 shadow-none focus-visible:ring-blue-500 resize-none transition-colors"
                                 />
                                 <Button
-                                    onClick={() => updateLead(lead._id, { notes: notesDrafts[lead._id] || '' })}
+                                    onClick={() => updateLead(lead._id, { notes: notesDrafts[lead._id] || '' }, 'notes')}
                                     disabled={savingLeadId === lead._id}
                                     className="w-full h-11 mt-3 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-900 shadow-sm transition-colors"
                                 >
-                                    {savingLeadId === lead._id ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Notiz speichern'}
+                                    {savingLeadId === lead._id && savingAction === 'notes'
+                                        ? <RefreshCw className="h-4 w-4 animate-spin" />
+                                        : 'Notiz speichern'}
                                 </Button>
                             </div>
                         </div>
@@ -251,8 +296,8 @@ export default function LeadsPage() {
                         <div className="h-16 w-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
                             <Search className="h-8 w-8 text-slate-400" />
                         </div>
-                        <h3 className={cn(displayFont.className, "text-xl font-bold text-slate-800")}>Keine Leads gefunden</h3>
-                        <p className="text-slate-500 font-medium">Es gibt aktuell keine Leads für diese Filterkriterien.</p>
+                        <h3 className={cn(displayFont.className, "text-xl font-bold text-slate-800")}>Keine Interessenten gefunden</h3>
+                        <p className="text-slate-500 font-medium">Für diese Auswahl gibt es aktuell keine passenden Anfragen.</p>
                     </div>
                 )}
             </div>
