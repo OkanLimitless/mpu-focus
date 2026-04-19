@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { assertAdminRequest } from '@/lib/admin-auth'
+import { listVideosAdmin } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,33 +80,62 @@ export async function GET() {
                 closed: ['LOST', 'closed'],
             }
 
-        const [
-            totalLeads,
-            newLeads,
-            contactedLeads,
-            enrolledLeads,
-            closedLeads,
-            totalParticipants,
-            academyEnabledParticipants,
-            totalVideos,
-            publishedVideos,
-        ] = await Promise.all([
+        const leadCountsPromise = Promise.all([
             countRows({ supabaseAdmin, table: leadTable }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.new } }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.contacted } }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.enrolled } }),
             countRows({ supabaseAdmin, table: leadTable, inValues: { column: 'status', values: statusMap.closed } }),
-            countRows({ supabaseAdmin, table: 'mpu_profiles', eq: { column: 'role', value: 'student' } }),
-            countRows({
-                supabaseAdmin,
-                table: 'mpu_profiles',
-                eqs: [
-                    { column: 'role', value: 'student' },
-                    { column: 'academy_access_enabled', value: true },
-                ],
-            }),
-            countRows({ supabaseAdmin, table: 'mpu_video_library' }),
-            countRows({ supabaseAdmin, table: 'mpu_video_library', eq: { column: 'is_published', value: true } }),
+        ])
+
+        const participantCountsPromise = (async () => {
+            try {
+                const [totalParticipants, academyEnabledParticipants] = await Promise.all([
+                    countRows({ supabaseAdmin, table: 'mpu_profiles', eq: { column: 'role', value: 'student' } }),
+                    countRows({
+                        supabaseAdmin,
+                        table: 'mpu_profiles',
+                        eqs: [
+                            { column: 'role', value: 'student' },
+                            { column: 'academy_access_enabled', value: true },
+                        ],
+                    }),
+                ])
+                return { totalParticipants, academyEnabledParticipants }
+            } catch (error: any) {
+                if (isMissingRelation(error, 'mpu_profiles')) {
+                    return { totalParticipants: 0, academyEnabledParticipants: 0 }
+                }
+                throw error
+            }
+        })()
+
+        const videoCountsPromise = (async () => {
+            try {
+                const videos = await listVideosAdmin()
+                return {
+                    totalVideos: videos.length,
+                    publishedVideos: videos.filter((video) => video.isPublished).length,
+                }
+            } catch (error: any) {
+                if (
+                    isMissingRelation(error, 'mpu_video_library')
+                    || isMissingRelation(error, 'video_assets')
+                ) {
+                    return { totalVideos: 0, publishedVideos: 0 }
+                }
+                throw error
+            }
+        })()
+
+        const [
+            [totalLeads, newLeads, contactedLeads, enrolledLeads, closedLeads],
+            { totalParticipants, academyEnabledParticipants },
+            { totalVideos, publishedVideos },
+        ] = await Promise.all([
+            leadCountsPromise,
+            participantCountsPromise,
+            videoCountsPromise,
         ])
 
         return NextResponse.json({

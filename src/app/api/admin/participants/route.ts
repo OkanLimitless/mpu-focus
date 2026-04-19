@@ -13,6 +13,13 @@ function getHttpStatus(error: unknown) {
   return 500
 }
 
+function isMissingRelation(error: any, relation: string) {
+  if (!error) return false
+  const message = String(error?.message || '').toLowerCase()
+  const details = String(error?.details || '').toLowerCase()
+  return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
+}
+
 function createSupabaseAdmin() {
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -43,20 +50,46 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = createSupabaseAdmin()
 
-    const [{ data: profiles, error: profilesError }, videos, { data: progressRows, error: progressError }] = await Promise.all([
-      supabaseAdmin
-        .from('mpu_profiles')
-        .select('id,email,first_name,last_name,role,is_active,academy_access_enabled,created_at,updated_at')
-        .eq('role', 'student')
-        .order('created_at', { ascending: false }),
-      listVideosAdmin(),
-      supabaseAdmin
-        .from('mpu_video_progress')
-        .select('*'),
+    const profilesPromise = supabaseAdmin
+      .from('mpu_profiles')
+      .select('id,email,first_name,last_name,role,is_active,academy_access_enabled,created_at,updated_at')
+      .eq('role', 'student')
+      .order('created_at', { ascending: false })
+
+    const videosPromise = (async () => {
+      try {
+        return await listVideosAdmin()
+      } catch (error: any) {
+        if (isMissingRelation(error, 'mpu_video_library') || isMissingRelation(error, 'video_assets')) {
+          return []
+        }
+        throw error
+      }
+    })()
+
+    const progressPromise = (async () => {
+      try {
+        const result = await supabaseAdmin
+          .from('mpu_video_progress')
+          .select('*')
+
+        if (result.error) throw result.error
+        return result.data || []
+      } catch (error: any) {
+        if (isMissingRelation(error, 'mpu_video_progress')) {
+          return []
+        }
+        throw error
+      }
+    })()
+
+    const [{ data: profiles, error: profilesError }, videos, progressRows] = await Promise.all([
+      profilesPromise,
+      videosPromise,
+      progressPromise,
     ])
 
     if (profilesError) throw profilesError
-    if (progressError) throw progressError
 
     const publishedVideos = videos.filter((video) => video.isPublished)
     const totalPublishedVideos = publishedVideos.length
