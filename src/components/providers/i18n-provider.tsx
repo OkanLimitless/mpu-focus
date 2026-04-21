@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type LanguageCode = "de";
 
@@ -473,6 +473,12 @@ const dictionaries: I18nDictionaries = {
   }
 };
 
+const DEFAULT_LANGUAGE: LanguageCode = "de";
+
+function isSupportedLanguage(value: string | null): value is LanguageCode {
+  return value === DEFAULT_LANGUAGE;
+}
+
 interface I18nContextValue {
   lang: LanguageCode;
   t: (key: string, vars?: Record<string, string | number>) => string;
@@ -481,12 +487,12 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
-export function I18nProvider({ children, initialLang = "de" as LanguageCode }: { children: React.ReactNode; initialLang?: LanguageCode }) {
+export function I18nProvider({ children, initialLang = DEFAULT_LANGUAGE }: { children: React.ReactNode; initialLang?: LanguageCode }) {
   const [lang, setLangState] = useState<LanguageCode>(initialLang);
 
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? (localStorage.getItem('app_lang') as LanguageCode | null) : null;
-    if (stored && (stored === 'de' || stored === 'en')) {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('app_lang') : null;
+    if (isSupportedLanguage(stored)) {
       setLangState(stored);
     }
   }, []);
@@ -502,18 +508,18 @@ export function I18nProvider({ children, initialLang = "de" as LanguageCode }: {
 
   const setLang = (newLang: LanguageCode) => setLangState(newLang);
 
-  const t = (key: string, vars?: Record<string, string | number>) => {
-    const dict = dictionaries[lang] || {};
-    let value = dict[key] || key;
+  const t = useCallback((key: string, vars?: Record<string, string | number>) => {
+    const dict = dictionaries[lang] || dictionaries[DEFAULT_LANGUAGE];
+    let value = dict[key] || dictionaries[DEFAULT_LANGUAGE][key] || key;
     if (vars) {
       Object.keys(vars).forEach((k) => {
         value = value.replace(`{${k}}`, String(vars[k]));
       });
     }
     return value;
-  };
+  }, [lang]);
 
-  const value = useMemo(() => ({ lang, t, setLang }), [lang]);
+  const value = useMemo(() => ({ lang, t, setLang }), [lang, t]);
 
   return (
     <I18nContext.Provider value={value}>
@@ -529,4 +535,3 @@ export function useI18n() {
   }
   return context;
 }
-

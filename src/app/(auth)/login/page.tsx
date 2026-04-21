@@ -45,8 +45,8 @@ export default function LoginPage() {
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
+        title: t('error'),
+        description: t('unexpectedError'),
         variant: 'destructive',
       })
     } finally {
@@ -59,7 +59,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6 sm:space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">MPU-Focus</h1>
-          <p className="text-gray-600">Training Platform</p>
+          <p className="text-gray-600">Trainingsplattform</p>
         </div>
         
         <Card>
