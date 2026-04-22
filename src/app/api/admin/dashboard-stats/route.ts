@@ -20,6 +20,17 @@ function isMissingRelation(error: any, relation: string) {
     return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
 }
 
+function isMissingColumn(error: any, column: string) {
+    if (!error) return false
+    const message = String(error?.message || '').toLowerCase()
+    const details = String(error?.details || '').toLowerCase()
+    const normalizedColumn = column.toLowerCase()
+    return error?.code === '42703'
+        || error?.code === 'PGRST204'
+        || message.includes(normalizedColumn)
+        || details.includes(normalizedColumn)
+}
+
 async function countRows(params: {
     supabaseAdmin: any
     table: string
@@ -37,6 +48,17 @@ async function countRows(params: {
     const { count, error } = await query
     if (error) throw error
     return count || 0
+}
+
+async function hasColumn(supabaseAdmin: any, table: string, column: string) {
+    const result = await supabaseAdmin
+        .from(table)
+        .select(column)
+        .limit(1)
+
+    if (!result.error) return true
+    if (isMissingColumn(result.error, column) || isMissingRelation(result.error, table)) return false
+    throw result.error
 }
 
 export async function GET() {
@@ -90,17 +112,20 @@ export async function GET() {
 
         const participantCountsPromise = (async () => {
             try {
-                const [totalParticipants, academyEnabledParticipants] = await Promise.all([
-                    countRows({ supabaseAdmin, table: 'mpu_profiles', eq: { column: 'role', value: 'student' } }),
-                    countRows({
+                const totalParticipants = await countRows({ supabaseAdmin, table: 'mpu_profiles', eq: { column: 'role', value: 'student' } })
+                let academyEnabledParticipants = 0
+
+                if (await hasColumn(supabaseAdmin, 'mpu_profiles', 'academy_access_enabled')) {
+                    academyEnabledParticipants = await countRows({
                         supabaseAdmin,
                         table: 'mpu_profiles',
                         eqs: [
                             { column: 'role', value: 'student' },
                             { column: 'academy_access_enabled', value: true },
                         ],
-                    }),
-                ])
+                    })
+                }
+
                 return { totalParticipants, academyEnabledParticipants }
             } catch (error: any) {
                 if (isMissingRelation(error, 'mpu_profiles')) {

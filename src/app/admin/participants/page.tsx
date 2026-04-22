@@ -24,6 +24,7 @@ type Participant = {
   lastName: string
   isActive: boolean
   academyAccessEnabled: boolean
+  academyAccessSupported?: boolean
   createdAt: string
   updatedAt?: string | null
   progress: {
@@ -40,6 +41,7 @@ type ParticipantStats = {
   academyEnabledParticipants: number
   recentlyActiveParticipants: number
   publishedVideos: number
+  academyAccessSupported?: boolean
 }
 
 const displayFont = Space_Grotesk({ subsets: ['latin'], weight: ['500', '700'] })
@@ -107,6 +109,15 @@ export default function ParticipantsPage() {
   }, [filter, participants])
 
   const toggleAcademyAccess = async (participant: Participant) => {
+    if (participant.academyAccessSupported === false) {
+      toast({
+        title: 'Freigabe nicht verfügbar',
+        description: 'Die Datenbank muss zuerst das Feld academy_access_enabled enthalten.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     try {
       setBusyParticipantId(participant.id)
       const response = await fetch(`/api/admin/participants/${participant.id}`, {
@@ -247,7 +258,9 @@ export default function ParticipantsPage() {
                     {participant.firstName} {participant.lastName}
                   </h2>
                   <Badge variant={participant.academyAccessEnabled && participant.isActive ? 'success' : participant.isActive ? 'orange' : 'muted'}>
-                    {participant.academyAccessEnabled && participant.isActive
+                    {participant.academyAccessSupported === false
+                      ? 'Freigabe nicht konfiguriert'
+                      : participant.academyAccessEnabled && participant.isActive
                       ? 'Akademie freigeschaltet'
                       : participant.isActive
                         ? 'Wartet auf Freigabe'
@@ -267,7 +280,7 @@ export default function ParticipantsPage() {
               <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
                 <Button
                   onClick={() => toggleAcademyAccess(participant)}
-                  disabled={busyParticipantId === participant.id || !participant.isActive}
+                  disabled={busyParticipantId === participant.id || !participant.isActive || participant.academyAccessSupported === false}
                   className={cn(
                     'min-w-[220px] rounded-xl font-bold',
                     participant.academyAccessEnabled
@@ -277,7 +290,9 @@ export default function ParticipantsPage() {
                 >
                   {busyParticipantId === participant.id
                     ? 'Wird gespeichert...'
-                    : participant.academyAccessEnabled
+                    : participant.academyAccessSupported === false
+                      ? 'Schema-Update erforderlich'
+                      : participant.academyAccessEnabled
                       ? 'Akademiezugang entziehen'
                       : 'Akademiezugang freigeben'}
                 </Button>
@@ -304,7 +319,13 @@ export default function ParticipantsPage() {
                 <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
                   <span>{participant.progress.completedVideos} Videos abgeschlossen</span>
                   <span>{participant.progress.totalVideos} Videos sichtbar</span>
-                  <span>{participant.academyAccessEnabled ? 'Zugang aktiv' : 'Zugang noch nicht freigegeben'}</span>
+                  <span>
+                    {participant.academyAccessSupported === false
+                      ? 'Freigabe nicht konfiguriert'
+                      : participant.academyAccessEnabled
+                        ? 'Zugang aktiv'
+                        : 'Zugang noch nicht freigegeben'}
+                  </span>
                 </div>
               </div>
             </div>

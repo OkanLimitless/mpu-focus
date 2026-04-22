@@ -20,6 +20,17 @@ function isMissingRelation(error: any, relation: string) {
   return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
 }
 
+function isMissingColumn(error: any, column: string) {
+  if (!error) return false
+  const message = String(error?.message || '').toLowerCase()
+  const details = String(error?.details || '').toLowerCase()
+  const normalizedColumn = column.toLowerCase()
+  return error?.code === '42703'
+    || error?.code === 'PGRST204'
+    || message.includes(normalizedColumn)
+    || details.includes(normalizedColumn)
+}
+
 function createSupabaseAdmin() {
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -52,9 +63,25 @@ export async function GET(request: NextRequest) {
 
     const profilesPromise = supabaseAdmin
       .from('mpu_profiles')
-      .select('id,email,first_name,last_name,role,is_active,academy_access_enabled,created_at,updated_at')
+      .select('*')
       .eq('role', 'student')
       .order('created_at', { ascending: false })
+
+    const academyAccessSupportedPromise = (async () => {
+      try {
+        const result = await supabaseAdmin
+          .from('mpu_profiles')
+          .select('academy_access_enabled')
+          .limit(1)
+
+        if (result.error) throw result.error
+        return true
+      } catch (error: any) {
+        if (isMissingColumn(error, 'academy_access_enabled')) return false
+        if (isMissingRelation(error, 'mpu_profiles')) return false
+        throw error
+      }
+    })()
 
     const videosPromise = (async () => {
       try {
@@ -83,8 +110,9 @@ export async function GET(request: NextRequest) {
       }
     })()
 
-    const [{ data: profiles, error: profilesError }, videos, progressRows] = await Promise.all([
+    const [{ data: profiles, error: profilesError }, academyAccessSupported, videos, progressRows] = await Promise.all([
       profilesPromise,
+      academyAccessSupportedPromise,
       videosPromise,
       progressPromise,
     ])
@@ -139,7 +167,8 @@ export async function GET(request: NextRequest) {
           firstName: profile.first_name,
           lastName: profile.last_name,
           isActive: profile.is_active === true,
-          academyAccessEnabled: profile.academy_access_enabled === true,
+          academyAccessEnabled: academyAccessSupported ? profile.academy_access_enabled === true : false,
+          academyAccessSupported,
           createdAt: profile.created_at,
           updatedAt: profile.updated_at,
           progress: {
@@ -174,6 +203,7 @@ export async function GET(request: NextRequest) {
         academyEnabledParticipants: academyEnabledParticipants.length,
         recentlyActiveParticipants: recentlyActiveParticipants.length,
         publishedVideos: totalPublishedVideos,
+        academyAccessSupported,
       },
     })
   } catch (error: any) {
