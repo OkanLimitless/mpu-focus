@@ -152,8 +152,8 @@ export default function LoginPage() {
                   Willkommen zurück
                 </h2>
                 <p className="mt-3 text-base leading-7 text-slate-300">
-                  Melden Sie sich mit Ihrem freigeschalteten Konto an. Admins werden automatisch in
-                  die Verwaltung weitergeleitet.
+                  Melden Sie sich mit Ihrem freigeschalteten Konto an und setzen Sie Ihre
+                  Vorbereitung fort.
                 </p>
               </div>
 
@@ -219,17 +219,10 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-7 border-t border-white/10 pt-6">
-                <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-                  <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-                    <p className="font-bold text-white">Teilnehmer</p>
-                    <p className="mt-1 leading-6">Zugang zur Akademie nach persönlicher Freigabe.</p>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-                    <p className="font-bold text-white">Admin</p>
-                    <p className="mt-1 leading-6">Automatische Weiterleitung in die Verwaltung.</p>
-                  </div>
-                </div>
+              <div className="mt-7 rounded-lg border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300">
+                <p>
+                  Der Zugang zur Akademie wird nach persönlicher Freigabe aktiviert.
+                </p>
               </div>
             </div>
 
