@@ -12,10 +12,33 @@ export async function GET() {
             return NextResponse.json({ error: access.error }, { status: access.status })
         }
 
-        const videos = await listVideosPublic()
-        const progressByVideoId = await listVideoProgressForProfile(access.profile.id)
+        const videos = await listVideosPublic().catch((error: any) => {
+            const message = String(error?.message || '')
+            if (message.includes('No supported video table found')) {
+                return []
+            }
+            throw error
+        })
+
+        if (videos.length === 0) {
+            return NextResponse.json({ videos: [] })
+        }
+
+        const progressByVideoId = await listVideoProgressForProfile(access.profile.id).catch((error) => {
+            console.error('Error fetching video progress:', error)
+            return new Map()
+        })
         const formattedVideos = videos.map(v => {
-            const tokens = v.muxPlaybackId ? generateSignedPlaybackTokens(v.muxPlaybackId) : null
+            const tokens = v.muxPlaybackId
+                ? (() => {
+                    try {
+                        return generateSignedPlaybackTokens(v.muxPlaybackId!)
+                    } catch (error) {
+                        console.warn(`Mux tokens unavailable for video ${v.id}: ${error instanceof Error ? error.message : String(error)}`)
+                        return null
+                    }
+                })()
+                : null
             return {
                 id: v.id,
                 title: v.title,
@@ -27,10 +50,10 @@ export async function GET() {
                 durationSeconds: v.durationSeconds,
                 category: v.category || 'Lektion 1',
                 orderIndex: v.orderIndex,
-                muxPlaybackId: v.muxPlaybackId,
+                muxPlaybackId: tokens ? v.muxPlaybackId : null,
                 progress: progressByVideoId.get(v.id) || null,
             }
-        })
+        }).filter(v => Boolean(v.muxPlaybackId))
 
         return NextResponse.json({ videos: formattedVideos })
     } catch (error: any) {
