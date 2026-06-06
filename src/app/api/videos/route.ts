@@ -28,11 +28,11 @@ export async function GET() {
             console.error('Error fetching video progress:', error)
             return new Map()
         })
-        const formattedVideos = videos.map(v => {
+        const formattedVideos = (await Promise.all(videos.map(async v => {
             const tokens = v.muxPlaybackId
-                ? (() => {
+                ? await (async () => {
                     try {
-                        return generateSignedPlaybackTokens(v.muxPlaybackId!)
+                        return await generateSignedPlaybackTokens(v.muxPlaybackId!)
                     } catch (error) {
                         console.warn(`Mux tokens unavailable for video ${v.id}: ${error instanceof Error ? error.message : String(error)}`)
                         return null
@@ -53,7 +53,7 @@ export async function GET() {
                 muxPlaybackId: tokens ? v.muxPlaybackId : null,
                 progress: progressByVideoId.get(v.id) || null,
             }
-        }).filter(v => Boolean(v.muxPlaybackId))
+        }))).filter(v => Boolean(v.muxPlaybackId))
 
         return NextResponse.json({ videos: formattedVideos })
     } catch (error: any) {

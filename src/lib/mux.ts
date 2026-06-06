@@ -181,58 +181,38 @@ export const verifyMuxWebhook = (rawBody: string, signatureHeader: string): bool
   }
 }
 
-function generateSignedMuxToken(playbackId: string, aud: 'v' | 't' | 's', ttlSeconds: number = 300): string {
-  const signingKeyId = process.env.MUX_SIGNING_KEY_ID
-  const signingKeySecret = process.env.MUX_SIGNING_KEY_SECRET
-  if (!signingKeyId || !signingKeySecret) {
+function getMuxSigningCredentials() {
+  const keyId = process.env.MUX_SIGNING_KEY_ID || process.env.MUX_SIGNING_KEY
+  const keySecret = process.env.MUX_SIGNING_KEY_SECRET || process.env.MUX_PRIVATE_KEY
+
+  if (!keyId || !keySecret) {
     throw new Error('Mux signing key envs are required: MUX_SIGNING_KEY_ID and MUX_SIGNING_KEY_SECRET')
   }
 
-  const header = { alg: 'HS256', typ: 'JWT', kid: signingKeyId }
-  const now = Math.floor(Date.now() / 1000)
-  const payload: Record<string, any> = {
-    aud,
-    sub: playbackId,
-    exp: now + ttlSeconds,
-    iat: now,
-  }
-
-  const base64url = (input: Buffer | string) => Buffer.from(typeof input === 'string' ? input : input.toString('utf8'))
-    .toString('base64')
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-
-  const encHeader = base64url(JSON.stringify(header))
-  const encPayload = base64url(JSON.stringify(payload))
-  const toSign = `${encHeader}.${encPayload}`
-
-  // Decode base64 secret if provided that way; fallback to raw utf8
-  const tryKeys: Buffer[] = []
-  tryKeys.push(Buffer.from(signingKeySecret, 'base64'))
-  tryKeys.push(Buffer.from(signingKeySecret, 'utf8'))
-
-  for (const key of tryKeys) {
-    try {
-      const signature = crypto
-        .createHmac('sha256', key)
-        .update(toSign)
-        .digest('base64')
-        .replace(/=/g, '')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-      return `${toSign}.${signature}`
-    } catch {}
-  }
-
-  throw new Error('Failed to sign playback token')
+  return { keyId, keySecret }
 }
 
-export function generateSignedPlaybackTokens(playbackId: string, ttlSeconds: number = 300) {
+async function generateSignedMuxToken(
+  playbackId: string,
+  type: 'video' | 'thumbnail' | 'storyboard',
+  ttlSeconds: number = 300
+): Promise<string> {
+  const mux = getMuxClient()
+  const { keyId, keySecret } = getMuxSigningCredentials()
+
+  return mux.jwt.signPlaybackId(playbackId, {
+    keyId,
+    keySecret,
+    type,
+    expiration: `${ttlSeconds}s`,
+  })
+}
+
+export async function generateSignedPlaybackTokens(playbackId: string, ttlSeconds: number = 300) {
   return {
-    playback: generateSignedMuxToken(playbackId, 'v', ttlSeconds),
-    thumbnail: generateSignedMuxToken(playbackId, 't', ttlSeconds),
-    storyboard: generateSignedMuxToken(playbackId, 's', ttlSeconds),
+    playback: await generateSignedMuxToken(playbackId, 'video', ttlSeconds),
+    thumbnail: await generateSignedMuxToken(playbackId, 'thumbnail', ttlSeconds),
+    storyboard: await generateSignedMuxToken(playbackId, 'storyboard', ttlSeconds),
   }
 }
 
@@ -240,8 +220,8 @@ export function buildSignedThumbnailUrl(playbackId: string, thumbnailToken: stri
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=0&token=${encodeURIComponent(thumbnailToken)}`
 }
 
-export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 300): string {
-  return generateSignedMuxToken(playbackId, 'v', ttlSeconds)
+export function generateSignedPlaybackToken(playbackId: string, ttlSeconds: number = 300): Promise<string> {
+  return generateSignedMuxToken(playbackId, 'video', ttlSeconds)
 }
 
 export const createPlaybackId = async (assetId: string, policy: 'public' | 'signed' = 'signed'): Promise<string> => {

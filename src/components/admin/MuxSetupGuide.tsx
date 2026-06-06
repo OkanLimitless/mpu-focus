@@ -18,7 +18,9 @@ export default function MuxSetupGuide() {
   const envTemplate = `# Add these to your .env.local file
 MUX_TOKEN_ID=your_access_token_id_here
 MUX_TOKEN_SECRET=your_secret_key_here
-MUX_WEBHOOK_SECRET=your_webhook_secret_here`
+MUX_WEBHOOK_SECRET=your_webhook_secret_here
+MUX_SIGNING_KEY_ID=your_signing_key_id_here
+MUX_SIGNING_KEY_SECRET=your_signing_private_key_here`
 
   return (
     <Card>
@@ -46,6 +48,7 @@ MUX_WEBHOOK_SECRET=your_webhook_secret_here`
             <p>3. Select these permissions:</p>
             <ul className="list-disc list-inside ml-4 space-y-1">
               <li><code className="bg-gray-100 px-1 rounded">Mux Video</code> - Full Access</li>
+              <li><code className="bg-gray-100 px-1 rounded">Mux System</code> - Full Access</li>
               <li><code className="bg-gray-100 px-1 rounded">Mux Data</code> - Read (optional)</li>
             </ul>
             <p>4. Copy your <strong>Access Token ID</strong> and <strong>Secret Key</strong></p>

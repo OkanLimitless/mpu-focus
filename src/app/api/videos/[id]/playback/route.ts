@@ -39,7 +39,7 @@ export async function GET(
 
     return NextResponse.json({
       playbackId,
-      tokens: generateSignedPlaybackTokens(playbackId),
+      tokens: await generateSignedPlaybackTokens(playbackId),
     })
   } catch (error: any) {
     console.error('Error creating signed playback response:', error)

@@ -10,8 +10,8 @@ export async function GET() {
         await assertAdminRequest()
 
         const videos = await listVideosAdmin()
-        const formattedVideos = videos.map(v => {
-            const tokens = v.muxPlaybackId ? generateSignedPlaybackTokens(v.muxPlaybackId) : null
+        const formattedVideos = await Promise.all(videos.map(async v => {
+            const tokens = v.muxPlaybackId ? await generateSignedPlaybackTokens(v.muxPlaybackId) : null
             return {
             // New shape for /admin/videos page
             id: v.id,
@@ -39,7 +39,7 @@ export async function GET() {
             isActive: v.isPublished,
             status: v.muxStatus || 'unknown',
             }
-        })
+        }))
 
         return NextResponse.json({ videos: formattedVideos })
     } catch (error: any) {
