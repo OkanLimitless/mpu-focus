@@ -30,7 +30,23 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.uploadedBy, fileUrl: file.ufsUrl };
     }),
 
-  imageUploader: f({ 
+  // ID document (passport / Personalausweis) for the onboarding agreement.
+  idDocumentUploader: f({
+    image: { maxFileSize: "16MB", maxFileCount: 2 },
+    pdf: { maxFileSize: "16MB", maxFileCount: 1 },
+  })
+    .middleware(async () => {
+      const session = await getServerSession(authOptions)
+      if (!session?.user?.id) {
+        throw new UploadThingError("Unauthorized")
+      }
+      return { uploadedBy: session.user.id, userEmail: session.user.email };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return { uploadedBy: metadata.uploadedBy, fileUrl: file.ufsUrl || file.url };
+    }),
+
+  imageUploader: f({
     image: { 
       maxFileSize: "8MB", 
       maxFileCount: 200 // Allow up to 200 images for large documents

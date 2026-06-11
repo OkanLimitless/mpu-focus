@@ -26,7 +26,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import MuxVideoPlayer from '@/components/video/MuxVideoPlayer'
+import VideoPlayer from '@/components/video/VideoPlayer'
+import QuizSection from '@/components/quiz/QuizSection'
 
 type VideoProgress = {
   currentTime: number
@@ -40,19 +41,47 @@ type VideoItem = {
   title: string
   description: string | null
   videoUrl: string
+  provider: string | null
+  youtubeVideoId: string | null
   muxPlaybackId: string | null
   thumbnailUrl: string | null
   durationSeconds: number | null
   category: string
+  categoryId: string | null
+  categoryTitle: string | null
+  categorySlug: string | null
+  categoryOrderIndex: number | null
+  chapterId: string | null
+  chapterTitle: string | null
+  chapterSlug: string | null
+  chapterOrderIndex: number | null
   orderIndex: number
   progress: VideoProgress | null
+}
+
+type AgreementGateState = {
+  blocked: boolean
+  status: 'pending' | 'rejected' | null
+  rejectionReason: string | null
+}
+
+type GroupedCategory = {
+  id: string
+  title: string
+  orderIndex: number
+  chapters: Array<{
+    id: string
+    title: string
+    orderIndex: number
+    videos: VideoItem[]
+  }>
 }
 
 const displayFont = Space_Grotesk({ subsets: ['latin'], weight: ['500', '700'] })
 const bodyFont = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] })
 
 function formatDuration(seconds?: number | null) {
-  if (!seconds || seconds <= 0) return 'k. A.'
+  if (!seconds || seconds <= 0) return 'Dauer offen'
   const mins = Math.round(seconds / 60)
   return `${mins} min`
 }
@@ -94,6 +123,42 @@ function ProgressRing({ value }: { value: number }) {
         <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-100">Fortschritt</span>
       </div>
     </div>
+  )
+}
+
+function OnboardingGate({ status, rejectionReason }: { status: 'pending' | 'rejected' | null; rejectionReason: string | null }) {
+  return (
+    <section className="flex min-h-[560px] items-center justify-center">
+      <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-10">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+          <ShieldCheck className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <h2 className={cn(displayFont.className, 'text-2xl font-bold tracking-tight text-slate-950 md:text-3xl')}>
+          Noch ein Schritt: Vereinbarung unterzeichnen
+        </h2>
+        <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-slate-600 md:text-base">
+          Bevor sich die Akademie für Sie öffnet, unterzeichnen Sie bitte die
+          Betreuungsvereinbarung und laden Sie ein Ausweisdokument hoch. Das dauert
+          nur wenige Minuten.
+        </p>
+        {status === 'rejected' && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-left">
+            <p className="text-sm font-bold leading-6 text-red-700">
+              Ihre Einreichung wurde abgelehnt{rejectionReason ? `: ${rejectionReason}` : '.'}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-red-600">
+              Bitte unterzeichnen Sie die Vereinbarung erneut und reichen Sie Ihre Unterlagen noch einmal ein.
+            </p>
+          </div>
+        )}
+        <Link href="/onboarding">
+          <Button className="mt-8 h-12 w-full rounded-lg bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:w-auto sm:px-10">
+            Jetzt unterzeichnen
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+          </Button>
+        </Link>
+      </div>
+    </section>
   )
 }
 
@@ -162,6 +227,13 @@ export default function LearnClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'videos' | 'quizzes'>('videos')
+  const [agreementChecked, setAgreementChecked] = useState(false)
+  const [agreementGate, setAgreementGate] = useState<AgreementGateState>({
+    blocked: false,
+    status: null,
+    rejectionReason: null,
+  })
 
   const loadVideos = async () => {
     setLoading(true)
@@ -186,20 +258,78 @@ export default function LearnClient() {
     loadVideos()
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const checkAgreement = async () => {
+      try {
+        const response = await fetch('/api/agreements/me', { cache: 'no-store' })
+        if (!response.ok) return
+        const payload = await response.json().catch(() => null)
+        if (!payload || cancelled) return
+        const status = payload?.agreement?.status ?? null
+        if (!payload.isAdmin && (status === null || status === 'pending' || status === 'rejected')) {
+          setAgreementGate({
+            blocked: true,
+            status: status === 'rejected' ? 'rejected' : status === 'pending' ? 'pending' : null,
+            rejectionReason: payload?.agreement?.rejectionReason || null,
+          })
+        }
+      } catch {
+        // Bei Netzwerk-/Serverfehlern die Akademie normal anzeigen (fail open).
+      } finally {
+        if (!cancelled) setAgreementChecked(true)
+      }
+    }
+
+    checkAgreement()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const activeVideo = useMemo(
     () => videos.find((video) => video.id === activeVideoId) || null,
     [videos, activeVideoId],
   )
 
-  const activeVideoIndex = activeVideo ? videos.findIndex((video) => video.id === activeVideo.id) : -1
-
   const grouped = useMemo(() => {
-    return videos.reduce<Record<string, VideoItem[]>>((acc, item) => {
-      const cat = item.category || 'Allgemein'
-      if (!acc[cat]) acc[cat] = []
-      acc[cat].push(item)
-      return acc
-    }, {})
+    const categoryMap = new Map<string, GroupedCategory>()
+
+    videos.forEach((video) => {
+      const categoryId = video.categoryId || video.categorySlug || video.category || 'general'
+      const chapterId = video.chapterId || video.chapterSlug || categoryId
+      const category = categoryMap.get(categoryId) || {
+        id: categoryId,
+        title: video.categoryTitle || video.category || 'Allgemein',
+        orderIndex: video.categoryOrderIndex ?? 999,
+        chapters: [],
+      }
+      const existingChapter = category.chapters.find((chapter) => chapter.id === chapterId)
+      if (existingChapter) {
+        existingChapter.videos.push(video)
+      } else {
+        category.chapters.push({
+          id: chapterId,
+          title: video.chapterTitle || video.category || 'Lektionen',
+          orderIndex: video.chapterOrderIndex ?? 999,
+          videos: [video],
+        })
+      }
+      categoryMap.set(categoryId, category)
+    })
+
+    return Array.from(categoryMap.values())
+      .sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title))
+      .map((category) => ({
+        ...category,
+        chapters: category.chapters
+          .sort((a, b) => a.orderIndex - b.orderIndex || a.title.localeCompare(b.title))
+          .map((chapter) => ({
+            ...chapter,
+            videos: chapter.videos.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)),
+          })),
+      }))
   }, [videos])
 
   const totalMinutes = Math.round(videos.reduce((acc, video) => acc + (video.durationSeconds || 0), 0) / 60)
@@ -218,7 +348,7 @@ export default function LearnClient() {
     )))
   }
 
-  if (loading) {
+  if (loading || !agreementChecked) {
     return (
       <div className={cn(bodyFont.className, 'flex min-h-screen items-center justify-center bg-[#f6f8fb] text-slate-900')}>
         <div className="flex flex-col items-center gap-6">
@@ -272,7 +402,9 @@ export default function LearnClient() {
       </header>
 
       <main className="mx-auto max-w-[1440px] px-4 py-6 md:px-8 lg:px-10 lg:py-8">
-        {error ? (
+        {agreementGate.blocked ? (
+          <OnboardingGate status={agreementGate.status} rejectionReason={agreementGate.rejectionReason} />
+        ) : error ? (
           <div className="flex min-h-[520px] flex-col items-center justify-center rounded-2xl border border-red-100 bg-white px-6 py-20 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-600">
               <span className="text-3xl font-black">!</span>
@@ -324,6 +456,39 @@ export default function LearnClient() {
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(360px,0.8fr)]">
               <div className="space-y-6">
+                <div className="flex w-full items-center gap-1 rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('videos')}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-colors sm:flex-none',
+                      activeTab === 'videos'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950',
+                    )}
+                  >
+                    <PlayCircle className="h-4 w-4" aria-hidden="true" />
+                    Videokurse
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('quizzes')}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-colors sm:flex-none',
+                      activeTab === 'quizzes'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950',
+                    )}
+                  >
+                    <ListChecks className="h-4 w-4" aria-hidden="true" />
+                    Wissenstests
+                  </button>
+                </div>
+
+                {activeTab === 'quizzes' ? (
+                  <QuizSection />
+                ) : (
+                  <>
                 <section className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
                   <div className="flex flex-col gap-4 border-b border-slate-200/80 p-5 md:flex-row md:items-center md:justify-between md:p-6">
                     <div>
@@ -349,11 +514,13 @@ export default function LearnClient() {
                   <div className="bg-slate-950">
                     {activeVideo ? (
                       <div className="aspect-video">
-                        <MuxVideoPlayer
+                        <VideoPlayer
                           key={activeVideo.id}
                           video={{
                             id: activeVideo.id,
                             title: activeVideo.title,
+                            provider: activeVideo.provider,
+                            youtubeVideoId: activeVideo.youtubeVideoId,
                             muxPlaybackId: activeVideo.muxPlaybackId,
                             durationSeconds: activeVideo.durationSeconds,
                           }}
@@ -398,76 +565,88 @@ export default function LearnClient() {
                   </div>
 
                   <div className="space-y-7">
-                    {Object.entries(grouped).map(([category, items]) => (
-                      <div key={category}>
+                    {grouped.map((category) => (
+                      <div key={category.id}>
                         <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                           <Layout className="h-4 w-4 text-blue-400" aria-hidden="true" />
-                          {category}
+                          {category.title}
                         </h3>
-                        <div className="grid gap-3">
-                          {items.map((video, index) => {
-                            const isActive = activeVideoId === video.id
-                            const progress = clampProgress(video.progress?.completionPercentage)
-                            return (
-                              <button
-                                key={video.id}
-                                type="button"
-                                onClick={() => setActiveVideoId(video.id)}
-                                className={cn(
-                                  'group grid w-full gap-4 rounded-xl border p-3 text-left transition-all md:grid-cols-[112px_1fr_auto]',
-                                  isActive
-                                    ? 'border-blue-200 bg-blue-50 shadow-sm'
-                                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
-                                )}
-                              >
-                                <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-100 md:h-16 md:w-28">
-                                  {video.thumbnailUrl ? (
-                                    <Image
-                                      src={video.thumbnailUrl}
-                                      alt={video.title}
-                                      fill
-                                      sizes="112px"
-                                      className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full w-full items-center justify-center">
-                                      <PlayCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
-                                    </div>
-                                  )}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
-                                  <span className="absolute bottom-2 left-2 text-[10px] font-black uppercase tracking-wide text-white drop-shadow">
-                                    {String(index + 1).padStart(2, '0')}
-                                  </span>
-                                </div>
+                        <div className="space-y-5">
+                          {category.chapters.map((chapter) => (
+                            <div key={chapter.id}>
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <p className="text-sm font-black text-slate-900">{chapter.title}</p>
+                                <span className="text-xs font-bold text-slate-400">{chapter.videos.length} Lektionen</span>
+                              </div>
+                              <div className="grid gap-3">
+                                {chapter.videos.map((video, index) => {
+                                  const isActive = activeVideoId === video.id
+                                  const progress = clampProgress(video.progress?.completionPercentage)
+                                  return (
+                                    <button
+                                      key={video.id}
+                                      type="button"
+                                      onClick={() => setActiveVideoId(video.id)}
+                                      className={cn(
+                                        'group grid w-full gap-4 rounded-xl border p-3 text-left transition-all md:grid-cols-[112px_1fr_auto]',
+                                        isActive
+                                          ? 'border-blue-200 bg-blue-50 shadow-sm'
+                                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
+                                      )}
+                                    >
+                                      <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-100 md:h-16 md:w-28">
+                                        {video.thumbnailUrl ? (
+                                          <Image
+                                            src={video.thumbnailUrl}
+                                            alt={video.title}
+                                            fill
+                                            sizes="112px"
+                                            className="object-cover opacity-90 transition-transform duration-700 group-hover:scale-105"
+                                          />
+                                        ) : (
+                                          <div className="flex h-full w-full items-center justify-center">
+                                            <PlayCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
+                                          </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/45 to-transparent" />
+                                        <span className="absolute bottom-2 left-2 text-[10px] font-black uppercase tracking-wide text-white drop-shadow">
+                                          {String(index + 1).padStart(2, '0')}
+                                        </span>
+                                      </div>
 
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    {video.progress?.isCompleted && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />}
-                                    <h4 className={cn(displayFont.className, 'line-clamp-1 text-base font-bold text-slate-950')}>
-                                      {video.title}
-                                    </h4>
-                                  </div>
-                                  <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-600">
-                                    {video.description || 'Keine Beschreibung vorhanden.'}
-                                  </p>
-                                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                                    <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
-                                  </div>
-                                </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          {video.progress?.isCompleted && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />}
+                                          <h4 className={cn(displayFont.className, 'line-clamp-1 text-base font-bold text-slate-950')}>
+                                            {video.title}
+                                          </h4>
+                                        </div>
+                                        <p className="mt-1 line-clamp-2 text-sm font-medium leading-6 text-slate-600">
+                                          {video.description || 'Keine Beschreibung vorhanden.'}
+                                        </p>
+                                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                          <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
+                                        </div>
+                                      </div>
 
-                                <div className="flex items-center justify-between gap-4 text-xs font-bold text-slate-500 md:flex-col md:items-end md:justify-center">
-                                  <span>{formatDuration(video.durationSeconds)}</span>
-                                  <span>{video.progress?.isCompleted ? 'Fertig' : progress ? `${progress}%` : 'Neu'}</span>
-                                  <ChevronRight className={cn('hidden h-5 w-5 text-slate-400 transition-colors group-hover:text-blue-600 md:block', isActive && 'text-blue-600')} aria-hidden="true" />
-                                </div>
-                              </button>
-                            )
-                          })}
+                                      <div className="flex items-center justify-between gap-4 text-xs font-bold text-slate-500 md:flex-col md:items-end md:justify-center">
+                                        <span>{formatDuration(video.durationSeconds)}</span>
+                                        <span>{video.progress?.isCompleted ? 'Fertig' : progress ? `${progress}%` : 'Neu'}</span>
+                                        <ChevronRight className={cn('hidden h-5 w-5 text-slate-400 transition-colors group-hover:text-blue-600 md:block', isActive && 'text-blue-600')} aria-hidden="true" />
+                                      </div>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
                   </div>
                 </section>
+                  </>
+                )}
               </div>
 
               <aside className="space-y-6">

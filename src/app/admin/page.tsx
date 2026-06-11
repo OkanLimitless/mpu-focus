@@ -18,6 +18,7 @@ import {
   Mail,
   RefreshCw,
   ShieldCheck,
+  TrendingUp,
   UserPlus,
   UserRound,
   Users,
@@ -191,6 +192,20 @@ export default function AdminDashboardPage() {
       description: 'Lektionen, Kapitel und Inhalte aktualisieren',
       Icon: Clapperboard,
       iconClassName: 'bg-violet-600 text-white',
+    },
+    {
+      href: '/admin/quizzes',
+      title: 'Wissenstests verwalten',
+      description: 'Fragen erstellen und Ergebnisse bewerten',
+      Icon: CheckCircle2,
+      iconClassName: 'bg-amber-500 text-white',
+    },
+    {
+      href: '/admin/finanzen',
+      title: 'Zahlungen erfassen',
+      description: 'Paketpreise und offene Beträge im Blick',
+      Icon: TrendingUp,
+      iconClassName: 'bg-slate-900 text-white',
     },
   ]
 
