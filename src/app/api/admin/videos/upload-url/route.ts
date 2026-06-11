@@ -10,10 +10,12 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}))
     const title = typeof body?.title === 'string' ? body.title.trim() : ''
     const category = typeof body?.category === 'string' ? body.category.trim() : ''
+    const chapterId = typeof body?.chapterId === 'string' ? body.chapterId.trim() : ''
 
     const passthrough = JSON.stringify({
       title: title || null,
       category: category || null,
+      chapterId: chapterId || null,
       source: 'admin-video-upload',
       createdAt: new Date().toISOString(),
     })

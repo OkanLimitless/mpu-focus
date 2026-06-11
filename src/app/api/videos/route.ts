@@ -29,7 +29,7 @@ export async function GET() {
             return new Map()
         })
         const formattedVideos = (await Promise.all(videos.map(async v => {
-            const tokens = v.muxPlaybackId
+            const tokens = v.provider !== 'youtube' && v.muxPlaybackId
                 ? await (async () => {
                     try {
                         return await generateSignedPlaybackTokens(v.muxPlaybackId!)
@@ -49,11 +49,21 @@ export async function GET() {
                     : v.thumbnailUrl,
                 durationSeconds: v.durationSeconds,
                 category: v.category || 'Lektion 1',
+                categoryId: v.categoryId,
+                categoryTitle: v.categoryTitle,
+                categorySlug: v.categorySlug,
+                categoryOrderIndex: v.categoryOrderIndex,
+                chapterId: v.chapterId,
+                chapterTitle: v.chapterTitle,
+                chapterSlug: v.chapterSlug,
+                chapterOrderIndex: v.chapterOrderIndex,
                 orderIndex: v.orderIndex,
+                provider: v.provider,
+                youtubeVideoId: v.youtubeVideoId,
                 muxPlaybackId: tokens ? v.muxPlaybackId : null,
                 progress: progressByVideoId.get(v.id) || null,
             }
-        }))).filter(v => Boolean(v.muxPlaybackId))
+        }))).filter(v => Boolean(v.muxPlaybackId || v.youtubeVideoId))
 
         return NextResponse.json({ videos: formattedVideos })
     } catch (error: any) {

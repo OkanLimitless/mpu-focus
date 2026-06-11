@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAcademyAccess } from '@/lib/auth-helpers'
-import { getVideoById, upsertVideoProgress } from '@/lib/video-library'
+import { getVideoById, updateVideoById, upsertVideoProgress } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +40,14 @@ export async function POST(request: Request) {
       100,
     )
     const isCompleted = body.isCompleted === true || completionPercentage >= 90
+
+    // YouTube-Videos haben beim Anlegen keine Dauer-Metadaten; die Dauer wird
+    // beim ersten Abspielen vom Player nachgetragen.
+    if (totalDuration > 1 && (!video.durationSeconds || video.durationSeconds <= 0)) {
+      await updateVideoById(videoId, { durationSeconds: Math.round(totalDuration) }).catch((error) => {
+        console.warn('Could not backfill video duration:', error)
+      })
+    }
 
     const progress = await upsertVideoProgress({
       profileId: access.profile.id,

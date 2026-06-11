@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { assertAdminRequest } from '@/lib/admin-auth'
 import { ensureSignedPlaybackId, getMuxAsset, getMuxUpload } from '@/lib/mux'
-import { createVideoFromMux, findVideoByMuxAssetId, findVideoByPlaybackId, updateVideoById } from '@/lib/video-library'
+import { createVideoFromMux, findVideoByMuxAssetId, findVideoByPlaybackId, getVideoChapterById, updateVideoById } from '@/lib/video-library'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const title = typeof body.title === 'string' ? body.title.trim() : ''
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const category = typeof body.category === 'string' ? body.category.trim() : 'general'
+    const chapterId = typeof body.chapterId === 'string' ? body.chapterId.trim() : ''
     const orderIndex = Number.isFinite(body.orderIndex) ? Number(body.orderIndex) : 1
     const isPublished = body.isPublished === true
 
@@ -38,12 +39,15 @@ export async function POST(request: Request) {
     const existing = (await findVideoByMuxAssetId(upload.assetId))
       || (playbackId ? await findVideoByPlaybackId(playbackId) : null)
     const durationSeconds = typeof asset.duration === 'number' ? Math.round(asset.duration) : null
+    const chapter = chapterId ? await getVideoChapterById(chapterId) : null
+    const categoryKey = chapter?.slug || category
 
     const video = existing
       ? await updateVideoById(existing.id, {
         title,
         description,
-        category,
+        category: categoryKey,
+        chapterId: chapter?.id || null,
         orderIndex,
         isPublished,
         muxAssetId: upload.assetId,
@@ -54,7 +58,8 @@ export async function POST(request: Request) {
       : await createVideoFromMux({
         title,
         description,
-        category,
+        category: categoryKey,
+        chapterId: chapter?.id || null,
         orderIndex,
         isPublished,
         muxAssetId: upload.assetId,

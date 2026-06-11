@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { assertAdminRequest } from '@/lib/admin-auth'
 import { buildSignedThumbnailUrl, ensureSignedPlaybackId, generateSignedPlaybackTokens, getMuxAsset } from '@/lib/mux'
-import { createVideoFromMux, listVideosAdmin } from '@/lib/video-library'
+import { createVideoFromMux, getVideoChapterById, listVideosAdmin } from '@/lib/video-library'
+import { fetchYouTubeDurationSeconds, parseYouTubeVideoId } from '@/lib/youtube'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,12 @@ export async function GET() {
 
         const videos = await listVideosAdmin()
         const formattedVideos = await Promise.all(videos.map(async v => {
-            const tokens = v.muxPlaybackId ? await generateSignedPlaybackTokens(v.muxPlaybackId) : null
+            const tokens = v.muxPlaybackId
+                ? await generateSignedPlaybackTokens(v.muxPlaybackId).catch((error) => {
+                    console.warn(`Mux tokens unavailable for video ${v.id}: ${error instanceof Error ? error.message : String(error)}`)
+                    return null
+                })
+                : null
             return {
             // New shape for /admin/videos page
             id: v.id,
@@ -23,8 +29,18 @@ export async function GET() {
                 : v.thumbnailUrl,
             durationSeconds: v.durationSeconds,
             category: v.category,
+            categoryId: v.categoryId,
+            categoryTitle: v.categoryTitle,
+            categorySlug: v.categorySlug,
+            categoryOrderIndex: v.categoryOrderIndex,
+            chapterId: v.chapterId,
+            chapterTitle: v.chapterTitle,
+            chapterSlug: v.chapterSlug,
+            chapterOrderIndex: v.chapterOrderIndex,
             orderIndex: v.orderIndex,
             isPublished: v.isPublished,
+            provider: v.provider,
+            youtubeVideoId: v.youtubeVideoId,
             muxAssetId: v.muxAssetId,
             muxPlaybackId: v.muxPlaybackId,
             muxStatus: v.muxStatus,
@@ -32,8 +48,7 @@ export async function GET() {
 
             // Backward-compatible shape for old admin components
             _id: v.id,
-            chapterId: v.category,
-            chapter: { id: v.category, title: `Modul ${v.category}` },
+            chapter: { id: v.chapterId || v.category, title: v.chapterTitle || `Modul ${v.category}` },
             order: v.orderIndex,
             duration: v.durationSeconds || 0,
             isActive: v.isPublished,
@@ -61,11 +76,41 @@ export async function POST(request: Request) {
         const title = typeof body.title === 'string' ? body.title.trim() : ''
         const description = typeof body.description === 'string' ? body.description.trim() : ''
         const category = typeof body.category === 'string' ? body.category.trim() : 'general'
+        const chapterId = typeof body.chapterId === 'string' ? body.chapterId.trim() : ''
         const orderIndex = Number.isFinite(body.orderIndex) ? Number(body.orderIndex) : 1
         const isPublished = body.isPublished === true
 
         if (!title) {
             return NextResponse.json({ error: 'Titel ist erforderlich.' }, { status: 400 })
+        }
+
+        const youtubeInput = typeof body.youtubeUrl === 'string'
+            ? body.youtubeUrl.trim()
+            : typeof body.youtubeVideoId === 'string'
+                ? body.youtubeVideoId.trim()
+                : ''
+
+        const chapter = chapterId ? await getVideoChapterById(chapterId) : null
+
+        if (youtubeInput) {
+            const youtubeVideoId = parseYouTubeVideoId(youtubeInput)
+            if (!youtubeVideoId) {
+                return NextResponse.json({ error: 'Ungültiger YouTube-Link. Bitte den vollständigen Link zum Video einfügen.' }, { status: 400 })
+            }
+
+            const video = await createVideoFromMux({
+                title,
+                description,
+                category: chapter?.slug || category,
+                chapterId: chapter?.id || null,
+                orderIndex,
+                isPublished,
+                provider: 'youtube',
+                youtubeVideoId,
+                durationSeconds: await fetchYouTubeDurationSeconds(youtubeVideoId),
+            })
+
+            return NextResponse.json({ success: true, video }, { status: 201 })
         }
 
         let muxAssetId = typeof body.muxAssetId === 'string' ? body.muxAssetId.trim() : ''
@@ -83,7 +128,8 @@ export async function POST(request: Request) {
         const video = await createVideoFromMux({
             title,
             description,
-            category,
+            category: chapter?.slug || category,
+            chapterId: chapter?.id || null,
             orderIndex,
             isPublished,
             muxAssetId: muxAssetId || null,

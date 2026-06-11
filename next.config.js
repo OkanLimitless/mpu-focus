@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['uploadthing.com', 'utfs.io', 'image.mux.com', 'api.dicebear.com'],
+    domains: ['uploadthing.com', 'utfs.io', 'image.mux.com', 'api.dicebear.com', 'i.ytimg.com', 'img.youtube.com'],
   },
   webpack: (config) => {
     config.resolve.fallback = {
@@ -19,6 +19,8 @@ const nextConfig = {
       : "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
     // Allow pdf.js worker script from unpkg (module URL import)
     scriptSrc += " https://unpkg.com"
+    // YouTube IFrame player API
+    scriptSrc += " https://www.youtube.com https://s.ytimg.com"
     // Allow Vercel Live and gstatic only in non-production
     if (!isProd) {
       scriptSrc += " https://vercel.live https://www.gstatic.com"
@@ -28,7 +30,7 @@ const nextConfig = {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com https://api.dicebear.com https://ui-avatars.com",
+      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com https://api.dicebear.com https://ui-avatars.com https://i.ytimg.com https://img.youtube.com",
       "font-src 'self' data:",
       // Allow UploadThing ingest regions
       "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com https://*.ingest.uploadthing.com",
@@ -36,7 +38,7 @@ const nextConfig = {
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      "frame-src 'self' https://*.mux.com",
+      "frame-src 'self' https://*.mux.com https://www.youtube.com https://www.youtube-nocookie.com",
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
       // Allow web workers (pdf.js uses blob workers)
       "worker-src 'self' blob:",
