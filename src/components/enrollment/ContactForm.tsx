@@ -1,123 +1,147 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import { contactErrors, type ContactData } from '@/lib/beratung-flow'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-interface ContactFormProps {
-  data: {
-    firstName: string
-    lastName: string
-    email: string
-    phone: string
-    privacyConsent: boolean
-  }
+export default function ContactForm({
+  data,
+  onChange,
+  copy,
+}: {
+  copy?: { title: string; hint: string; phoneHint: string }
+  data: ContactData
   onChange: (field: string, value: string | boolean) => void
-}
-
-export default function ContactForm({ data, onChange }: ContactFormProps) {
+}) {
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const errors = contactErrors(data)
+  const fields = [
+    {
+      key: 'firstName',
+      label: 'Vorname',
+      type: 'text',
+      autoComplete: 'given-name',
+      max: 80,
+    },
+    {
+      key: 'lastName',
+      label: 'Nachname',
+      type: 'text',
+      autoComplete: 'family-name',
+      max: 80,
+    },
+    {
+      key: 'email',
+      label: 'E-Mail-Adresse',
+      type: 'email',
+      autoComplete: 'email',
+      max: 200,
+    },
+    {
+      key: 'phone',
+      label: 'Telefonnummer',
+      type: 'tel',
+      autoComplete: 'tel',
+      max: 40,
+    },
+  ] as const
   return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Ihre Kontaktdaten
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold">
+          {copy?.title ?? 'Ihre Kontaktdaten'}
         </h3>
-        <p className="text-sm text-gray-600">
-          Alle Felder sind erforderlich
+        <p className="mt-1 text-xs text-slate-500">
+          {copy?.hint ?? 'Alle Felder sind erforderlich'}
         </p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="firstName">
-            Vorname *
-          </Label>
-          <Input
-            id="firstName"
-            type="text"
-            placeholder="Ihr Vorname"
-            value={data.firstName}
-            onChange={(e) => onChange('firstName', e.target.value)}
-            className="w-full"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="lastName">
-            Nachname *
-          </Label>
-          <Input
-            id="lastName"
-            type="text"
-            placeholder="Ihr Nachname"
-            value={data.lastName}
-            onChange={(e) => onChange('lastName', e.target.value)}
-            className="w-full"
-            required
-          />
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {fields.map((field) => {
+          const error = touched[field.key] ? errors[field.key] : ''
+          return (
+            <div
+              key={field.key}
+              className={
+                field.key === 'email' || field.key === 'phone'
+                  ? 'sm:col-span-2'
+                  : ''
+              }
+            >
+              <Label htmlFor={field.key} className="text-sm">
+                {field.label} *
+              </Label>
+              <Input
+                id={field.key}
+                name={field.key}
+                type={field.type}
+                autoComplete={field.autoComplete}
+                inputMode={
+                  field.type === 'tel'
+                    ? 'tel'
+                    : field.type === 'email'
+                      ? 'email'
+                      : 'text'
+                }
+                maxLength={field.max}
+                value={data[field.key]}
+                required
+                onChange={(event) => onChange(field.key, event.target.value)}
+                onBlur={() =>
+                  setTouched((previous) => ({ ...previous, [field.key]: true }))
+                }
+                aria-invalid={!!error}
+                aria-describedby={
+                  error
+                    ? `${field.key}-error`
+                    : field.key === 'phone'
+                      ? 'phone-hint'
+                      : undefined
+                }
+                className={`mt-1.5 h-12 rounded-lg text-base ${error ? 'border-red-500' : 'border-slate-300'}`}
+              />
+              {error && (
+                <p
+                  id={`${field.key}-error`}
+                  className="mt-1 text-xs text-red-700"
+                >
+                  {error}
+                </p>
+              )}
+              {field.key === 'phone' && (
+                <p id="phone-hint" className="mt-1.5 text-xs text-slate-500">
+                  {copy?.phoneHint}
+                </p>
+              )}
+            </div>
+          )
+        })}
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email">
-          E-Mail-Adresse *
-        </Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="ihre.email@beispiel.de"
-          value={data.email}
-          onChange={(e) => onChange('email', e.target.value)}
-          className="w-full"
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="phone">
-          Telefonnummer *
-        </Label>
-        <Input
-          id="phone"
-          type="tel"
-          placeholder="+49 123 456789"
-          value={data.phone}
-          onChange={(e) => onChange('phone', e.target.value)}
-          className="w-full"
-          required
-          pattern="^[+0-9 ()-]{7,}$"
-          title="Bitte geben Sie eine gültige Telefonnummer ein"
-        />
-        <p className="text-sm text-gray-500">
-          Bitte geben Sie Ihre Telefonnummer an, damit wir Sie kontaktieren können.
-        </p>
-      </div>
-
-      <div className="bg-blue-50 p-4 rounded-lg">
-        <p className="text-sm text-blue-800">
-          <strong>Datenschutz:</strong> Ihre Daten werden nur für die Kontaktaufnahme verwendet 
-          und nicht an Dritte weitergegeben. Sie können der Verarbeitung jederzeit widersprechen.
-        </p>
-      </div>
-
-      <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
         <input
           id="privacyConsent"
+          name="privacyConsent"
           type="checkbox"
           checked={data.privacyConsent}
           onChange={(e) => onChange('privacyConsent', e.target.checked)}
           required
-          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
         />
         <span>
-          Ich habe die <Link href="/datenschutz" className="underline hover:text-slate-900">Datenschutzerklaerung</Link> gelesen und stimme der Verarbeitung meiner Daten zur Kontaktaufnahme zu.
+          Ich habe die{' '}
+          <Link
+            href="/datenschutz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            Datenschutzerklärung
+          </Link>{' '}
+          gelesen und stimme der Verarbeitung meiner Daten zur Kontaktaufnahme
+          zu.
         </span>
       </label>
-
-      <p className="text-xs text-gray-500">
-        Rechtliche Hinweise: <Link href="/impressum" className="underline hover:text-gray-700">Impressum</Link> und <Link href="/datenschutz" className="underline hover:text-gray-700">Datenschutz</Link>.
-      </p>
     </div>
   )
 }

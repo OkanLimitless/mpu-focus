@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { assertAdminRequest } from '@/lib/admin-auth'
+import { buildFocusAcquisition, type LeadAcquisition } from '@/lib/lead-acquisition'
+import { BERATUNG_STEPS, CALLBACK_OPTIONS } from '@/lib/beratung-flow'
+import { leadNotificationsEnabled, notifyNewLead } from '@/lib/lead-notification'
 import { rateLimit } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +53,7 @@ function isMissingRelation(error: any, relation: string) {
     if (!error) return false
     const message = String(error?.message || '').toLowerCase()
     const details = String(error?.details || '').toLowerCase()
-    return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
+    return error?.code === '42P01' || (error?.code === 'PGRST205' && (message + details).includes(relation.toLowerCase()))
 }
 
 async function listMpuSignups(params: {
@@ -94,6 +97,9 @@ async function listMpuSignups(params: {
             status: row.status || 'new',
             goals: row.goals || '',
             notes: row.notes || '',
+            source: row.source || 'website',
+            acquisition: row.acquisition || null,
+            notificationStatus: row.notification_status || 'disabled',
             createdAt: row.created_at,
             convertedToUserId: null,
         }),
@@ -154,6 +160,7 @@ async function insertLeadRecord(params: {
         goals: string | null
         notes: string | null
         source: string | null
+        acquisition: LeadAcquisition
     }
 }) {
     const { supabaseAdmin, payload } = params
@@ -168,11 +175,13 @@ async function insertLeadRecord(params: {
             goals: payload.goals,
             notes: payload.notes,
             source: payload.source || 'website',
+            acquisition: payload.acquisition,
+            notification_status: leadNotificationsEnabled() ? 'pending' : 'disabled',
         })
         .select('id')
         .single()
 
-    if (!primaryInsert.error) return primaryInsert
+    if (!primaryInsert.error) return { ...primaryInsert, primary: true }
     if (!isMissingRelation(primaryInsert.error, 'mpu_signups')) {
         throw primaryInsert.error
     }
@@ -185,13 +194,13 @@ async function insertLeadRecord(params: {
             email: payload.email,
             phone: payload.phone,
             goals: payload.goals,
-            notes: payload.notes,
+            notes: [payload.notes, `Herkunft: ${JSON.stringify(payload.acquisition)}`].filter(Boolean).join('\n'),
         })
         .select('id')
         .single()
 
     if (legacyInsert.error) throw legacyInsert.error
-    return legacyInsert
+    return { ...legacyInsert, primary: false }
 }
 
 export async function GET(request: NextRequest) {
@@ -242,6 +251,9 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            return NextResponse.json({ error: 'Ungültige Anfrage.' }, { status: 400 })
+        }
 
         const firstName = toOptionalString(body.firstName, 80)
         const lastName = toOptionalString(body.lastName, 80)
@@ -249,7 +261,9 @@ export async function POST(request: NextRequest) {
         const phone = toOptionalString(body.phone, 40)
         const goals = toOptionalString(body.goals, 2000)
         const source = toOptionalString(body.source, 120)
-        const hasConsentField = Object.prototype.hasOwnProperty.call(body ?? {}, 'consentAccepted')
+        if (source !== 'beratung-quiz-de' && source !== 'landing-page-de') {
+            return NextResponse.json({ error: 'Ungültige Formularquelle.' }, { status: 400 })
+        }
         const consentAccepted = body?.consentAccepted === true
 
         if (!firstName || !lastName || !emailRaw || !phone) {
@@ -261,11 +275,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.' }, { status: 400 })
         }
 
-        if (!PHONE_REGEX.test(phone)) {
+        if (!PHONE_REGEX.test(phone) || phone.replace(/\D/g, '').length < 7) {
             return NextResponse.json({ error: 'Bitte geben Sie eine gültige Telefonnummer ein.' }, { status: 400 })
         }
 
-        if (hasConsentField && !consentAccepted) {
+        if (!consentAccepted) {
             return NextResponse.json({ error: 'Bitte stimmen Sie der Datenschutzerklärung zu.' }, { status: 400 })
         }
 
@@ -275,7 +289,16 @@ export async function POST(request: NextRequest) {
         const mpuChallenges = toStringArray(body.mpuChallenges)
         const concerns = toStringArray(body.concerns)
         const availability = toStringArray(body.availability)
+        if (source === 'beratung-quiz-de' && (
+            !BERATUNG_STEPS[0].options.some(option => option === reason) ||
+            !BERATUNG_STEPS[1].options.some(option => option === timeframe) ||
+            availability.some(option => !CALLBACK_OPTIONS.some(allowed => allowed === option))
+        )) {
+            return NextResponse.json({ error: 'Bitte prüfen Sie Ihre Antworten.' }, { status: 400 })
+        }
+        const acquisition = buildFocusAcquisition(body, source)
         const contextLines: string[] = [
+            ...(source === 'beratung-quiz-de' ? [`Kontakt-Einwilligung: beratung_v1 · ${new Date().toISOString()}`] : []),
             timeframe ? `Zeithorizont: ${timeframe}` : '',
             reason ? `MPU-Grund: ${reason}` : '',
             jobLoss === null ? '' : `Jobverlust durch Entzug: ${jobLoss ? 'Ja' : 'Nein'}`,
@@ -288,7 +311,7 @@ export async function POST(request: NextRequest) {
 
         const supabaseAdmin = createSupabaseAdmin()
 
-        const { data, error } = await insertLeadRecord({
+        const { data, error, primary } = await insertLeadRecord({
             supabaseAdmin,
             payload: {
                 firstName,
@@ -298,6 +321,7 @@ export async function POST(request: NextRequest) {
                 goals,
                 notes,
                 source,
+                acquisition,
             },
         })
 
@@ -306,9 +330,23 @@ export async function POST(request: NextRequest) {
             throw error
         }
 
+        // Notification failure must never turn a persisted lead into a failed form submission.
+        if (leadNotificationsEnabled()) {
+            try {
+                const notificationStatus = await notifyNewLead(data.id)
+                if (primary) {
+                    const result = await supabaseAdmin.from('mpu_signups')
+                        .update({ notification_status: notificationStatus }).eq('id', data.id)
+                    if (result.error) console.error('Could not update lead notification status')
+                }
+            } catch {
+                console.error('Lead notification processing failed; lead remains saved')
+            }
+        }
         return NextResponse.json({ success: true, leadId: data.id }, { status: 201 })
     } catch (error: any) {
+        if (error instanceof SyntaxError) return NextResponse.json({ error: 'Ungültige Anfrage.' }, { status: 400 })
         console.error('Error creating lead:', error)
-        return NextResponse.json({ error: error?.message || 'Failed to create lead' }, { status: getHttpStatus(error) })
+        return NextResponse.json({ error: 'Ihre Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.' }, { status: getHttpStatus(error) })
     }
 }
