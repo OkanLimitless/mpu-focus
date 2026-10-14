@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { LeadRegion } from '@/lib/lead-acquisition'
 import type { BeratungContent } from '@/lib/beratung-content'
+import BeratungReviews from './BeratungReviews'
+import { submitBeratungRequest } from '@/lib/beratung-submit'
 import {
   getBeratungSteps,
   buildBeratungLeadPayload,
-  BERATUNG_LEAD_ENDPOINT,
   CALLBACK_OPTIONS,
   contactErrors,
   type QuizData,
@@ -62,6 +64,8 @@ export default function BeratungPage({
   const [submitted, setSubmitted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [showErrors, setShowErrors] = useState(false)
+  const requestId = useRef<string | null>(null)
   const submitting = useRef(false)
   const heading = useRef<HTMLHeadingElement>(null)
   const steps = getBeratungSteps(content)
@@ -93,41 +97,31 @@ export default function BeratungPage({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (preview || submitting.current) return
+    const errors = contactErrors(contact)
     if (
-      Object.values(contactErrors(contact)).some(Boolean) ||
+      Object.values(errors).some(Boolean) ||
       !quiz.reason ||
       !quiz.timeframe
     ) {
       setError(
         'Bitte prüfen Sie Ihre Angaben und die Zustimmung zur Kontaktaufnahme.'
       )
+      setShowErrors(true)
+      const firstError = Object.entries(errors).find(([, message]) => message)?.[0]
+      if (firstError) document.getElementById(firstError)?.focus()
       return
     }
     submitting.current = true
     setBusy(true)
     setError('')
     try {
-      const response = await fetch(BERATUNG_LEAD_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      requestId.current ??= crypto.randomUUID()
+      const result = await submitBeratungRequest({
           ...buildBeratungLeadPayload(contact, quiz),
           attribution: getLeadAttribution(),
           region,
-        }),
+          requestId: requestId.current,
       })
-      const result = await response.json()
-      if (
-        response.status !== 201 ||
-        result.success !== true ||
-        !result.leadId
-      ) {
-        throw new Error(
-          response.status === 429
-            ? 'Zu viele Anfragen. Bitte versuchen Sie es in einigen Minuten erneut.'
-            : 'Ihre Anfrage konnte nicht gesendet werden. Ihre Angaben bleiben erhalten. Bitte versuchen Sie es erneut.'
-        )
-      }
       // Tracking must never turn a successfully stored lead into a form error.
       try {
         trackBeratungLead(String(result.leadId), region)
@@ -150,7 +144,7 @@ export default function BeratungPage({
   const active = steps[step]
   const selected = active ? quiz[active.field] : ''
   return (
-    <div className="min-h-screen bg-[#f5f8fc] text-slate-900 selection:bg-blue-100">
+    <div className="min-h-screen break-words bg-[#f5f8fc] text-slate-900 selection:bg-blue-100">
       <header className="border-b border-slate-200/80 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <Link
@@ -236,9 +230,20 @@ export default function BeratungPage({
                 {content.introDescription}
               </p>
             </section>
+            <div className="mx-auto grid max-w-xl items-start gap-4 lg:max-w-none lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:gap-8">
+              <section id="adviser" aria-label="Ihr Ansprechpartner" className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 lg:block lg:p-6">
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl lg:mb-5 lg:aspect-[1178/1335] lg:h-auto lg:w-full">
+                  <Image src="/advisers/mustafa-sahin-v1.png" alt={content.adviserName} fill priority sizes="(min-width: 1024px) 300px, 132px" className="origin-[50%_20%] scale-[1.65] object-cover lg:scale-100" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold lg:text-xl">{content.adviserName}</h2>
+                  <p className="mt-1 text-xs font-medium text-blue-700 lg:text-sm">{content.adviserRole}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600 lg:text-sm">{content.adviserDescription}</p>
+                </div>
+              </section>
             <div
               id="beratung-form"
-              className="mx-auto max-w-xl scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_48px_-24px_rgba(15,23,42,0.25)]"
+              className="w-full min-w-0 scroll-mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_48px_-24px_rgba(15,23,42,0.25)]"
             >
               <div className="border-b border-slate-100 px-5 pb-4 pt-5 sm:px-8">
                 <div className="mb-3 flex items-center justify-between text-xs">
@@ -261,7 +266,7 @@ export default function BeratungPage({
                   ))}
                 </div>
               </div>
-              <form onSubmit={submit} className="p-5 sm:p-8" aria-busy={busy}>
+              <form onSubmit={submit} noValidate className="p-5 sm:p-8" aria-busy={busy} onChange={() => { requestId.current = null }}>
                 <h2
                   id={step < 2 ? 'question' : 'contact'}
                   ref={heading}
@@ -304,6 +309,7 @@ export default function BeratungPage({
                     </p>
                     <ContactForm
                       data={contact}
+                      showErrors={showErrors}
                       onChange={(key, value) =>
                         setContact((previous) => ({
                           ...previous,
@@ -316,7 +322,9 @@ export default function BeratungPage({
                         phoneHint: content.contactPhoneHint,
                       }}
                     />
-                    <fieldset>
+                    <details className="rounded-xl border border-slate-200 px-3">
+                      <summary className="cursor-pointer py-3 text-sm font-medium text-slate-700">Rückrufzeit auswählen <span className="font-normal text-slate-500">(optional{quiz.availability.length ? ` · ${quiz.availability.length} ausgewählt` : ''})</span></summary>
+                    <fieldset className="pb-4">
                       <legend className="text-sm font-semibold">
                         {content.question6}
                       </legend>
@@ -352,6 +360,7 @@ export default function BeratungPage({
                         {content.contactCallback}
                       </p>
                     </fieldset>
+                    </details>
                   </fieldset>
                 )}
                 {error && (
@@ -407,6 +416,8 @@ export default function BeratungPage({
                 </p>
               </form>
             </div>
+            </div>
+            <BeratungReviews content={content} preview={preview} />
             <section
               id="trust"
               className="mx-auto mt-7 grid max-w-xl grid-cols-2 gap-x-5 gap-y-4 text-sm"

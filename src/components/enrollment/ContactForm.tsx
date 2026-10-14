@@ -10,8 +10,10 @@ export default function ContactForm({
   data,
   onChange,
   copy,
+  showErrors = false,
 }: {
   copy?: { title: string; hint: string; phoneHint: string }
+  showErrors?: boolean
   data: ContactData
   onChange: (field: string, value: string | boolean) => void
 }) {
@@ -57,16 +59,16 @@ export default function ContactForm({
           {copy?.hint ?? 'Alle Felder sind erforderlich'}
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         {fields.map((field) => {
-          const error = touched[field.key] ? errors[field.key] : ''
+          const error = touched[field.key] || showErrors ? errors[field.key] : ''
           return (
             <div
               key={field.key}
               className={
                 field.key === 'email' || field.key === 'phone'
-                  ? 'sm:col-span-2'
-                  : ''
+                  ? 'col-span-2 min-w-0'
+                  : 'min-w-0'
               }
             >
               <Label htmlFor={field.key} className="text-sm">
@@ -126,6 +128,8 @@ export default function ContactForm({
           checked={data.privacyConsent}
           onChange={(e) => onChange('privacyConsent', e.target.checked)}
           required
+          aria-invalid={showErrors && !!errors.privacyConsent}
+          aria-describedby={showErrors && errors.privacyConsent ? 'privacyConsent-error' : undefined}
           className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
         />
         <span>
@@ -142,6 +146,7 @@ export default function ContactForm({
           zu.
         </span>
       </label>
+      {showErrors && errors.privacyConsent && <p id="privacyConsent-error" className="text-xs text-red-700">{errors.privacyConsent}</p>}
     </div>
   )
 }

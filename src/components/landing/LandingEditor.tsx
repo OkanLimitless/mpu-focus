@@ -476,6 +476,11 @@ function PageEditor({
               disabled={!!busy || !loaded}
               className="max-h-[650px] space-y-5 overflow-y-auto p-5 disabled:opacity-60"
             >
+              {page === 'beratung' && section === 'reviews' && (
+                <p className="rounded-lg bg-blue-50 p-3 text-xs leading-relaxed text-slate-600">
+                  Nur echte, zur Verwendung freigegebene Kundenstimmen eintragen. Pro Bewertung sind Originalzitat, angezeigter Name und Quellenlink erforderlich. Leere Bewertungen erscheinen nicht auf der öffentlichen Seite.
+                </p>
+              )}
               {landingFields
                 .filter((field) => field.section === section)
                 .sort(
