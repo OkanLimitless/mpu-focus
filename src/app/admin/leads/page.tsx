@@ -1,5 +1,7 @@
 'use client'
 
+import type { LeadAcquisition } from '@/lib/lead-acquisition'
+
 import { useCallback, useEffect, useState } from 'react'
 import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
 import {
@@ -30,6 +32,9 @@ type LeadItem = {
     goals?: string | null
     status: LeadStatus
     notes?: string | null
+    notificationStatus?: 'disabled' | 'pending' | 'sent' | 'failed'
+    source?: string
+    acquisition?: LeadAcquisition | null
     createdAt: string
 }
 
@@ -268,6 +273,14 @@ export default function LeadsPage() {
                             </div>
 
                             <div>
+                                <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-slate-700 break-words">
+                                    <p className="font-bold text-slate-900">Herkunft · schreibgeschützt</p>
+                                    <p className="mt-1">E-Mail-Hinweis: {lead.notificationStatus === 'sent' ? 'Versendet' : lead.notificationStatus === 'failed' ? 'Fehlgeschlagen – bitte manuell nachfassen' : lead.notificationStatus === 'pending' ? 'Versand noch nicht bestätigt' : 'Nicht eingerichtet'}</p>
+                                    <p className="mt-1">{lead.acquisition?.website === 'focus' ? 'MPU Focus' : lead.acquisition?.website === 'kompakt' ? 'MPU Kompakt' : lead.source || 'Bestandsanfrage'} · {lead.acquisition?.landingPage || '–'}</p>
+                                    {lead.acquisition?.region && <p>Region: {lead.acquisition.region === 'general' ? 'Allgemein' : lead.acquisition.region === 'soest' ? 'Soest' : 'Olpe'} · Formular</p>}
+                                    {Object.entries(lead.acquisition?.attribution || {}).map(([key, value]) => <p key={key}>{key}: {value}</p>)}
+                                    {lead.acquisition?.consent && <p className="mt-1">Kontakt-Einwilligung: {lead.acquisition.consent.version} · {new Date(lead.acquisition.consent.acceptedAt).toLocaleString('de-DE')}</p>}
+                                </div>
                                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Interne Notiz</label>
                                 <Textarea
                                     placeholder="Interne Notiz eingeben"

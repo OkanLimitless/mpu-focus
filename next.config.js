@@ -20,7 +20,7 @@ const nextConfig = {
     // Allow pdf.js worker script from unpkg (module URL import)
     scriptSrc += " https://unpkg.com"
     // YouTube IFrame player API
-    scriptSrc += " https://www.youtube.com https://s.ytimg.com"
+    scriptSrc += " https://www.youtube.com https://s.ytimg.com https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com"
     // Allow Vercel Live and gstatic only in non-production
     if (!isProd) {
       scriptSrc += " https://vercel.live https://www.gstatic.com"
@@ -30,15 +30,15 @@ const nextConfig = {
       "default-src 'self'",
       scriptSrc,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com https://api.dicebear.com https://ui-avatars.com https://i.ytimg.com https://img.youtube.com",
+      "img-src 'self' data: blob: https://uploadthing.com https://utfs.io https://*.ufs.sh https://image.mux.com https://api.dicebear.com https://ui-avatars.com https://i.ytimg.com https://img.youtube.com https://www.google.com https://www.google.de https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.googletagmanager.com",
       "font-src 'self' data:",
       // Allow UploadThing ingest regions
-      "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com https://*.ingest.uploadthing.com",
+      "connect-src 'self' https://api.openai.com https://uploadthing.com https://utfs.io https://*.ufs.sh https://stream.mux.com https://*.mux.com https://*.ingest.uploadthing.com https://www.google.com https://www.google.de https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://ad.doubleclick.net https://www.googletagmanager.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
       "object-src 'none'",
-      "frame-src 'self' https://*.mux.com https://www.youtube.com https://www.youtube-nocookie.com",
+      "frame-src 'self' https://*.mux.com https://www.youtube.com https://www.youtube-nocookie.com https://www.googletagmanager.com",
       "media-src 'self' blob: https://stream.mux.com https://*.mux.com",
       // Allow web workers (pdf.js uses blob workers)
       "worker-src 'self' blob:",
@@ -60,6 +60,13 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
         ],
       },
+      ...['/website-preview', '/editor-demo/preview'].map((source) => ({
+        source,
+        headers: [
+          { key: isProd ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only', value: csp.replace("frame-ancestors 'none'", "frame-ancestors 'self'") },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      })),
     ]
   },
 };

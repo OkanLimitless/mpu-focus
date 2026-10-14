@@ -1,3 +1,4 @@
+import { isWebsiteEditorEmail } from '@/lib/website-access'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import type { NextAuthOptions } from 'next-auth'
 import { ensureProfileForAuthUser, normalizeEmail } from '@/lib/mpu-profiles'
@@ -48,7 +49,7 @@ export const authOptions: NextAuthOptions = {
             email: profile.email,
             firstName: profile.first_name,
             lastName: profile.last_name,
-            role: profile.role === 'admin' ? 'admin' : 'user',
+            role: profile.role === 'admin' ? 'admin' : isWebsiteEditorEmail(profile.email) ? 'editor' : 'user',
           }
         } catch (error: any) {
           console.error('Auth error:', error)

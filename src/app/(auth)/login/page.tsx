@@ -57,7 +57,7 @@ export default function LoginPage() {
         })
         const session = await getSession()
         const role = session?.user?.role
-        router.push(role === 'admin' ? '/admin' : '/learn')
+        router.push(role === 'admin' ? '/admin' : role === 'editor' ? '/website' : '/learn')
       }
     } catch (error) {
       toast({

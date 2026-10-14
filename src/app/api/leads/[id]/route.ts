@@ -18,7 +18,7 @@ function isMissingRelation(error: any, relation: string) {
     if (!error) return false
     const message = String(error?.message || '').toLowerCase()
     const details = String(error?.details || '').toLowerCase()
-    return error?.code === '42P01' || message.includes(relation.toLowerCase()) || details.includes(relation.toLowerCase())
+    return error?.code === '42P01' || (error?.code === 'PGRST205' && (message + details).includes(relation.toLowerCase()))
 }
 
 export async function PATCH(
@@ -102,6 +102,9 @@ export async function PATCH(
                 status: lead.status,
                 goals: lead.goals,
                 notes: lead.notes,
+                source: lead.source || 'website',
+                acquisition: lead.acquisition || null,
+                notificationStatus: lead.notification_status || 'disabled',
                 createdAt: lead.created_at
             }
         })
