@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { ADS_CONSENT_KEY, saveAdsConsent } from '@/lib/ads-tracking'
 
 export function CookieBanner() {
   const pathname = usePathname()
   const [visible, setVisible] = useState(false)
+  const banner = useRef<HTMLElement>(null)
+  const [height, setHeight] = useState(0)
   useEffect(() => {
     try {
       setVisible(!localStorage.getItem(ADS_CONSENT_KEY))
@@ -17,12 +19,29 @@ export function CookieBanner() {
     window.addEventListener('mpu-open-consent', open)
     return () => window.removeEventListener('mpu-open-consent', open)
   }, [])
+  useEffect(() => {
+    const element = banner.current
+    if (!visible || !element) return
+    const measure = () => {
+      const nextHeight = element.getBoundingClientRect().height + 24
+      setHeight(nextHeight)
+      document.documentElement.style.scrollPaddingBottom = `${nextHeight}px`
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.scrollPaddingBottom = ''
+    }
+  }, [visible, pathname])
   if (pathname === '/website-preview' || pathname.startsWith('/editor-demo'))
     return null
   const choose = (granted: boolean) => {
     saveAdsConsent(granted)
     setVisible(false)
   }
+  if (!visible && pathname === '/beratung') return null // This page has its own footer control.
   if (!visible)
     return (
       <button
@@ -34,14 +53,16 @@ export function CookieBanner() {
       </button>
     )
   return (
+    <>
+    <div aria-hidden="true" style={{ height }} />
     <section
+      ref={banner}
       aria-label="Cookie-Einstellungen"
       className="fixed inset-x-0 bottom-0 z-[100] border-t border-slate-200 bg-white p-4 text-slate-700 shadow-[0_-8px_30px_-15px_rgba(15,23,42,0.2)] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-md sm:rounded-xl sm:border"
     >
-      <h2 className="text-sm font-bold text-slate-900">Ihre Privatsphäre</h2>
+      <h2 className="text-sm font-bold text-slate-900 sm:block hidden">Ihre Privatsphäre</h2>
       <p className="mt-1 text-xs leading-relaxed">
-        Mit Ihrer Zustimmung nutzen wir Google Ads zur Erfolgsmessung unserer
-        Anzeigen. Die Beratung funktioniert auch ohne optionale Cookies.{' '}
+        Optionale Cookies helfen uns, Google Ads auszuwerten. Die Beratung funktioniert auch ohne.{' '}
         <a
           href="/datenschutz"
           target="_blank"
@@ -68,5 +89,6 @@ export function CookieBanner() {
         </button>
       </div>
     </section>
+    </>
   )
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { assertAdminRequest } from '@/lib/admin-auth'
 import { buildFocusAcquisition, type LeadAcquisition } from '@/lib/lead-acquisition'
@@ -153,6 +154,8 @@ async function listLegacyLeads(params: {
 async function insertLeadRecord(params: {
     supabaseAdmin: any
     payload: {
+        requestId: string | null
+        requestFingerprint: string | null
         firstName: string
         lastName: string
         email: string
@@ -168,6 +171,8 @@ async function insertLeadRecord(params: {
     const primaryInsert = await supabaseAdmin
         .from('mpu_signups')
         .insert({
+            request_id: payload.requestId,
+            request_fingerprint: payload.requestFingerprint,
             first_name: payload.firstName,
             last_name: payload.lastName,
             email: payload.email,
@@ -181,7 +186,17 @@ async function insertLeadRecord(params: {
         .select('id')
         .single()
 
-    if (!primaryInsert.error) return { ...primaryInsert, primary: true }
+    if (!primaryInsert.error) return { ...primaryInsert, primary: true, replayed: false }
+    if (primaryInsert.error.code === '23505' && payload.requestId) {
+        const existing = await supabaseAdmin.from('mpu_signups')
+            .select('id, request_fingerprint').eq('request_id', payload.requestId).maybeSingle()
+        if (existing.error) throw existing.error
+        if (existing.data?.request_fingerprint === payload.requestFingerprint) {
+            return { data: { id: existing.data.id }, error: null, primary: true, replayed: true }
+        }
+        // Never disclose or overwrite a lead based on an email match.
+        if (existing.data) throw new Error('Submission request conflict')
+    }
     if (!isMissingRelation(primaryInsert.error, 'mpu_signups')) {
         throw primaryInsert.error
     }
@@ -200,7 +215,7 @@ async function insertLeadRecord(params: {
         .single()
 
     if (legacyInsert.error) throw legacyInsert.error
-    return { ...legacyInsert, primary: false }
+    return { ...legacyInsert, primary: false, replayed: false }
 }
 
 export async function GET(request: NextRequest) {
@@ -261,6 +276,10 @@ export async function POST(request: NextRequest) {
         const phone = toOptionalString(body.phone, 40)
         const goals = toOptionalString(body.goals, 2000)
         const source = toOptionalString(body.source, 120)
+        const requestId = body.requestId === undefined ? null : body.requestId
+        if (requestId !== null && (typeof requestId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))) {
+            return NextResponse.json({ error: 'Ungültige Anfragekennung.' }, { status: 400 })
+        }
         if (source !== 'beratung-quiz-de' && source !== 'landing-page-de') {
             return NextResponse.json({ error: 'Ungültige Formularquelle.' }, { status: 400 })
         }
@@ -297,6 +316,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Bitte prüfen Sie Ihre Antworten.' }, { status: 400 })
         }
         const acquisition = buildFocusAcquisition(body, source)
+        // Exclude timestamps and optional attribution: a retry can follow a consent change.
+        const requestFingerprint = requestId ? createHash('sha256').update(JSON.stringify({
+            firstName, lastName, email, phone, goals, source, timeframe, reason,
+            jobLoss, mpuChallenges, concerns, availability, region: acquisition.region,
+        })).digest('hex') : null
         const contextLines: string[] = [
             ...(source === 'beratung-quiz-de' ? [`Kontakt-Einwilligung: beratung_v1 · ${new Date().toISOString()}`] : []),
             timeframe ? `Zeithorizont: ${timeframe}` : '',
@@ -311,9 +335,11 @@ export async function POST(request: NextRequest) {
 
         const supabaseAdmin = createSupabaseAdmin()
 
-        const { data, error, primary } = await insertLeadRecord({
+        const { data, error, primary, replayed } = await insertLeadRecord({
             supabaseAdmin,
             payload: {
+                requestId,
+                requestFingerprint,
                 firstName,
                 lastName,
                 email,
@@ -331,7 +357,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Notification failure must never turn a persisted lead into a failed form submission.
-        if (leadNotificationsEnabled()) {
+        if (leadNotificationsEnabled() && !replayed) {
             try {
                 const notificationStatus = await notifyNewLead(data.id)
                 if (primary) {
@@ -346,6 +372,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, leadId: data.id }, { status: 201 })
     } catch (error: any) {
         if (error instanceof SyntaxError) return NextResponse.json({ error: 'Ungültige Anfrage.' }, { status: 400 })
+        if (error instanceof Error && error.message === 'Submission request conflict') return NextResponse.json({ error: 'Die Anfragekennung wurde bereits verwendet. Bitte prüfen Sie Ihre Angaben.' }, { status: 409 })
         console.error('Error creating lead:', error)
         return NextResponse.json({ error: 'Ihre Anfrage konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.' }, { status: getHttpStatus(error) })
     }

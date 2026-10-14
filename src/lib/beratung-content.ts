@@ -6,10 +6,12 @@ export const beratungSections = [
     label: 'Einleitung',
     description: 'Titel, Einleitung & Weiter-Button',
   },
+  { id: 'adviser', label: 'Ansprechpartner', description: 'Name & persönliche Vorstellung' },
+  { id: 'reviews', label: 'Kundenstimmen', description: 'Echte, freigegebene Bewertungen mit Quelle' },
   {
     id: 'trust',
     label: 'Vertrauen',
-    description: 'Vorteile & Kennzahlen',
+    description: 'Vorteile & Hinweise',
   },
   {
     id: 'question2',
@@ -39,6 +41,22 @@ export const beratungSections = [
 ] as const
 
 export const beratungFields = [
+  { key: 'adviserName', label: 'Name', defaultValue: 'Mustafa Sahin', section: 'adviser', kind: 'text' },
+  { key: 'adviserRole', label: 'Rolle', defaultValue: 'Ihr Ansprechpartner bei MPU Focus', section: 'adviser', kind: 'text' },
+  { key: 'adviserDescription', label: 'Vorstellung', defaultValue: 'Persönliche Beratung zu Ihren nächsten Schritten.', section: 'adviser', kind: 'textarea' },
+  { key: 'reviewsTitle', label: 'Überschrift', defaultValue: 'Erfahrungen mit MPU Focus', section: 'reviews', kind: 'text' },
+  { key: 'review1Quote', label: 'Bewertung 1 · Originalzitat (optional)', defaultValue: '', section: 'reviews', kind: 'textarea' },
+  { key: 'review1Author', label: 'Bewertung 1 · Angezeigter Name', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review1Source', label: 'Bewertung 1 · Quellenlink (https://)', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review1Rating', label: 'Bewertung 1 · Sterne (1–5, optional)', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review2Quote', label: 'Bewertung 2 · Originalzitat (optional)', defaultValue: '', section: 'reviews', kind: 'textarea' },
+  { key: 'review2Author', label: 'Bewertung 2 · Angezeigter Name', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review2Source', label: 'Bewertung 2 · Quellenlink (https://)', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review2Rating', label: 'Bewertung 2 · Sterne (1–5, optional)', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review3Quote', label: 'Bewertung 3 · Originalzitat (optional)', defaultValue: '', section: 'reviews', kind: 'textarea' },
+  { key: 'review3Author', label: 'Bewertung 3 · Angezeigter Name', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review3Source', label: 'Bewertung 3 · Quellenlink (https://)', defaultValue: '', section: 'reviews', kind: 'text' },
+  { key: 'review3Rating', label: 'Bewertung 3 · Sterne (1–5, optional)', defaultValue: '', section: 'reviews', kind: 'text' },
   { key: 'directContactTitle', label: 'Direkter Kontakt · Hinweis', defaultValue: 'Lieber direkt Kontakt aufnehmen?', section: 'contact', kind: 'text' },
   { key: 'phoneLabel', label: 'Telefon-Button', defaultValue: 'Jetzt anrufen', section: 'contact', kind: 'text' },
   { key: 'whatsappLabel', label: 'WhatsApp-Button', defaultValue: 'WhatsApp öffnen', section: 'contact', kind: 'text' },
@@ -343,9 +361,37 @@ export const beratungContentSchema = z
         z
           .string()
           .trim()
-          .min(1, 'Bitte füllen Sie dieses Feld aus.')
+          .min(/^review[123]/.test(field.key) ? 0 : 1, 'Bitte füllen Sie dieses Feld aus.')
           .max(field.kind === 'textarea' ? 1200 : 200),
       ])
     ) as unknown as Record<keyof BeratungContent, z.ZodType<string>>
   )
   .strict()
+  .superRefine((copy, context) => {
+    for (const number of [1, 2, 3]) {
+      const ratingKey = `review${number}Rating` as keyof BeratungContent
+      const rating = copy[ratingKey]
+      if (rating && !/^[1-5]$/.test(rating)) context.addIssue({ code: z.ZodIssueCode.custom, path: [ratingKey], message: 'Bitte geben Sie die Originalbewertung von 1 bis 5 an oder lassen Sie das Feld leer.' })
+      const keys = ['Quote', 'Author', 'Source'].map(suffix => `review${number}${suffix}` as keyof BeratungContent)
+      if (!rating && !keys.some(key => copy[key])) continue
+      for (const key of keys) {
+        if (!copy[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Bitte ergänzen Sie Zitat, Namen und Quelle oder leeren Sie alle drei Felder.' })
+      }
+      const key = keys[2]
+      try {
+        const url = new URL(copy[key])
+        if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Unsafe source')
+      } catch {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: 'Bitte geben Sie einen öffentlichen https://-Quellenlink ein.' })
+      }
+    }
+  })
+
+export function getBeratungReviews(copy: BeratungContent) {
+  return [1, 2, 3].map(number => ({
+    quote: copy[`review${number}Quote` as keyof BeratungContent],
+    author: copy[`review${number}Author` as keyof BeratungContent],
+    source: copy[`review${number}Source` as keyof BeratungContent],
+    rating: copy[`review${number}Rating` as keyof BeratungContent],
+  })).filter(review => review.quote && review.author && review.source)
+}

@@ -81,6 +81,7 @@ function setup() {
   )
   return {
     store,
+    rows,
     race: () => {
       race = true
     },
@@ -703,4 +704,103 @@ test('notification is disabled by default, contains no contact data, and reports
   fail = true
   assert.equal(await notifier.notifyNewLead('lead-id'), 'failed')
   assert.equal(closed, 2)
+})
+
+test('review publishing rejects incomplete or unsafe proof and allows empty slots', () => {
+  const defaults = beratung.defaultBeratungContent
+  assert.equal(beratung.getBeratungReviews(defaults).length, 0)
+  for (const patch of [
+    { review1Quote: 'Approved original quote' },
+    { review1Rating: '5' },
+    { review1Quote: 'Quote', review1Author: 'Reviewer', review1Source: 'https://example.test', review1Rating: '6' },
+    { review1Quote: 'Quote', review1Author: 'Reviewer', review1Source: 'javascript:alert(1)' },
+    { review1Quote: 'Quote', review1Author: 'Reviewer', review1Source: 'https://user:password@example.test' },
+  ]) assert.equal(beratung.beratungContentSchema.safeParse({ ...defaults, ...patch }).success, false)
+  const complete = { ...defaults, review1Quote: 'Approved original quote', review1Author: 'Reviewer', review1Source: 'https://example.test/review/1' }
+  assert.equal(beratung.beratungContentSchema.safeParse(complete).success, true)
+  assert.equal(beratung.getBeratungReviews(complete).length, 1)
+})
+
+test('existing saved Beratung copy gains adviser/review defaults without resetting client edits', async () => {
+  const { store, rows } = setup()
+  const oldCopy = Object.fromEntries(Object.entries(beratung.defaultBeratungContent).filter(([key]) => !/^(review|adviser)/.test(key)))
+  oldCopy.introTitle = 'Client edited title'
+  oldCopy.nextLabel = 'Client edited button'
+  rows.set('landing_beratung', { updated_at: '2026-10-14T08:00:00.000Z', value: {
+    draft: oldCopy, published: oldCopy, previousPublished: oldCopy, publishedAt: null, updatedBy: null,
+  } })
+  const result = await store.getLandingState('beratung')
+  for (const copy of [result.document.draft, result.document.published, result.document.previousPublished]) {
+    assert.equal(copy.introTitle, oldCopy.introTitle)
+    assert.equal(copy.nextLabel, oldCopy.nextLabel)
+    assert.equal(copy.adviserName, 'Mustafa Sahin')
+    assert.equal(beratung.getBeratungReviews(copy).length, 0)
+  }
+})
+
+test('same submission retries return one receipt; a new enquiry from the same email preserves both records', async () => {
+  const rows = new Map()
+  let notifications = 0
+  const tracking = load('src/lib/ads-tracking.ts')
+  const route = load('src/app/api/leads/route.ts', {
+    'next/server': { NextResponse: { json: (body, init) => new Response(JSON.stringify(body), init) } },
+    '@supabase/supabase-js': { createClient: () => ({ from: () => ({
+      insert: value => ({ select: () => ({ single: async () => {
+        if (rows.has(value.request_id)) return { error: { code: '23505' } }
+        const row = { ...value, id: `receipt-${rows.size + 1}` }
+        rows.set(value.request_id, row)
+        return { data: { id: row.id }, error: null }
+      } }) }),
+      select: () => ({ eq: (_, id) => ({ maybeSingle: async () => ({ data: rows.get(id) ?? null, error: null }) }) }),
+      update: () => ({ eq: async () => ({ error: null }) }),
+    }) }) },
+    '@/lib/admin-auth': { assertAdminRequest: async () => {} },
+    '@/lib/rate-limit': { rateLimit: async () => ({ ok: true }) },
+    '@/lib/beratung-flow': flow,
+    '@/lib/lead-acquisition': load('src/lib/lead-acquisition.ts', { './ads-tracking': tracking }),
+    '@/lib/lead-notification': { leadNotificationsEnabled: () => true, notifyNewLead: async () => { notifications++; return 'sent' } },
+  }, { console: { error: () => {} } })
+  const body = {
+    requestId: '30b2b138-2e25-4de5-9052-086b0d369e1a', firstName: 'Test', lastName: 'Person',
+    email: 'retry@example.test', phone: '+490000000000', source: 'beratung-quiz-de',
+    reason: 'Andere', timeframe: 'Noch unsicher', consentAccepted: true,
+  }
+  const submit = patch => route.POST(new Request('https://example.test/api/leads', { method: 'POST', body: JSON.stringify({ ...body, ...patch }) }))
+  const concurrent = await Promise.all([submit({}), submit({})])
+  for (const response of concurrent) {
+    assert.equal(response.status, 201)
+    assert.equal((await response.json()).leadId, 'receipt-1')
+  }
+  assert.equal(rows.size, 1)
+  assert.equal(notifications, 1)
+  assert.equal((await submit({ attribution: { gclid: 'changed-optional-consent' } })).status, 201)
+  assert.equal((await submit({ phone: '+491111111111' })).status, 409)
+  assert.equal(rows.size, 1)
+  assert.equal(rows.values().next().value.phone, body.phone)
+  assert.equal((await submit({ requestId: '30b2b138-2e25-4de5-9052-086b0d369e1b', reason: 'Punkte' })).status, 201)
+  assert.equal(rows.size, 2)
+  assert.equal(notifications, 2)
+  assert.equal((await submit({ requestId: 'not-a-uuid' })).status, 400)
+})
+
+test('client submission times out, retains its retry key, and requires a stored-lead receipt', async () => {
+  const payload = { requestId: '30b2b138-2e25-4de5-9052-086b0d369e1a' }
+  let sent
+  const pending = load('src/lib/beratung-submit.ts', { './beratung-flow': flow }, {
+    AbortController, setTimeout, clearTimeout,
+    fetch: (_, options) => new Promise((resolve, reject) => {
+      sent = JSON.parse(options.body)
+      options.signal.addEventListener('abort', () => reject(new Error('aborted')))
+    }),
+  })
+  await assert.rejects(pending.submitBeratungRequest(payload, 5), /Verbindung dauert zu lange/)
+  assert.equal(sent.requestId, payload.requestId)
+  for (const response of [new Response('{}', { status: 201 }), new Response('{"success":true,"leadId":"x"}', { status: 500 })]) {
+    const invalid = load('src/lib/beratung-submit.ts', { './beratung-flow': flow }, { AbortController, setTimeout, clearTimeout, fetch: async () => response })
+    await assert.rejects(invalid.submitBeratungRequest(payload), /nicht bestätigt/)
+  }
+  const saved = load('src/lib/beratung-submit.ts', { './beratung-flow': flow }, {
+    AbortController, setTimeout, clearTimeout, fetch: async () => new Response('{"success":true,"leadId":"receipt"}', { status: 201 }),
+  })
+  assert.equal((await saved.submitBeratungRequest(payload)).leadId, 'receipt')
 })
